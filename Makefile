@@ -58,7 +58,11 @@ check-env:
 	fi
 
 start: check-env
-	docker compose up -d
+	# --build so a stale, already-built image is never silently served
+	# after a code change -- normal Docker layer caching keeps this cheap
+	# when nothing actually changed (see AGENTS.md's resource-efficiency
+	# rules: this is a correctness fix, not a `--no-cache` rebuild).
+	docker compose up -d --build
 
 stop: check-env
 	docker compose down
