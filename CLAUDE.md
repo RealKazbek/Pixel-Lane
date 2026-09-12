@@ -23,3 +23,12 @@ This is the shared development policy for Pixel Lane.
 - Run the `pre-ship` skill's checks before finishing a task.
 - Commit and push completed user tasks according to AGENTS.md's Git/Commit/
   Push rules.
+
+## Claude commit metadata
+
+When creating a Git commit, use only the repository's configured Git author.
+Keep the conventional commit message limited to the actual project change.
+Do not add `Co-Authored-By:`, `Claude-Session:`, Claude/Anthropic/AI
+attribution, or any other session metadata. Do not modify repository or
+global `user.name`/`user.email` unless the user explicitly requests it. This
+applies only to future commits; never rewrite existing history.
