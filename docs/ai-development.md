@@ -49,6 +49,27 @@ Full rules: see AGENTS.md § Context efficiency rules.
    change's scope warrants it.
 4. Never claim a test or check passed without actually running it — if a
    command can't be executed in the current environment, say so explicitly.
+5. Tests must reflect real architecture — do not validate PostgreSQL-
+   dependent behavior against SQLite or another substitute (AGENTS.md § 8).
+
+## Scalability and technology-selection workflow
+
+1. Before introducing anything new (dependency, database, framework,
+   infrastructure component), run the seven-question check in AGENTS.md
+   § 5 — don't add it just because it's popular.
+2. Default to the project's production-grade technology (PostgreSQL for
+   persistence, etc.); only reach for a toy/dev-only substitute under the
+   documented, narrow conditions in AGENTS.md § 5.
+3. Build important modules with clean boundaries so they can grow without a
+   rewrite, but don't add microservices, distributed-systems complexity, or
+   speculative abstractions the task doesn't need.
+4. Don't leave disposable-prototype architecture behind (JSON-as-database,
+   fake repositories, hardcoded data, direct DB calls in route handlers) —
+   see AGENTS.md § 4. If temporary code is genuinely necessary, mark it as
+   temporary.
+5. For foundational/architectural changes, also run the
+   `architecture-review` skill; for schema/query changes, run
+   `database-review`.
 
 ## Git workflow
 

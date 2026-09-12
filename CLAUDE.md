@@ -3,8 +3,12 @@
 This is the shared development policy for Pixel Lane.
 
 - Read **[AGENTS.md](AGENTS.md)** first — it is the authoritative policy
-  (context efficiency, architecture, code quality, security, testing,
-  frontend/design, git, commit, push, and multi-agent rules).
+  (context efficiency, architecture, scalability, technology selection,
+  database, code quality, security, testing, frontend/design, git, commit,
+  push, and multi-agent rules).
+- Architecture and technology-selection decisions (new dependencies,
+  databases, frameworks, module boundaries) always follow AGENTS.md — do
+  not make ad hoc calls.
 - Read only the documentation relevant to the current task
   (`docs/architecture.md`, `docs/ai-development.md`) — not both up front.
 - Use the appropriate local skill from `.agents/skills/` for the task type
