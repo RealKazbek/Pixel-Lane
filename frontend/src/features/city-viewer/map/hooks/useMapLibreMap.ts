@@ -12,9 +12,15 @@ import { useEffect, useRef, useState } from "react";
 import {
   Map as MapLibreMap,
   NavigationControl,
+  setWorkerUrl,
   type StyleSpecification,
 } from "maplibre-gl";
 import "maplibre-gl/dist/maplibre-gl.css";
+
+// MapLibre's worker is a separate browser asset. Ship MapLibre's matching
+// worker with this app rather than relying on a sibling asset emitted by the
+// bundler, which Next does not retain for dependencies.
+setWorkerUrl("/maplibre-gl-worker.mjs");
 
 export interface MapLibreMapOptions {
   style: string | StyleSpecification;

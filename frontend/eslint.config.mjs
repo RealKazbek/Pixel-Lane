@@ -12,6 +12,8 @@ const eslintConfig = defineConfig([
     "out/**",
     "build/**",
     "next-env.d.ts",
+    // Vendored MapLibre worker is served as a static runtime asset.
+    "public/maplibre-gl-worker.mjs",
   ]),
 ]);
 
