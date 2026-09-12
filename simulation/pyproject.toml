@@ -1,7 +1,7 @@
 [project]
 name = "pixel-lane-simulation"
 version = "0.1.0"
-description = "Pixel Lane simulation service foundation (placeholder, no traffic logic yet)"
+description = "Pixel Lane simulation/traffic-analysis package (Traffic Engine v1, no SUMO yet)"
 requires-python = ">=3.11"
 dependencies = []
 
@@ -9,14 +9,20 @@ dependencies = []
 dev = [
   "pytest>=8.3,<9.0",
   "ruff>=0.7,<1.0",
+  "mypy>=1.13,<2.0",
 ]
 
-[tool.setuptools]
-packages = ["pixel_lane_simulation"]
+[tool.setuptools.packages.find]
+include = ["pixel_lane_simulation*"]
 
 [tool.ruff]
 line-length = 100
 target-version = "py311"
+
+[tool.mypy]
+python_version = "3.11"
+ignore_missing_imports = true
+disallow_untyped_defs = false
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
