@@ -253,6 +253,12 @@ Before finishing a task: run the smallest useful validation set first (e.g.
 unit tests for the touched module), then broader validation if the change
 warrants it (e.g. full suite, build).
 
+**Shared development database safety.** Do not run backend `pytest` against
+the shared development database unless `TEST_DATABASE_URL` is confirmed to
+target an isolated test database. Until that isolation is fixed, backend
+tests may truncate the development `cities` table; testing must never wipe or
+alter the Almaty demo city as a side effect.
+
 ## 9. Performance awareness
 
 Do not optimize prematurely, but do not accept obviously poor architecture
@@ -408,6 +414,18 @@ Before declaring a task complete:
 9. If the task touched architecture in a way `docs/architecture.md`
    describes, that file still matches reality — update it if not (see
    § 19). Documentation that lies is worse than no documentation.
+
+**Mandatory completion gate (including Codex).** A development task is not
+complete, and must not be described as done, until implementation, relevant
+checks, diff review, and status review are complete; focused logical commits
+are created; those commits are pushed; and the remote state is verified. On
+`main`, run `git rev-parse HEAD` and `git rev-parse origin/main` after the
+push and ensure they match. Never claim a push succeeded without this check.
+Preserve unrelated user changes; inspect every untracked file and report
+whether it is intentional, generated, or should be ignored. The final report
+must state changed modules, architecture/data-flow impact, checks actually
+run and results, final git status, commit SHA(s), push/remote verification,
+remaining limitations, and a recommended next task.
 
 ## 18. Library-first engineering
 
