@@ -23,7 +23,12 @@ import type { City } from "../types/city";
 
 export function CityViewerApp() {
   const { cities, status: citiesStatus } = useCities();
-  const [selectedCityId, setSelectedCityId] = useState<string | null>(null);
+  const [explicitCityId, setExplicitCityId] = useState<string | null>(null);
+  // Auto-select when there's exactly one city; with several, leave the
+  // choice to the user. Derived, not effect+setState, so there's no extra
+  // render cycle.
+  const selectedCityId =
+    explicitCityId ?? (cities.length === 1 ? cities[0].id : null);
   const { city, status: cityStatus } = useCity(selectedCityId);
   const analysis = useTrafficAnalysis(selectedCityId);
 
@@ -40,7 +45,7 @@ export function CityViewerApp() {
   );
 
   function handleSelectCity(cityId: string) {
-    setSelectedCityId(cityId);
+    setExplicitCityId(cityId);
     setSelected(null);
     analysis.reset();
   }

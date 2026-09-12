@@ -2,7 +2,7 @@
 	start-db stop-db start-backend resources \
 	frontend-dev frontend-lint frontend-typecheck frontend-build frontend-test \
 	backend-dev backend-lint backend-typecheck backend-test migrate migration \
-	simulation-test
+	simulation-test import-almaty
 
 help:
 	@echo "Pixel Lane development commands"
@@ -38,6 +38,8 @@ help:
 	@echo "make migrate             - apply backend database migrations"
 	@echo "make migration msg=...   - create a new backend migration"
 	@echo "make simulation-test     - run simulation package tests"
+	@echo "make import-almaty       - import the Almaty, Kazakhstan OSM demo city"
+	@echo "                           (one-time: pip install -e '.[osm]' in backend/.venv first)"
 
 # --- Project lifecycle (Docker Compose) --------------------------------
 
@@ -151,3 +153,14 @@ migration:
 
 simulation-test:
 	cd simulation && . .venv/bin/activate && pytest
+
+# One-shot import of the Almaty, Kazakhstan OSM demo city (see
+# docs/architecture.md's "Almaty OpenStreetMap demo" section). Idempotent:
+# re-running it after the city already exists just reports it, no
+# duplicate is created. Requires `pip install -e '.[osm]'` in
+# backend/.venv (a separate, optional dependency group -- see
+# backend/app/city/importers/osm/README.md).
+import-almaty: check-env start-db
+	cd backend && . .venv/bin/activate && \
+	DATABASE_URL=$${DATABASE_URL:-postgresql+psycopg://pixel_lane:change-me@localhost:5432/pixel_lane} \
+	python -m app.city.importers.osm.cli
