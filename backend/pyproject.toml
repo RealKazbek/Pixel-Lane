@@ -13,8 +13,8 @@ dependencies = [
   "psycopg[binary]>=3.2,<4.0",
 ]
 
-[tool.setuptools]
-packages = ["app"]
+[tool.setuptools.packages.find]
+include = ["app*"]
 
 [project.optional-dependencies]
 dev = [
@@ -30,6 +30,9 @@ target-version = "py311"
 
 [tool.ruff.lint]
 select = ["E", "F", "I", "UP", "B"]
+# FastAPI's Depends()/Query() *must* be called in argument defaults --
+# that's how FastAPI's dependency injection is designed to work.
+ignore = ["B008"]
 
 [tool.mypy]
 python_version = "3.11"

@@ -1,0 +1,29 @@
+"""Payload-size safeguards shared by schemas and validators.
+
+These are deliberately simple constant caps -- not a quota system -- to
+close obvious denial-of-service paths (unbounded nesting / object counts in
+a single City payload) without adding operational complexity yet.
+"""
+
+MAX_ROADS_PER_CITY = 500
+MAX_LANES_PER_ROAD = 20
+MAX_INTERSECTIONS_PER_CITY = 500
+MAX_TRAFFIC_LIGHTS_PER_CITY = 500
+MAX_TRAFFIC_RULES_PER_CITY = 2000
+MAX_PARKING_ZONES_PER_CITY = 1000
+MAX_TRAFFIC_DEMANDS_PER_CITY = 2000
+
+MAX_SIGNAL_GROUPS_PER_TRAFFIC_LIGHT = 16
+MAX_PHASES_PER_TRAFFIC_LIGHT = 16
+MAX_LANES_PER_SIGNAL_GROUP = 50
+MAX_ROADS_PER_INTERSECTION = 16
+MAX_LANES_PER_INTERSECTION = 64
+
+NAME_MAX_LENGTH = 200
+DESCRIPTION_MAX_LENGTH = 2000
+TIME_INTERVAL_MAX_LENGTH = 50
+
+MAX_SPEED_LIMIT_KMH = 200.0
+MAX_PHASE_DURATION_SECONDS = 600
+MAX_VEHICLES_PER_HOUR = 20000.0
+MAX_PARKING_CAPACITY = 1000
