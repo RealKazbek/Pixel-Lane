@@ -15,9 +15,12 @@ congestion analysis engine in `simulation/`, exposed via `POST
 Viewer v1**: open `http://localhost:3000`, pick a city, see its road
 network (roads/lanes/intersections/traffic lights/parking) on a Canvas,
 run Traffic Analysis, and see congestion/bottlenecks -- read-only, no
-editing yet. Authentication, the 2D *editor*, computer vision, SUMO
-integration, vehicle-level simulation, and traffic optimization are not
-implemented yet. See [`docs/architecture.md`](docs/architecture.md) for
+editing yet. A real road network can be imported from OpenStreetMap for
+central Almaty, Kazakhstan (`make import-almaty`, see below) instead of
+only hand-built example fixtures. Authentication, the 2D *editor*,
+computer vision, SUMO integration, vehicle-level simulation, and traffic
+optimization are not implemented yet. See
+[`docs/architecture.md`](docs/architecture.md) for
 what's implemented vs. planned.
 
 ## Project structure
@@ -77,6 +80,23 @@ exercising the 2D Viewer's Traffic Analysis view). POST either to
 real PostgreSQL and are skipped with a clear reason if it isn't reachable
 -- they never fall back to SQLite.
 
+### Almaty OpenStreetMap demo
+
+A real (not hand-built) road network subset for central Almaty,
+Kazakhstan, imported from OpenStreetMap:
+
+```bash
+cd backend && source .venv/bin/activate && pip install -e ".[osm]"  # one-time
+cd ..
+make start
+make import-almaty
+```
+
+Then open `http://localhost:3000` and pick the imported city. See
+`docs/architecture.md` § "Almaty OpenStreetMap demo" for the exact
+area/size, what is and isn't real data, and
+`backend/app/city/importers/osm/README.md` for the importer itself.
+
 ### Simulation (foundation only)
 
 ```bash
@@ -111,6 +131,7 @@ A root `Makefile` wraps the common commands (`make help` for the full list):
 | `make migrate`              | Apply Alembic migrations              |
 | `make migration msg="..."`  | Create a new Alembic migration        |
 | `make simulation-test`      | Run simulation package tests          |
+| `make import-almaty`        | Import the Almaty OSM demo city (idempotent) |
 
 Frontend also exposes `npm run format` / `npm run format:check` (Prettier)
 and `npm run test` (Vitest -- unit tests for the city-viewer's pure

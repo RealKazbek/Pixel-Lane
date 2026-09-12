@@ -46,6 +46,7 @@ section below.
 | Traffic Engine v1 | `simulation/pixel_lane_simulation/traffic/` | Static network/routing/congestion analysis | `analyze_city()` / `TrafficEngine.analyze()` | Nothing in this repo (its own `CityInput` contract only) |
 | Traffic adapter | `backend/app/traffic/` | Translates City -> Traffic Engine input, serializes result | REST `POST /api/v1/cities/{id}/traffic-analysis` | City Model, Traffic Engine |
 | 2D Viewer v1 | `frontend/src/features/city-viewer/` | Read-only Canvas visualization | `CityViewerApp` component | City Model API, Traffic Analysis API |
+| OSM importer | `backend/app/city/importers/osm/` | One-shot import of real OpenStreetMap road networks into the City Model | `import_city_from_osm()`, CLI (`make import-almaty`) | City Model service layer; osmnx (isolated, optional `backend[osm]` extra) |
 
 **Planned** (not implemented, see their sections under "High-level
 components" below): 2D Editor, SUMO adapter, external hardware
@@ -355,6 +356,51 @@ viewport on it (without changing zoom).
   geometry.
 - No traffic-light phase animation -- a signalized intersection just shows
   a static marker indicating a light is present.
+
+## Almaty OpenStreetMap demo
+
+**Source: OpenStreetMap** (fetched via the Overpass API through the
+[OSMnx](https://osmnx.readthedocs.io/) library). This is a real road
+network, not a hand-built or fictional city.
+
+```bash
+make start
+make import-almaty
+```
+
+then open `http://localhost:3000`, pick the imported city, and view the
+real central-Almaty road network.
+
+**Demo area, not the whole city.** Center point ≈ (43.238949, 76.889709)
+(near Abay Avenue / Rozybakiev Street, central Almaty), radius 850 m
+(≈1.7 km bounding-box side). This size was chosen to comfortably fit under
+the City Model's existing payload-safety limits
+(`MAX_ROADS_PER_CITY`/`MAX_INTERSECTIONS_PER_CITY` = 500 each, see
+`app/city/domain/limits.py`) without raising them just for a bigger demo,
+while still importing a dense, realistic network (roughly 180
+intersections, 400+ roads, dozens of signalized intersections).
+
+**What is and isn't real:**
+- Road geometry, names, one-way/lane counts, and speed limits: real OSM
+  data, mapped through documented fallbacks when a tag is missing (see
+  `backend/app/city/importers/osm/defaults.py`).
+- Traffic signal *presence* (`highway=traffic_signals`): real. Traffic
+  signal *timing*: **not real** -- a synthetic single "always green" phase
+  placeholder, since OSM has no timing data. Clearly labeled as such in
+  the imported data and in `mapper.py`.
+- Traffic demand/volume: **not imported at all** -- OpenStreetMap has no
+  real traffic-volume data. Running Traffic Analysis on this city produces
+  network metrics with no routed demand until `TrafficDemand` entries are
+  added some other way (e.g. manually, or a future synthetic-demand tool).
+- Parking: not imported in this version.
+
+**Idempotent.** `make import-almaty` uses a fixed, deterministic city id;
+re-running it after the city already exists reports it instead of creating
+a duplicate. See `backend/app/city/importers/osm/README.md`.
+
+**Not done here** (future, separate work): full-city tiled loading,
+background map tiles/basemap, live traffic, building footprints, public
+transport, SUMO, PostGIS, periodic OSM sync, or a map editor.
 
 ## High-level components (planned)
 
