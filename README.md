@@ -6,9 +6,12 @@ designing and analyzing traffic systems.
 
 ## Status
 
-**Early-stage foundation.** This repository currently contains only the
-project skeleton — no traffic domain logic, authentication, 2D editor,
-computer vision, or SUMO integration exists yet. See
+**Early-stage.** The backend now has a real domain foundation, **City
+Model v1** (roads, lanes, intersections, traffic lights, traffic rules,
+parking, traffic demand -- persisted in PostgreSQL via
+`/api/v1/cities*`, see `docs/architecture.md`). Authentication, the 2D
+editor, computer vision, SUMO integration, and traffic
+optimization/simulation are not implemented yet. See
 [`docs/architecture.md`](docs/architecture.md) for what's implemented vs.
 planned.
 
@@ -53,8 +56,16 @@ cd backend
 python3 -m venv .venv && source .venv/bin/activate
 pip install -e ".[dev]"
 cp .env.example .env
-uvicorn app.main:app --reload   # http://localhost:8000
+alembic upgrade head             # requires PostgreSQL running (see Docker below)
+uvicorn app.main:app --reload    # http://localhost:8000
 ```
+
+City Model endpoints: `POST /api/v1/cities/validate`, `POST /api/v1/cities`,
+`GET /api/v1/cities/{id}`, `GET /api/v1/cities`. A ready-to-use example
+payload lives at `backend/app/city/examples/four_way_intersection.json`.
+Database-backed tests (`pytest`) run against real PostgreSQL and are
+skipped with a clear reason if it isn't reachable -- they never fall back
+to SQLite.
 
 ### Simulation (foundation only)
 
@@ -108,12 +119,13 @@ has no runnable server yet, so it is not included in Compose — see
 
 ## What is intentionally NOT implemented yet
 
-- Traffic domain logic (roads, lanes, intersections, signals, City Model)
-- Authentication and authorization
+- Traffic optimization, routing, or live simulation
+- Authentication and authorization (no users/ownership on the City Model
+  yet)
 - The 2D editor
 - Computer vision
 - SUMO integration
-- Any database migrations beyond the empty Alembic setup
+- PostGIS / spatial queries
 - Production-hardened Docker/CORS/security configuration beyond safe
   development defaults
 

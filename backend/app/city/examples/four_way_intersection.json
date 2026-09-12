@@ -1,0 +1,329 @@
+{
+  "id": "989f1981-e3b4-5994-b21e-81589e52724f",
+  "name": "Four-Way Intersection Example",
+  "description": "A compact example city: one signalized four-way intersection with four arterial approaches, used by tests, the future 2D editor, and simulation development.",
+  "coordinate_system": "LOCAL_CARTESIAN",
+  "roads": [
+    {
+      "id": "d5c752eb-5dba-557d-a4ad-4488c4fc9409",
+      "name": "North Avenue",
+      "road_type": "ARTERIAL",
+      "geometry": {
+        "points": [
+          {
+            "x": 100.0,
+            "y": 0.0
+          },
+          {
+            "x": 100.0,
+            "y": 100.0
+          }
+        ]
+      },
+      "default_speed_limit_kmh": 50.0,
+      "lanes": [
+        {
+          "id": "98fd8a2d-92e6-5d4b-8dec-fd06b8a6186d",
+          "index": 0,
+          "direction": "FORWARD",
+          "allowed_movements": [
+            "STRAIGHT",
+            "RIGHT"
+          ],
+          "lane_type": "GENERAL",
+          "speed_limit_kmh": null
+        },
+        {
+          "id": "1cd577ca-d497-5bad-aca0-c4a3aa224e1b",
+          "index": 1,
+          "direction": "FORWARD",
+          "allowed_movements": [
+            "LEFT"
+          ],
+          "lane_type": "TURN_ONLY",
+          "speed_limit_kmh": 30.0
+        },
+        {
+          "id": "5909c7e4-256f-507b-93a7-07ff024bad50",
+          "index": 2,
+          "direction": "BACKWARD",
+          "allowed_movements": [
+            "STRAIGHT"
+          ],
+          "lane_type": "GENERAL",
+          "speed_limit_kmh": null
+        }
+      ]
+    },
+    {
+      "id": "a59892c9-b7b8-55e0-b570-ce83f118a353",
+      "name": "South Avenue",
+      "road_type": "ARTERIAL",
+      "geometry": {
+        "points": [
+          {
+            "x": 100.0,
+            "y": 200.0
+          },
+          {
+            "x": 100.0,
+            "y": 100.0
+          }
+        ]
+      },
+      "default_speed_limit_kmh": 50.0,
+      "lanes": [
+        {
+          "id": "7e284f6c-ff33-5f96-940a-1b0d6125c35c",
+          "index": 0,
+          "direction": "FORWARD",
+          "allowed_movements": [
+            "STRAIGHT",
+            "RIGHT"
+          ],
+          "lane_type": "GENERAL",
+          "speed_limit_kmh": null
+        },
+        {
+          "id": "2d54224a-f125-5bbe-a549-ef103a50f6f2",
+          "index": 1,
+          "direction": "FORWARD",
+          "allowed_movements": [
+            "LEFT"
+          ],
+          "lane_type": "TURN_ONLY",
+          "speed_limit_kmh": 30.0
+        },
+        {
+          "id": "6fdccc2c-f83d-5609-a40a-9e185fc1834d",
+          "index": 2,
+          "direction": "BACKWARD",
+          "allowed_movements": [
+            "STRAIGHT"
+          ],
+          "lane_type": "GENERAL",
+          "speed_limit_kmh": null
+        }
+      ]
+    },
+    {
+      "id": "57329e47-478c-509e-aeda-75e3f5dff38a",
+      "name": "East Avenue",
+      "road_type": "ARTERIAL",
+      "geometry": {
+        "points": [
+          {
+            "x": 200.0,
+            "y": 100.0
+          },
+          {
+            "x": 100.0,
+            "y": 100.0
+          }
+        ]
+      },
+      "default_speed_limit_kmh": 50.0,
+      "lanes": [
+        {
+          "id": "96eb8887-f65e-5ce7-93b2-8f092a167ee5",
+          "index": 0,
+          "direction": "FORWARD",
+          "allowed_movements": [
+            "STRAIGHT",
+            "RIGHT"
+          ],
+          "lane_type": "GENERAL",
+          "speed_limit_kmh": null
+        },
+        {
+          "id": "2c834cc0-37ad-500c-955a-2f25338ec768",
+          "index": 1,
+          "direction": "FORWARD",
+          "allowed_movements": [
+            "LEFT"
+          ],
+          "lane_type": "TURN_ONLY",
+          "speed_limit_kmh": 30.0
+        },
+        {
+          "id": "58c8ba85-d556-5c21-ac0b-672abad895d0",
+          "index": 2,
+          "direction": "BACKWARD",
+          "allowed_movements": [
+            "STRAIGHT"
+          ],
+          "lane_type": "GENERAL",
+          "speed_limit_kmh": null
+        }
+      ]
+    },
+    {
+      "id": "7913f3c5-b199-542c-b512-2b25134d7c73",
+      "name": "West Avenue",
+      "road_type": "ARTERIAL",
+      "geometry": {
+        "points": [
+          {
+            "x": 0.0,
+            "y": 100.0
+          },
+          {
+            "x": 100.0,
+            "y": 100.0
+          }
+        ]
+      },
+      "default_speed_limit_kmh": 50.0,
+      "lanes": [
+        {
+          "id": "8ca5f72c-c0dc-5d36-b739-5926ecae1b0e",
+          "index": 0,
+          "direction": "FORWARD",
+          "allowed_movements": [
+            "STRAIGHT",
+            "RIGHT"
+          ],
+          "lane_type": "GENERAL",
+          "speed_limit_kmh": null
+        },
+        {
+          "id": "25cf9f35-d598-59cb-ac18-e75744ed0a94",
+          "index": 1,
+          "direction": "FORWARD",
+          "allowed_movements": [
+            "LEFT"
+          ],
+          "lane_type": "TURN_ONLY",
+          "speed_limit_kmh": 30.0
+        },
+        {
+          "id": "f59489eb-41ab-5df4-bd51-3c1e89851438",
+          "index": 2,
+          "direction": "BACKWARD",
+          "allowed_movements": [
+            "STRAIGHT"
+          ],
+          "lane_type": "PARKING",
+          "speed_limit_kmh": null
+        }
+      ]
+    }
+  ],
+  "intersections": [
+    {
+      "id": "f20f5f69-b917-56d3-93f4-63b4efb918ca",
+      "position": {
+        "x": 100.0,
+        "y": 100.0
+      },
+      "connected_road_ids": [
+        "d5c752eb-5dba-557d-a4ad-4488c4fc9409",
+        "a59892c9-b7b8-55e0-b570-ce83f118a353",
+        "57329e47-478c-509e-aeda-75e3f5dff38a",
+        "7913f3c5-b199-542c-b512-2b25134d7c73"
+      ],
+      "connected_lane_ids": [
+        "98fd8a2d-92e6-5d4b-8dec-fd06b8a6186d",
+        "7e284f6c-ff33-5f96-940a-1b0d6125c35c",
+        "96eb8887-f65e-5ce7-93b2-8f092a167ee5",
+        "8ca5f72c-c0dc-5d36-b739-5926ecae1b0e",
+        "1cd577ca-d497-5bad-aca0-c4a3aa224e1b",
+        "2d54224a-f125-5bbe-a549-ef103a50f6f2",
+        "2c834cc0-37ad-500c-955a-2f25338ec768",
+        "25cf9f35-d598-59cb-ac18-e75744ed0a94"
+      ],
+      "control_type": "TRAFFIC_LIGHT",
+      "traffic_light_id": "c1aff10a-eb79-539c-9324-69a4f3329338"
+    }
+  ],
+  "traffic_lights": [
+    {
+      "id": "c1aff10a-eb79-539c-9324-69a4f3329338",
+      "intersection_id": "f20f5f69-b917-56d3-93f4-63b4efb918ca",
+      "signal_groups": [
+        {
+          "id": "a5c64deb-195f-56df-9357-a4277570250a",
+          "name": "North-South",
+          "controlled_lane_ids": [
+            "98fd8a2d-92e6-5d4b-8dec-fd06b8a6186d",
+            "1cd577ca-d497-5bad-aca0-c4a3aa224e1b",
+            "7e284f6c-ff33-5f96-940a-1b0d6125c35c",
+            "2d54224a-f125-5bbe-a549-ef103a50f6f2"
+          ]
+        },
+        {
+          "id": "9893cd34-08ab-5725-9cb9-73b12b261cab",
+          "name": "East-West",
+          "controlled_lane_ids": [
+            "96eb8887-f65e-5ce7-93b2-8f092a167ee5",
+            "2c834cc0-37ad-500c-955a-2f25338ec768",
+            "8ca5f72c-c0dc-5d36-b739-5926ecae1b0e",
+            "25cf9f35-d598-59cb-ac18-e75744ed0a94"
+          ]
+        }
+      ],
+      "phases": [
+        {
+          "id": "f37d6825-b919-510f-8748-7aa8563a40d5",
+          "name": "North-South green",
+          "duration_seconds": 30,
+          "green_signal_group_ids": [
+            "a5c64deb-195f-56df-9357-a4277570250a"
+          ]
+        },
+        {
+          "id": "01e5cbdf-f708-53b5-b5c1-4e2a1c10b745",
+          "name": "East-West green",
+          "duration_seconds": 30,
+          "green_signal_group_ids": [
+            "9893cd34-08ab-5725-9cb9-73b12b261cab"
+          ]
+        }
+      ]
+    }
+  ],
+  "traffic_rules": [
+    {
+      "id": "dca985d9-81f5-5b4b-80ab-346d60ff3154",
+      "rule_type": "SPEED_LIMIT",
+      "target_type": "ROAD",
+      "target_id": "7913f3c5-b199-542c-b512-2b25134d7c73",
+      "speed_limit_kmh": 40.0
+    },
+    {
+      "id": "03ca12d4-5c21-515c-a31e-7158e5cdf493",
+      "rule_type": "TURN_RESTRICTION",
+      "target_type": "MOVEMENT",
+      "target_id": "f20f5f69-b917-56d3-93f4-63b4efb918ca",
+      "movement": "LEFT"
+    }
+  ],
+  "parking_zones": [
+    {
+      "id": "2f237c0e-5164-5479-a86e-ffe9184a4145",
+      "road_id": "7913f3c5-b199-542c-b512-2b25134d7c73",
+      "lane_id": "f59489eb-41ab-5df4-bd51-3c1e89851438",
+      "allowed": true,
+      "side": "RIGHT",
+      "capacity": 10
+    }
+  ],
+  "traffic_demands": [
+    {
+      "id": "164ed6c2-7527-5960-94be-0452add17df6",
+      "source_intersection_id": "f20f5f69-b917-56d3-93f4-63b4efb918ca",
+      "movement": "STRAIGHT",
+      "vehicles_per_hour": 600.0,
+      "time_interval": "07:00-09:00",
+      "vehicle_category": "CAR"
+    },
+    {
+      "id": "bf557b26-cee6-5015-b365-6bf3e92ce9d8",
+      "source_intersection_id": "f20f5f69-b917-56d3-93f4-63b4efb918ca",
+      "movement": "LEFT",
+      "vehicles_per_hour": 150.0,
+      "time_interval": "07:00-09:00",
+      "vehicle_category": "CAR"
+    }
+  ]
+}
