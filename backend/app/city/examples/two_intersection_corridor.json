@@ -1,0 +1,80 @@
+{
+  "id": "06b5df40-1862-549c-ad41-400d90b92cba",
+  "name": "Two-Intersection High-Demand Corridor (demo)",
+  "description": "A minimal, routable demo city: two intersections joined by one bidirectional arterial road, with demand set high enough to exceed capacity. Meant for manually exercising Traffic Analysis (routing + congestion + bottlenecks) in the 2D Viewer -- the main four-way-intersection example has only one intersection and movement-only demand, so it cannot show routed congestion.",
+  "coordinate_system": "LOCAL_CARTESIAN",
+  "roads": [
+    {
+      "id": "14c88934-46ba-5b6c-a2d6-5517f4b72cea",
+      "name": "Corridor Avenue",
+      "road_type": "ARTERIAL",
+      "geometry": {
+        "points": [
+          {
+            "x": 0.0,
+            "y": 0.0
+          },
+          {
+            "x": 1200.0,
+            "y": 0.0
+          }
+        ]
+      },
+      "default_speed_limit_kmh": 50.0,
+      "lanes": [
+        {
+          "id": "0a79b7d6-01f6-5594-a897-05a755cf8f43",
+          "index": 0,
+          "direction": "FORWARD",
+          "allowed_movements": [
+            "STRAIGHT"
+          ],
+          "lane_type": "GENERAL"
+        },
+        {
+          "id": "32f57c08-f57e-500a-be4f-8ce722cb64d7",
+          "index": 1,
+          "direction": "BACKWARD",
+          "allowed_movements": [
+            "STRAIGHT"
+          ],
+          "lane_type": "GENERAL"
+        }
+      ]
+    }
+  ],
+  "intersections": [
+    {
+      "id": "e2f72c87-54b9-5d07-b10c-e04554de036f",
+      "position": {
+        "x": 0.0,
+        "y": 0.0
+      },
+      "connected_road_ids": [
+        "14c88934-46ba-5b6c-a2d6-5517f4b72cea"
+      ],
+      "control_type": "UNCONTROLLED"
+    },
+    {
+      "id": "8b5c1640-7ad9-5ddc-892f-1547fdd21f36",
+      "position": {
+        "x": 1200.0,
+        "y": 0.0
+      },
+      "connected_road_ids": [
+        "14c88934-46ba-5b6c-a2d6-5517f4b72cea"
+      ],
+      "control_type": "UNCONTROLLED"
+    }
+  ],
+  "traffic_demands": [
+    {
+      "id": "e5abf1c3-aef3-50d4-9b65-4fb3b420c70b",
+      "source_intersection_id": "e2f72c87-54b9-5d07-b10c-e04554de036f",
+      "destination_intersection_id": "8b5c1640-7ad9-5ddc-892f-1547fdd21f36",
+      "vehicles_per_hour": 2500.0,
+      "time_interval": "07:00-09:00",
+      "vehicle_category": "CAR"
+    }
+  ]
+}
