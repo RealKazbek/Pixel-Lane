@@ -21,6 +21,9 @@ Run before declaring any non-trivial task complete.
   added/changed.
 - **Diff review**: `git status` and diff clean — no secrets, no accidental
   generated files, no unrelated edits, no leftover debug code.
+- **Commit shape**: for architecture/database/foundation work, changes are
+  split into focused commits (e.g. domain model, migration, API
+  integration, tests/docs) rather than one opaque commit.
 
 ## Rules
 

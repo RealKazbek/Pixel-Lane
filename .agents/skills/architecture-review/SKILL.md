@@ -25,6 +25,15 @@ Run this when a change crosses or could weaken a Pixel Lane boundary (see
 - Is business/domain logic testable without running the frontend?
 - Does the new/changed code fit an existing domain folder, or does it
   justify a new one (`domain/`, `services/`, `validators/`, `adapters/`)?
+- Does the change avoid disposable architecture (JSON-as-database, fake
+  in-memory repositories presented as final, hardcoded data, direct DB
+  calls in route handlers)? If temporary code is genuinely needed, is it
+  clearly marked as temporary?
+- Is the new/changed component scoped so it can grow later (more cities,
+  intersections, sensors, real-time data, etc.) without an obvious
+  rewrite — without adding complexity the task doesn't need yet?
+- Was a new dependency/framework/infra component actually justified against
+  the technology-decision criteria (AGENTS.md § 5), not just convenient?
 
 ## Output
 

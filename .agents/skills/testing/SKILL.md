@@ -24,6 +24,9 @@ description: Guidance for choosing and writing tests for a change.
 - Domain/business logic tests must not require a running frontend or full
   simulation stack, per the architecture boundaries in
   `docs/architecture.md`.
+- Tests must reflect the real architecture: do not validate
+  PostgreSQL-dependent behavior by substituting SQLite or another
+  behaviorally different technology.
 
 ## Running
 

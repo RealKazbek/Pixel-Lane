@@ -21,6 +21,9 @@ processing (e.g. City Model operations over many entities).
   simple over clever, but don't ignore a known-bad pattern for simplicity's
   sake.
 
+Prefer evidence (profiling, query plans, measured timings) over guessing
+before changing something for performance reasons.
+
 ## Output
 
 Note any hot path touched, its complexity characteristics, and any

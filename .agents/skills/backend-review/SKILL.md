@@ -20,7 +20,11 @@ Run this for changes to APIs, services, or domain logic.
   no obvious N+1 query patterns introduced.
 - New endpoints/services have appropriate tests (see `testing` skill).
 - No god services — one service, one responsibility.
+- Route handlers delegate to a service/repository layer rather than making
+  direct database calls themselves.
 - Run `security-review` if the change touches auth, input, or data access.
+- Run `database-review` if the change touches schema, queries, or
+  migrations.
 
 ## Output
 
