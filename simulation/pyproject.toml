@@ -1,0 +1,22 @@
+[project]
+name = "pixel-lane-simulation"
+version = "0.1.0"
+description = "Pixel Lane simulation service foundation (placeholder, no traffic logic yet)"
+requires-python = ">=3.11"
+dependencies = []
+
+[project.optional-dependencies]
+dev = [
+  "pytest>=8.3,<9.0",
+  "ruff>=0.7,<1.0",
+]
+
+[tool.setuptools]
+packages = ["pixel_lane_simulation"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py311"
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
