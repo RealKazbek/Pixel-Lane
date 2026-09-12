@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { getCity } from "../api/cities";
 import type { City } from "../types/city";
 import type { AsyncStatus } from "./useCities";
@@ -13,6 +13,7 @@ export function useCity(cityId: string | null) {
   const [city, setCity] = useState<City | null>(null);
   const [loadedForId, setLoadedForId] = useState<string | null>(null);
   const [erroredForId, setErroredForId] = useState<string | null>(null);
+  const [refreshToken, setRefreshToken] = useState(0);
 
   useEffect(() => {
     if (!cityId) return;
@@ -30,7 +31,13 @@ export function useCity(cityId: string | null) {
     return () => {
       cancelled = true;
     };
-  }, [cityId]);
+  }, [cityId, refreshToken]);
+
+  // Re-fetches the current city -- e.g. after a geometry edit is saved,
+  // so the map reflects the persisted result rather than an optimistic
+  // guess. Since `loadedForId` already matches, this refreshes silently
+  // (no loading flicker).
+  const refresh = useCallback(() => setRefreshToken((token) => token + 1), []);
 
   const status: AsyncStatus = !cityId
     ? "ready"
@@ -40,5 +47,5 @@ export function useCity(cityId: string | null) {
         ? "ready"
         : "loading";
 
-  return { city: cityId && loadedForId === cityId ? city : null, status };
+  return { city: cityId && loadedForId === cityId ? city : null, status, refresh };
 }

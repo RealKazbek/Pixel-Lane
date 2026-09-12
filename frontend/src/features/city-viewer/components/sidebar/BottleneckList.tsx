@@ -1,9 +1,8 @@
 import type { Bottleneck } from "../../types/traffic-analysis";
-import type { SelectedEntity } from "../../state/selection";
 
 interface BottleneckListProps {
   bottlenecks: Bottleneck[];
-  onSelect: (entity: SelectedEntity) => void;
+  onSelect: (bottleneck: Bottleneck) => void;
 }
 
 const SEVERITY_STYLES: Record<Bottleneck["severity"], string> = {
@@ -27,12 +26,7 @@ export function BottleneckList({ bottlenecks, onSelect }: BottleneckListProps) {
         <li key={`${bottleneck.entity_type}-${bottleneck.entity_id}-${index}`}>
           <button
             type="button"
-            onClick={() =>
-              onSelect({
-                type: bottleneck.entity_type,
-                id: bottleneck.entity_id,
-              })
-            }
+            onClick={() => onSelect(bottleneck)}
             className="flex w-full items-center justify-between gap-2 rounded-md px-2 py-1.5 text-left text-xs hover:bg-zinc-100 dark:hover:bg-zinc-800"
           >
             <span className="min-w-0">

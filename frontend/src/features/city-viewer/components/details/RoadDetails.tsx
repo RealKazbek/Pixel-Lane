@@ -1,18 +1,20 @@
-import { polylineLength } from "../../lib/lane-offset";
+import { roadLengthMeters } from "../../map/adapters/geometryLength";
 import { DetailRow } from "./DetailRow";
 import type { AnalysisLookup } from "../../lib/analysis-lookup";
-import type { ProjectedCity } from "../../lib/project-city";
-import type { Road } from "../../types/city";
+import type { CoordinateSystem, Road } from "../../types/city";
 
 interface RoadDetailsProps {
   road: Road;
-  projected: ProjectedCity;
+  coordinateSystem: CoordinateSystem;
   analysis: AnalysisLookup;
 }
 
-export function RoadDetails({ road, projected, analysis }: RoadDetailsProps) {
-  const points = projected.roads.find((r) => r.id === road.id)?.points ?? [];
-  const length = polylineLength(points);
+export function RoadDetails({
+  road,
+  coordinateSystem,
+  analysis,
+}: RoadDetailsProps) {
+  const length = roadLengthMeters(road, coordinateSystem);
   const metric = analysis.roadMetrics.get(road.id);
 
   return (
