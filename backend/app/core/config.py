@@ -17,6 +17,10 @@ class Settings(BaseSettings):
     # Comma-separated list of allowed origins for CORS. Never use "*" in production.
     cors_allow_origins: str = "http://localhost:3000"
 
+    # Safeguard against oversized nested JSON payloads (e.g. a City Model
+    # submission). Not a full quota system, just a sane upper bound.
+    max_request_body_bytes: int = 2_000_000
+
     @property
     def cors_allow_origins_list(self) -> list[str]:
         return [origin.strip() for origin in self.cors_allow_origins.split(",") if origin.strip()]

@@ -4,6 +4,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from app.api.v1.router import api_router
 from app.core.config import get_settings
 from app.core.errors import register_exception_handlers
+from app.core.middleware import make_max_body_size_middleware
 
 settings = get_settings()
 
@@ -23,6 +24,7 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+app.middleware("http")(make_max_body_size_middleware(settings.max_request_body_bytes))
 
 register_exception_handlers(app)
 app.include_router(api_router)
