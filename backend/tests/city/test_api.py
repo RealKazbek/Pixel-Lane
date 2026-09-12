@@ -106,3 +106,57 @@ def test_transaction_rollback_on_duplicate_city(client, db_session) -> None:
         .all()
     )
     assert len(roads) == 4  # unchanged: no duplicate or partial rows left behind
+
+
+@requires_postgres
+def test_update_road_geometry_success(client) -> None:
+    data = _payload()
+    client.post("/api/v1/cities", json=data)
+    road_id = data["roads"][0]["id"]
+    new_points = {"points": [{"x": 0.0, "y": 0.0}, {"x": 10.0, "y": 10.0}, {"x": 20.0, "y": 5.0}]}
+
+    response = client.patch(
+        f"/api/v1/cities/{data['id']}/roads/{road_id}/geometry",
+        json={"geometry": new_points},
+    )
+
+    assert response.status_code == 200
+    body = response.json()
+    assert body["id"] == road_id
+    assert [(p["x"], p["y"]) for p in body["geometry"]["points"]] == [
+        (0.0, 0.0),
+        (10.0, 10.0),
+        (20.0, 5.0),
+    ]
+
+    # persisted, not just echoed back
+    get_response = client.get(f"/api/v1/cities/{data['id']}")
+    updated_road = next(r for r in get_response.json()["roads"] if r["id"] == road_id)
+    assert len(updated_road["geometry"]["points"]) == 3
+
+
+@requires_postgres
+def test_update_road_geometry_unknown_road_returns_404(client) -> None:
+    data = _payload()
+    client.post("/api/v1/cities", json=data)
+
+    response = client.patch(
+        f"/api/v1/cities/{data['id']}/roads/{uuid.uuid4()}/geometry",
+        json={"geometry": {"points": [{"x": 0.0, "y": 0.0}, {"x": 1.0, "y": 1.0}]}},
+    )
+
+    assert response.status_code == 404
+
+
+@requires_postgres
+def test_update_road_geometry_rejects_too_few_points(client) -> None:
+    data = _payload()
+    client.post("/api/v1/cities", json=data)
+    road_id = data["roads"][0]["id"]
+
+    response = client.patch(
+        f"/api/v1/cities/{data['id']}/roads/{road_id}/geometry",
+        json={"geometry": {"points": [{"x": 0.0, "y": 0.0}]}},
+    )
+
+    assert response.status_code == 422

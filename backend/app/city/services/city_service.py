@@ -9,10 +9,12 @@ from uuid import UUID
 
 from sqlalchemy.orm import Session
 
+from app.city.domain.geometry import Polyline
 from app.city.errors import CityValidationError
 from app.city.repositories import city_repository
 from app.city.schemas.city import CityCreate, CityRead, CitySummary, CityValidationResult
-from app.city.services.city_mapper import to_city_read
+from app.city.schemas.road import RoadRead
+from app.city.services.city_mapper import to_city_read, to_road_read
 from app.city.validators.city_validator import validate_city
 
 
@@ -40,3 +42,18 @@ def get_city(db: Session, city_id: UUID) -> CityRead | None:
 def list_cities(db: Session, *, limit: int = 50, offset: int = 0) -> list[CitySummary]:
     cities = city_repository.list_cities(db, limit=limit, offset=offset)
     return [CitySummary.model_validate(city) for city in cities]
+
+
+def update_road_geometry(
+    db: Session, city_id: UUID, road_id: UUID, geometry: Polyline
+) -> RoadRead | None:
+    """Replaces one road's polyline (e.g. a manual map-editor correction
+    to imported OSM geometry). Structural validation (point count/bounds)
+    is Pydantic's job via `Polyline`; returns None if the road doesn't
+    exist under that city."""
+    city = city_repository.update_road_geometry(db, city_id, road_id, geometry)
+    if city is None:
+        return None
+    road = next((r for r in city.roads if r.id == road_id), None)
+    assert road is not None  # just updated in this same transaction
+    return to_road_read(road)

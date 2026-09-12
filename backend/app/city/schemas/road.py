@@ -31,3 +31,10 @@ class RoadRead(BaseModel):
     lanes: list[LaneRead]
 
     model_config = {"from_attributes": True}
+
+
+class RoadGeometryUpdate(BaseModel):
+    """Replaces a road's polyline -- e.g. manually correcting imported OSM
+    geometry in the 2D map editor. Nothing else about the road changes."""
+
+    geometry: Polyline

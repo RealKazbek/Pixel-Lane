@@ -51,7 +51,7 @@ def _to_lane_read(lane: Lane) -> LaneRead:
     )
 
 
-def _to_road_read(road: Road) -> RoadRead:
+def to_road_read(road: Road) -> RoadRead:
     return RoadRead(
         id=road.id,
         city_id=road.city_id,
@@ -154,7 +154,7 @@ def to_city_read(city: City) -> CityRead:
         coordinate_system=CoordinateSystem(city.coordinate_system),
         created_at=city.created_at,
         updated_at=city.updated_at,
-        roads=[_to_road_read(road) for road in city.roads],
+        roads=[to_road_read(road) for road in city.roads],
         intersections=[
             _to_intersection_read(i, traffic_light_by_intersection) for i in city.intersections
         ],

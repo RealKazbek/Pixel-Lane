@@ -5,6 +5,7 @@ from sqlalchemy.orm import Session
 
 from app.city.errors import CityValidationError
 from app.city.schemas.city import CityCreate, CityRead, CitySummary, CityValidationResult
+from app.city.schemas.road import RoadGeometryUpdate, RoadRead
 from app.city.services import city_service
 from app.db.session import get_db
 
@@ -44,3 +45,17 @@ def list_cities(
     db: Session = Depends(get_db),
 ) -> list[CitySummary]:
     return city_service.list_cities(db, limit=limit, offset=offset)
+
+
+@router.patch("/{city_id}/roads/{road_id}/geometry", response_model=RoadRead)
+def update_road_geometry(
+    city_id: UUID, road_id: UUID, payload: RoadGeometryUpdate, db: Session = Depends(get_db)
+) -> RoadRead:
+    """Replaces one road's polyline -- the persistence step behind the 2D
+    map editor's "apply edits" action. Point-count/coordinate-bounds
+    validation happens via `Polyline` itself; this never touches lanes,
+    intersections, or anything else about the road."""
+    road = city_service.update_road_geometry(db, city_id, road_id, payload.geometry)
+    if road is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Road not found")
+    return road

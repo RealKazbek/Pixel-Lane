@@ -10,6 +10,7 @@ from uuid import UUID
 from sqlalchemy import select
 from sqlalchemy.orm import Session, selectinload
 
+from app.city.domain.geometry import Polyline
 from app.city.models.city import City
 from app.city.models.intersection import Intersection
 from app.city.models.road import Road
@@ -61,3 +62,25 @@ def list_cities(db: Session, *, limit: int = 50, offset: int = 0) -> list[City]:
     """Lightweight listing -- does not eager-load nested collections."""
     stmt = select(City).order_by(City.created_at.desc()).limit(limit).offset(offset)
     return list(db.execute(stmt).scalars().all())
+
+
+def update_road_geometry(
+    db: Session, city_id: UUID, road_id: UUID, geometry: Polyline
+) -> City | None:
+    """Replaces one road's polyline in place (e.g. a manual map-editor
+    correction). Returns the reloaded City, or None if the road doesn't
+    exist under that city."""
+    road = db.execute(
+        select(Road).where(Road.id == road_id, Road.city_id == city_id)
+    ).scalar_one_or_none()
+    if road is None:
+        return None
+
+    road.geometry = [point.model_dump() for point in geometry.points]
+    try:
+        db.commit()
+    except Exception:
+        db.rollback()
+        raise
+
+    return get_city(db, city_id)
