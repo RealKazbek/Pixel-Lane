@@ -82,7 +82,13 @@ A root `Makefile` wraps the common commands (`make help` for the full list):
 
 | Command                    | Purpose                              |
 |-----------------------------|---------------------------------------|
-| `make up` / `make down`     | Start/stop everything via Docker      |
+| `make start` / `make stop`  | Start/stop the stack in the background (keeps the Postgres volume) |
+| `make restart`              | Stop then start the stack             |
+| `make status` / `make ps`   | Show container status                 |
+| `make logs`                 | Follow logs for all services          |
+| `make build` / `make rebuild` | Build images / rebuild + restart    |
+| `make clean`                | Remove stopped containers/orphans/dangling images (keeps data) |
+| `make reset`                | **Destructive** — deletes the Postgres data volume |
 | `make frontend-dev`         | Frontend dev server                   |
 | `make frontend-lint`        | ESLint                                |
 | `make frontend-typecheck`   | `tsc --noEmit`                        |
@@ -109,13 +115,18 @@ Each service also has its own `.env.example` (`frontend/.env.example`,
 
 ```bash
 cp .env.example .env
-docker compose up --build
+make start   # or: docker compose up -d
 ```
 
 This starts PostgreSQL, the backend API (`:8000`), and the frontend
 (`:3000`), with healthchecks gating startup order. The simulation service
 has no runnable server yet, so it is not included in Compose — see
 `simulation/README.md`.
+
+Use `make status` / `make logs` to check on it, `make restart` after
+rebuilding config, and `make stop` when done — see `make help` for the
+full lifecycle command list (`start`, `stop`, `restart`, `status`, `ps`,
+`logs`, `build`, `rebuild`, `clean`, and the destructive `reset`).
 
 ## What is intentionally NOT implemented yet
 

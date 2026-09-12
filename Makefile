@@ -1,10 +1,23 @@
-.PHONY: help up down frontend-dev frontend-lint frontend-typecheck frontend-build \
+.PHONY: help start stop restart status ps logs build rebuild clean reset \
+	frontend-dev frontend-lint frontend-typecheck frontend-build \
 	backend-dev backend-lint backend-typecheck backend-test migrate migration \
 	simulation-test
 
 help:
-	@echo "make up                  - start frontend, backend, postgres via Docker Compose"
-	@echo "make down                - stop Docker Compose services"
+	@echo "Pixel Lane development commands"
+	@echo ""
+	@echo "make start      Start the development stack (docker compose up -d)"
+	@echo "make stop       Stop the stack (keeps the Postgres volume)"
+	@echo "make restart    Restart the stack (stop + start)"
+	@echo "make status     Show service status (docker compose ps)"
+	@echo "make ps         Alias for 'make status'"
+	@echo "make logs       Follow logs for all services (Ctrl+C to exit)"
+	@echo "make build      Build project Docker images"
+	@echo "make rebuild    Rebuild images and restart the stack"
+	@echo "make clean      Remove stopped containers/orphans and dangling images"
+	@echo "make reset      DESTRUCTIVE: stop the stack and delete the Postgres volume"
+	@echo "make help       Show this help"
+	@echo ""
 	@echo "make frontend-dev        - run frontend dev server"
 	@echo "make frontend-lint       - lint frontend"
 	@echo "make frontend-typecheck  - typecheck frontend"
@@ -17,11 +30,45 @@ help:
 	@echo "make migration msg=...   - create a new backend migration"
 	@echo "make simulation-test     - run simulation package tests"
 
-up:
-	docker compose up --build
+# --- Project lifecycle (Docker Compose) --------------------------------
 
-down:
+start:
+	docker compose up -d
+
+stop:
 	docker compose down
+
+restart: stop start
+
+status:
+	docker compose ps
+
+ps: status
+
+logs:
+	docker compose logs -f --tail=100
+
+build:
+	docker compose build
+
+rebuild: build restart
+
+# Removes recoverable local artifacts (stopped containers, orphans, dangling
+# images). Never touches the named Postgres volume -- use `make reset` for that.
+clean:
+	docker compose down --remove-orphans
+	docker compose rm -f
+	docker image prune -f
+
+# DESTRUCTIVE: deletes the Postgres data volume. Never run this as part of
+# start/stop/restart/clean.
+reset:
+	@echo "WARNING: this deletes the Postgres data volume (all local city data)."
+	@echo "Press Ctrl+C within 5 seconds to cancel..."
+	@sleep 5
+	docker compose down -v
+
+# --- App-specific dev commands ------------------------------------------
 
 frontend-dev:
 	cd frontend && npm run dev
