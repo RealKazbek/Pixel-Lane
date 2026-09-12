@@ -67,14 +67,47 @@ rebuilt via `adapters/cityModelToGeoJson.ts` and pushed into MapLibre with
 (`LAYER_DRAW_ORDER`): road casing → road surface → lane markings →
 selection highlight → intersections → traffic lights → labels.
 
-Road width and casing width are derived from lane count
-(`styles/roadStyle.ts`), converted from meters to on-screen pixels with a
-zoom- and latitude-aware Web Mercator expression
-(`layers/roadWidth.ts`), so roads scale realistically instead of using a
-fixed pixel width. Road color is a neutral slate/zinc grayscale keyed by
+**Road width.** Width and casing width are derived from lane count plus a
+per-hierarchy bonus (`styles/roadStyle.ts`), converted from meters to
+on-screen pixels with a zoom- and latitude-aware Web Mercator expression
+(`layers/roadWidth.ts`). Real-world road widths collapse to sub-pixel size
+at city-overview zoom levels, so a per-hierarchy **minimum pixel width**
+(`ROAD_MIN_PIXEL_WIDTH`/`ROAD_CASING_MIN_PIXEL_WIDTH`) is applied as a
+floor via `withMinPixelWidth()` — without it, every road looks like the
+same hairline regardless of class, and the map reads as an abstract graph
+rather than a road network. Color is a neutral stone grayscale keyed by
 road-type hierarchy — deliberately not the yellow/orange highway styling
 used by consumer navigation apps, since this is an analysis/editing tool,
 not a navigation product.
+
+**Intersections.** Not every `Intersection` in the City Model is a real
+junction — many are topology pass-through nodes (e.g. where a street is
+split into segments). `adapters/cityModelToGeoJson.ts`'s `isJunction()`
+and the `connected_road_count` feature property let the intersection layer
+(`layers/pointLayers.ts`) hide pass-through nodes at normal zoom and only
+show real junctions (3+ connected roads) or signalized intersections —
+otherwise every topology node painted the same as a real junction visually
+dominated the map. All intersections become visible again once zoomed in
+far enough to be doing detailed inspection/editing.
+
+**Labels.** One label per *street name*, not one per road segment
+(`buildRoadLabelFeatureCollection` picks the longest segment per name) —
+OSM-derived roads are frequently split into many short same-named
+segments, and labeling every segment clustered so much near-duplicate
+text that MapLibre's overlap suppression hid almost all of it. Label
+priority (`label_rank`, from `HIERARCHY_LABEL_RANK`) is fed into
+`symbol-sort-key` so a higher-class road's name wins when there isn't
+room for both.
+
+**Selection** is tracked as MapLibre feature-state
+(`setSelectedFeature()` in `layers/setupLayers.ts`), not as a property
+baked into the GeoJSON payload — selecting a road/intersection/traffic
+light never requires rebuilding or re-sending a source's data, regardless
+of city size. Feature-state must be re-applied any time a source is
+recreated (e.g. after a basemap `setStyle()` swap), which
+`PixelLaneMap.tsx`'s `applyCurrentSelection()` handles. Clicking a
+traffic light selects its parent intersection (there's no separate
+traffic-light details view yet).
 
 ## Editing data flow
 

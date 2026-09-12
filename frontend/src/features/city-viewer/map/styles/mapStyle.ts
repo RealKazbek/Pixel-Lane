@@ -20,7 +20,16 @@ export const EMPTY_STYLE: StyleSpecification = {
   version: 8,
   glyphs: "https://demotiles.maplibre.org/font/{fontstack}/{range}.pbf",
   sources: {},
-  layers: [],
+  layers: [
+    // A flat, muted canvas color instead of MapLibre's default stark
+    // white/transparent void -- reads as a deliberate engineering-map
+    // background rather than a blank debug screen in Pixel Lane-only mode.
+    {
+      id: "pixel-lane-empty-background",
+      type: "background",
+      paint: { "background-color": "#f2f1ed" },
+    },
+  ],
 };
 
 /** Resolves what to hand MapLibre as its `style` -- a configured style

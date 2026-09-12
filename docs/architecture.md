@@ -345,10 +345,30 @@ selected, dragged, and have midpoints added/removed via Terra Draw
 narrow: replacing one road's polyline, not a general lane/turn/intersection
 editor.
 
-**Selection & bottlenecks.** Clicking a road/intersection on the map shows
-its details in a bottom panel; clicking a bottleneck in the sidebar selects
-the corresponding road/intersection (lane-level bottlenecks aren't
-separately selectable on the map yet).
+**Selection & bottlenecks.** Clicking a road/intersection/traffic light on
+the map shows its details in a bottom panel (a traffic light selects its
+parent intersection -- there's no separate traffic-light details view
+yet); clicking a bottleneck in the sidebar selects the corresponding
+road/intersection (lane-level bottlenecks aren't separately selectable on
+the map yet). Selection state lives in MapLibre feature-state, not in the
+GeoJSON payload, so selecting something never requires rebuilding a
+source's data.
+
+**Visual quality pass (v2.1).** A first version of this map rendered
+every road at its literal real-world width and every City Model
+intersection as an equally-weighted node, which made the map read as an
+abstract graph rather than a road network once the true-to-scale widths
+collapsed to sub-pixel size at normal zoom. Fixed with: per-hierarchy
+minimum pixel widths as a floor over the real-width calculation
+(`ROAD_MIN_PIXEL_WIDTH`), a hierarchy-based width bonus so classes differ
+even at the same lane count, filtering the intersection layer down to real
+junctions (3+ connected roads) or signalized nodes at normal zoom instead
+of drawing every topology node, one label per street name instead of one
+per road segment (many same-named OSM segments were clustering labels
+into unreadable overlap), and a muted stone-toned canvas background for
+basemap-off ("Pixel Lane-only") mode instead of a stark blank/void
+background. See `frontend/src/features/city-viewer/map/README.md` for
+the full rationale and the exact thresholds.
 
 **Known v2 limitations:**
 - No congestion-level color overlay on the new map yet (v1's congestion
@@ -363,6 +383,8 @@ separately selectable on the map yet).
 - Glyphs (map text labels) are served from MapLibre's own demo font
   endpoint even with the basemap off; self-hosting is a reasonable future
   improvement.
+- Road/casing/hierarchy width numbers are calibrated for visual legibility,
+  not measured from real Almaty pavement widths.
 
 ## Almaty OpenStreetMap demo
 
