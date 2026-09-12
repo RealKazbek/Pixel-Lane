@@ -1,6 +1,6 @@
 .PHONY: help check-env start stop restart status ps logs build rebuild clean reset \
 	start-db stop-db start-backend resources \
-	frontend-dev frontend-lint frontend-typecheck frontend-build \
+	frontend-dev frontend-lint frontend-typecheck frontend-build frontend-test \
 	backend-dev backend-lint backend-typecheck backend-test migrate migration \
 	simulation-test
 
@@ -30,6 +30,7 @@ help:
 	@echo "make frontend-lint       - lint frontend"
 	@echo "make frontend-typecheck  - typecheck frontend"
 	@echo "make frontend-build      - build frontend"
+	@echo "make frontend-test       - run frontend unit tests"
 	@echo "make backend-dev         - run backend dev server"
 	@echo "make backend-lint        - lint + format-check backend"
 	@echo "make backend-typecheck   - typecheck backend"
@@ -126,6 +127,9 @@ frontend-typecheck:
 
 frontend-build:
 	cd frontend && npm run build
+
+frontend-test:
+	cd frontend && npm run test
 
 backend-dev:
 	cd backend && . .venv/bin/activate && uvicorn app.main:app --reload
