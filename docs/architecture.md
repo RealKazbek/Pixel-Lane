@@ -12,9 +12,10 @@ UI, simulation, and hardware concerns.
 
 ## Current implementation status
 
-- `frontend/` — Next.js (App Router, TypeScript strict, Tailwind). Only a
-  layout, a home page, and a `/health` status page exist. No auth, no 2D
-  editor, no domain logic.
+- `frontend/` — Next.js (App Router, TypeScript strict, Tailwind). The home
+  page is now a **2D Viewer v1** (`src/features/city-viewer/`, described
+  below): read-only Canvas visualization of a City Model and its Traffic
+  Analysis results. No auth, no 2D *editor* (drawing/editing) yet.
 - `backend/` — FastAPI + Pydantic + SQLAlchemy + Alembic, PostgreSQL.
   App wiring (settings, DB session/engine, error handling, a body-size
   safeguard) plus two real domain modules: **City Model v1** (`app/city/`)
@@ -232,6 +233,94 @@ it is computed on demand each call.
 - Intersection congestion is a rough inbound-volume heuristic, not a real
   capacity/turning-movement model.
 
+## Frontend 2D Viewer v1 (implemented, read-only)
+
+**Purpose.** A read-only Canvas visualization of a persisted City Model and
+its Traffic Analysis results -- open the frontend, pick a city, see its
+road network, run analysis, see congestion and bottlenecks. This is
+explicitly **not** the 2D Editor: no drawing, editing, dragging, or saving.
+
+```
+Frontend 2D Viewer
+      |
+City Model API      (GET /api/v1/cities, GET /api/v1/cities/{id})
+      |
+Traffic Analysis API (POST /api/v1/cities/{id}/traffic-analysis)
+```
+
+**Where it lives.** `frontend/src/features/city-viewer/`:
+
+```
+city-viewer/
+  types/         TypeScript mirrors of the City/TrafficAnalysis API contracts
+  api/           getCities()/getCity()/runTrafficAnalysis() -- the only fetch() calls
+  lib/           pure functions: geometry, projection, lane offset, congestion
+                 colors, analysis lookup, hit-testing -- no React, no Canvas
+  state/         layer-visibility and selection types (local UI state only)
+  hooks/         data fetching, viewport (pan/zoom), resize, dark-mode
+  components/
+    canvas/      CityCanvas.tsx (React glue) + renderer.ts and draw-*.ts
+                 (pure Canvas 2D drawing, one file per entity type)
+    sidebar/     city list, layer toggles, bottleneck list
+    details/     per-entity-type details panels (Road/Lane/Intersection)
+```
+
+Drawing logic (`components/canvas/draw-*.ts`, `renderer.ts`) is plain
+functions operating on `CanvasRenderingContext2D` -- no React state, no
+Canvas library (no Three.js/Konva/PixiJS/Leaflet/Mapbox/deck.gl): a 2D
+road network at LOCAL_CARTESIAN scale doesn't need them, and avoiding them
+keeps the dependency count and memory footprint low for an 8 GB dev
+machine (see AGENTS.md's resource-efficiency rules).
+
+**Rendering triggers.** The canvas redraws only when something that
+affects pixels changes (city, analysis result, viewport, layer toggles,
+selection, container resize) -- there is no `requestAnimationFrame` loop
+and no polling.
+
+**LOCAL_CARTESIAN handling.** All of a city's road/intersection points are
+gathered, their bounding box computed, and a `Viewport {scale, translateX,
+translateY}` is derived to fit that box into the canvas with padding
+("fit to view"). Pan translates the viewport directly in screen space;
+wheel-zoom rescales around the cursor's world point so it stays fixed
+under the cursor. `devicePixelRatio` is applied to the canvas backing
+store so rendering stays sharp on Retina displays.
+
+**WGS84 handling.** `lib/projection.ts` applies a simple equirectangular
+projection around the city's mean latitude (`x`=longitude, `y`=latitude,
+matching the Traffic Engine's convention) to get local, roughly-metric
+coordinates, which then go through the same bounds/viewport pipeline as
+LOCAL_CARTESIAN. **This is a visualization projection, not GIS-grade
+rendering** -- there is no real basemap, and PostGIS is not used.
+
+**Lane rendering.** The City Model doesn't store per-lane geometry, only
+`Lane -> Road` plus `index`/`direction`. `lib/lane-offset.ts` approximates
+each lane's centerline as a perpendicular offset from the road centerline
+(FORWARD lanes fan out one way, BACKWARD the other, ordered by index) --
+an approximation, not exact GIS offset geometry, but enough to make
+individual lanes and their count visually distinguishable. Direction is
+shown with small arrows spaced along the lane (not on every pixel).
+
+**Congestion visualization.** Roads/lanes/intersections are colored by
+Traffic Engine congestion level once an analysis has run:
+FREE_FLOW=green, MODERATE=yellow, HEAVY=orange, SATURATED=red (with a
+legend) -- one of the few places a fixed color palette is justified, since
+it *is* the domain meaning, not a UI style choice.
+
+**Selection & bottlenecks.** Clicking a road/lane/intersection (hit-tested
+in world space, intersections take priority) shows its details in a bottom
+panel; clicking a bottleneck in the sidebar selects and re-centers the
+viewport on it (without changing zoom).
+
+**Known v1 limitations:**
+- Read-only: no drawing, editing, moving, or saving anything (2D Editor is
+  a separate, later effort).
+- No real GIS basemap; WGS84 rendering is an approximate local projection.
+- No SUMO visualization yet.
+- Lane geometry is an offset approximation, not true parallel-curve GIS
+  geometry.
+- No traffic-light phase animation -- a signalized intersection just shows
+  a static marker indicating a light is present.
+
 ## High-level components (planned)
 
 ```
@@ -268,10 +357,12 @@ components read/write against. It must not depend on the UI or on any
 specific simulation backend. See "City Model v1 (implemented)" above for
 the current entities, persistence design, and API.
 
-### 2D Editor **(planned)**
+### 2D Editor **(planned -- a read-only Viewer v1 exists)**
 
 A UI layer that edits and generates City Model data. It contains
 presentation/interaction logic only — it does not own traffic domain rules.
+The read-only 2D Viewer (see "Frontend 2D Viewer v1" above) covers
+visualization; drawing/editing/saving is still planned.
 
 ### Traffic domain logic (implemented -- v1 analysis engine, optimization still planned)
 

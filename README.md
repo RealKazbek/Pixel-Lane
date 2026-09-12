@@ -6,16 +6,19 @@ designing and analyzing traffic systems.
 
 ## Status
 
-**Early-stage.** The backend now has a real domain foundation: **City
-Model v1** (roads, lanes, intersections, traffic lights, traffic rules,
-parking, traffic demand -- persisted in PostgreSQL via `/api/v1/cities*`)
-and **Traffic Engine v1** (a framework-independent static network/routing/
+**Early-stage.** The backend has a real domain foundation: **City Model
+v1** (roads, lanes, intersections, traffic lights, traffic rules, parking,
+traffic demand -- persisted in PostgreSQL via `/api/v1/cities*`) and
+**Traffic Engine v1** (a framework-independent static network/routing/
 congestion analysis engine in `simulation/`, exposed via `POST
-/api/v1/cities/{id}/traffic-analysis`). Authentication, the 2D editor,
-computer vision, SUMO integration, vehicle-level simulation, and traffic
-optimization are not implemented yet. See
-[`docs/architecture.md`](docs/architecture.md) for what's implemented vs.
-planned.
+/api/v1/cities/{id}/traffic-analysis`). The frontend now has a **2D
+Viewer v1**: open `http://localhost:3000`, pick a city, see its road
+network (roads/lanes/intersections/traffic lights/parking) on a Canvas,
+run Traffic Analysis, and see congestion/bottlenecks -- read-only, no
+editing yet. Authentication, the 2D *editor*, computer vision, SUMO
+integration, vehicle-level simulation, and traffic optimization are not
+implemented yet. See [`docs/architecture.md`](docs/architecture.md) for
+what's implemented vs. planned.
 
 ## Project structure
 
@@ -63,11 +66,16 @@ uvicorn app.main:app --reload    # http://localhost:8000
 ```
 
 City Model endpoints: `POST /api/v1/cities/validate`, `POST /api/v1/cities`,
-`GET /api/v1/cities/{id}`, `GET /api/v1/cities`. A ready-to-use example
-payload lives at `backend/app/city/examples/four_way_intersection.json`.
-Database-backed tests (`pytest`) run against real PostgreSQL and are
-skipped with a clear reason if it isn't reachable -- they never fall back
-to SQLite.
+`GET /api/v1/cities/{id}`, `GET /api/v1/cities`, plus Traffic Engine's
+`POST /api/v1/cities/{id}/traffic-analysis`. Two demo payloads live under
+`backend/app/city/examples/`: `four_way_intersection.json` (a realistic
+signalized intersection, but with movement-only demand -- no routable
+traffic) and `two_intersection_corridor.json` (a minimal high-demand
+corridor that *does* produce routed congestion/bottlenecks, useful for
+exercising the 2D Viewer's Traffic Analysis view). POST either to
+`/api/v1/cities` to try them. Database-backed tests (`pytest`) run against
+real PostgreSQL and are skipped with a clear reason if it isn't reachable
+-- they never fall back to SQLite.
 
 ### Simulation (foundation only)
 
@@ -95,6 +103,7 @@ A root `Makefile` wraps the common commands (`make help` for the full list):
 | `make frontend-lint`        | ESLint                                |
 | `make frontend-typecheck`   | `tsc --noEmit`                        |
 | `make frontend-build`       | Production build                      |
+| `make frontend-test`        | Vitest unit tests                     |
 | `make backend-dev`          | Backend dev server (`uvicorn --reload`)|
 | `make backend-lint`         | `ruff check` + `ruff format --check`  |
 | `make backend-typecheck`    | `mypy`                                |
@@ -103,8 +112,10 @@ A root `Makefile` wraps the common commands (`make help` for the full list):
 | `make migration msg="..."`  | Create a new Alembic migration        |
 | `make simulation-test`      | Run simulation package tests          |
 
-Frontend also exposes `npm run format` / `npm run format:check` (Prettier).
-Backend also exposes `ruff format` directly.
+Frontend also exposes `npm run format` / `npm run format:check` (Prettier)
+and `npm run test` (Vitest -- unit tests for the city-viewer's pure
+geometry/lane-offset/analysis utilities). Backend also exposes
+`ruff format` directly.
 
 ## Environment
 
