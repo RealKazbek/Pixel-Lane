@@ -42,3 +42,16 @@ export function roadWidthPixelsExpression(
     ...stops,
   ] as ExpressionSpecification;
 }
+
+/** Wraps a pixel-width expression with a per-feature minimum, via
+ * `minPixelsExpression` (typically a `match` on hierarchy). Real-world
+ * road widths collapse to sub-pixel size at city-overview zoom levels;
+ * without a floor, a highway and a footpath render identically and the
+ * whole map reads as a bare graph rather than a road network (see
+ * styles/roadStyle.ts's ROAD_MIN_PIXEL_WIDTH). */
+export function withMinPixelWidth(
+  widthExpression: ExpressionSpecification,
+  minPixelsExpression: ExpressionSpecification,
+): ExpressionSpecification {
+  return ["max", widthExpression, minPixelsExpression] as ExpressionSpecification;
+}

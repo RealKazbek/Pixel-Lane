@@ -20,22 +20,29 @@ function makeLanes(count: number): Lane[] {
 
 describe("roadWidthMeters", () => {
   it("scales with lane count", () => {
-    const narrow = roadWidthMeters({ lanes: makeLanes(1) });
-    const wide = roadWidthMeters({ lanes: makeLanes(4) });
+    const narrow = roadWidthMeters({ lanes: makeLanes(1), road_type: "RESIDENTIAL" });
+    const wide = roadWidthMeters({ lanes: makeLanes(4), road_type: "RESIDENTIAL" });
     expect(wide).toBeGreaterThan(narrow);
   });
 
   it("treats zero lanes as at least one lane", () => {
-    expect(roadWidthMeters({ lanes: [] })).toBe(roadWidthMeters({ lanes: makeLanes(1) }));
+    expect(roadWidthMeters({ lanes: [], road_type: "RESIDENTIAL" })).toBe(
+      roadWidthMeters({ lanes: makeLanes(1), road_type: "RESIDENTIAL" }),
+    );
+  });
+
+  it("gives a higher hierarchy a wider road at the same lane count", () => {
+    const lanes = makeLanes(2);
+    const highway = roadWidthMeters({ lanes, road_type: "HIGHWAY" });
+    const residential = roadWidthMeters({ lanes, road_type: "RESIDENTIAL" });
+    expect(highway).toBeGreaterThan(residential);
   });
 });
 
 describe("roadCasingWidthMeters", () => {
   it("is always wider than the surface width", () => {
-    const lanes = makeLanes(2);
-    expect(roadCasingWidthMeters({ lanes })).toBeGreaterThan(
-      roadWidthMeters({ lanes }),
-    );
+    const road = { lanes: makeLanes(2), road_type: "ARTERIAL" as RoadType };
+    expect(roadCasingWidthMeters(road)).toBeGreaterThan(roadWidthMeters(road));
   });
 });
 

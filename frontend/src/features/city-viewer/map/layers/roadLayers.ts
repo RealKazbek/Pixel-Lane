@@ -1,19 +1,21 @@
 import type { ExpressionSpecification, LayerSpecification } from "maplibre-gl";
 import { LAYER_IDS, SOURCE_IDS } from "./layerIds";
-import { roadWidthPixelsExpression } from "./roadWidth";
+import { roadWidthPixelsExpression, withMinPixelWidth } from "./roadWidth";
 import {
   ROAD_CASING_COLOR,
+  ROAD_CASING_MIN_PIXEL_WIDTH,
+  ROAD_MIN_PIXEL_WIDTH,
   ROAD_SURFACE_COLOR,
   SELECTED_COLOR,
 } from "../styles/roadStyle";
 
-function colorMatchExpression(
-  colors: Record<string, string>,
-  fallback: string,
+function matchOnHierarchy<T extends string | number>(
+  values: Record<string, T>,
+  fallback: T,
 ): ExpressionSpecification {
-  const entries = Object.entries(colors).flatMap(([hierarchy, color]) => [
+  const entries = Object.entries(values).flatMap(([hierarchy, value]) => [
     hierarchy,
-    color,
+    value,
   ]);
   return [
     "match",
@@ -23,23 +25,30 @@ function colorMatchExpression(
   ] as unknown as ExpressionSpecification;
 }
 
-/** Casing, surface, lane-marking hint, and selection-halo layers for the
- * roads source -- see map/README.md for the full layer stack and draw
- * order. */
+/** Casing, surface, lane-marking hint, and selection-highlight layers for
+ * the roads source -- see map/README.md for the full layer stack and draw
+ * order. Selection is read from MapLibre feature-state (set imperatively
+ * by PixelLaneMap on click), not baked into the GeoJSON, so selecting a
+ * road never requires rebuilding or re-sending the whole road dataset. */
 export function buildRoadLayers(
   referenceLatitudeDeg: number,
 ): LayerSpecification[] {
-  const widthExpression = roadWidthPixelsExpression(referenceLatitudeDeg);
-  const casingWidthExpression: ExpressionSpecification = [
-    "+",
-    widthExpression,
-    2,
-  ];
-  const haloWidthExpression: ExpressionSpecification = [
-    "+",
-    widthExpression,
-    6,
-  ];
+  const surfaceWidth = withMinPixelWidth(
+    roadWidthPixelsExpression(referenceLatitudeDeg, "width_m"),
+    matchOnHierarchy(ROAD_MIN_PIXEL_WIDTH, ROAD_MIN_PIXEL_WIDTH.OTHER),
+  );
+  const casingWidth = withMinPixelWidth(
+    roadWidthPixelsExpression(referenceLatitudeDeg, "casing_width_m"),
+    matchOnHierarchy(
+      ROAD_CASING_MIN_PIXEL_WIDTH,
+      ROAD_CASING_MIN_PIXEL_WIDTH.OTHER,
+    ),
+  );
+  const isSelected: ExpressionSpecification = [
+    "boolean",
+    ["feature-state", "selected"],
+    false,
+  ] as unknown as ExpressionSpecification;
 
   const casing: LayerSpecification = {
     id: LAYER_IDS.roadCasing,
@@ -47,11 +56,13 @@ export function buildRoadLayers(
     source: SOURCE_IDS.roads,
     layout: { "line-cap": "round", "line-join": "round" },
     paint: {
-      "line-color": colorMatchExpression(
-        ROAD_CASING_COLOR,
-        ROAD_CASING_COLOR.OTHER,
-      ),
-      "line-width": casingWidthExpression,
+      "line-color": [
+        "case",
+        isSelected,
+        SELECTED_COLOR,
+        matchOnHierarchy(ROAD_CASING_COLOR, ROAD_CASING_COLOR.OTHER),
+      ] as ExpressionSpecification,
+      "line-width": casingWidth,
     },
   };
 
@@ -63,29 +74,35 @@ export function buildRoadLayers(
     paint: {
       "line-color": [
         "case",
-        ["boolean", ["get", "selected"], false],
-        SELECTED_COLOR,
-        colorMatchExpression(ROAD_SURFACE_COLOR, ROAD_SURFACE_COLOR.OTHER),
+        isSelected,
+        "#dbeafe", // blue-100 -- selected surface reads as "lit up", casing carries the accent color
+        matchOnHierarchy(ROAD_SURFACE_COLOR, ROAD_SURFACE_COLOR.OTHER),
       ] as ExpressionSpecification,
-      "line-width": widthExpression,
+      "line-width": surfaceWidth,
     },
   };
 
-  // A light dashed centerline, shown only close in and only for
-  // multi-lane roads -- a hint of lane structure, not a precise
-  // per-lane rendering (see map/README.md's scope notes).
+  // A subtle centerline hint for multi-lane roads, only once they're
+  // rendered wide enough on screen to plausibly show one -- tied to the
+  // actual on-screen surface width rather than a fixed zoom, so it never
+  // shows up on a road too narrow to read as "multi-lane" (avoids the old
+  // striped/checkerboard look at ordinary zoom levels).
   const laneMarkings: LayerSpecification = {
     id: LAYER_IDS.laneMarkings,
     type: "line",
     source: SOURCE_IDS.roads,
-    minzoom: 17,
-    filter: [">", ["get", "lane_count"], 1] as ExpressionSpecification,
-    layout: { "line-cap": "butt" },
+    minzoom: 16,
+    filter: [
+      "all",
+      [">", ["get", "lane_count"], 1],
+      [">=", surfaceWidth, 10],
+    ] as unknown as ExpressionSpecification,
+    layout: { "line-cap": "butt", "line-join": "round" },
     paint: {
-      "line-color": "#ffffff",
-      "line-opacity": 0.6,
-      "line-width": 1.5,
-      "line-dasharray": [2, 3],
+      "line-color": "#fafaf9",
+      "line-opacity": 0.85,
+      "line-width": 1,
+      "line-dasharray": [3, 3],
     },
   };
 
@@ -93,11 +110,11 @@ export function buildRoadLayers(
     id: LAYER_IDS.selection,
     type: "line",
     source: SOURCE_IDS.roads,
-    filter: ["==", ["get", "selected"], true] as ExpressionSpecification,
+    filter: ["==", isSelected, true] as unknown as ExpressionSpecification,
     layout: { "line-cap": "round", "line-join": "round" },
     paint: {
       "line-color": SELECTED_COLOR,
-      "line-width": haloWidthExpression,
+      "line-width": ["+", casingWidth, 5] as ExpressionSpecification,
       "line-opacity": 0.25,
     },
   };
