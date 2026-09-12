@@ -13,9 +13,9 @@ UI, simulation, and hardware concerns.
 ## Current implementation status
 
 - `frontend/` — Next.js (App Router, TypeScript strict, Tailwind). The home
-  page is now a **2D Viewer v1** (`src/features/city-viewer/`, described
-  below): read-only Canvas visualization of a City Model and its Traffic
-  Analysis results. No auth, no 2D *editor* (drawing/editing) yet.
+  page is a **MapLibre map/editor v2** (`src/features/city-viewer/`): it
+  renders City Model data, runs analysis, and supports limited road geometry
+  editing through Terra Draw. No auth or full lane/intersection editor exists.
 - `backend/` — FastAPI + Pydantic + SQLAlchemy + Alembic, PostgreSQL.
   App wiring (settings, DB session/engine, error handling, a body-size
   safeguard) plus two real domain modules: **City Model v1** (`app/city/`)
@@ -45,7 +45,7 @@ section below.
 | City Model v1 | `backend/app/city/` | Persisted city/road-network domain model | `city_service` (validate/create/get/list), REST `/api/v1/cities*` | PostgreSQL |
 | Traffic Engine v1 | `simulation/pixel_lane_simulation/traffic/` | Static network/routing/congestion analysis | `analyze_city()` / `TrafficEngine.analyze()` | Nothing in this repo (its own `CityInput` contract only) |
 | Traffic adapter | `backend/app/traffic/` | Translates City -> Traffic Engine input, serializes result | REST `POST /api/v1/cities/{id}/traffic-analysis` | City Model, Traffic Engine |
-| 2D Viewer v1 | `frontend/src/features/city-viewer/` | Read-only Canvas visualization | `CityViewerApp` component | City Model API, Traffic Analysis API |
+| Map/editor v2 | `frontend/src/features/city-viewer/` | Rendering and limited road geometry editing | `CityViewerApp` component | City Model API, Traffic Analysis API |
 | OSM importer | `backend/app/city/importers/osm/` | One-shot import of real OpenStreetMap road networks into the City Model | `import_city_from_osm()`, CLI (`make import-almaty`) | City Model service layer; osmnx (isolated, optional `backend[osm]` extra) |
 
 **Planned** (not implemented, see their sections under "High-level
@@ -55,7 +55,7 @@ integration, Auth/Users.
 **Dependency flow** (implemented parts only):
 
 ```
-Frontend (2D Viewer)
+Frontend (MapLibre map/editor)
     | HTTP
 Backend API (FastAPI routes)
     |

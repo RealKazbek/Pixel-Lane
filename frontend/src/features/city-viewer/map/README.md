@@ -76,7 +76,7 @@ on-screen pixels with a zoom- and latitude-aware Web Mercator expression
 (`layers/roadWidth.ts`). Real-world road widths collapse to sub-pixel size
 at city-overview zoom levels, so a per-hierarchy **minimum pixel width**
 (`ROAD_MIN_PIXEL_WIDTH`/`ROAD_CASING_MIN_PIXEL_WIDTH`) is applied as a
-floor via `withMinPixelWidth()` — without it, every road looks like the
+floor inside the zoom-width expression — without it, every road looks like the
 same hairline regardless of class, and the map reads as an abstract graph
 rather than a road network. Color is a neutral stone grayscale keyed by
 road-type hierarchy — deliberately not the yellow/orange highway styling
