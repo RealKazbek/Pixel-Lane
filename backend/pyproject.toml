@@ -11,6 +11,10 @@ dependencies = [
   "sqlalchemy>=2.0,<3.0",
   "alembic>=1.13,<2.0",
   "psycopg[binary]>=3.2,<4.0",
+  # Framework-independent Traffic Engine, a sibling package in this
+  # monorepo (see ../simulation). The backend depends on it; it must never
+  # depend back on the backend (see docs/architecture.md).
+  "pixel-lane-simulation @ file:../simulation",
 ]
 
 [tool.setuptools.packages.find]

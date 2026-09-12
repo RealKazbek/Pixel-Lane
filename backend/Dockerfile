@@ -1,14 +1,22 @@
+# Built with a repo-root build context (see docker-compose.yml) because the
+# backend depends on the sibling `simulation` package (Traffic Engine) --
+# see pyproject.toml's `pixel-lane-simulation @ file:../simulation`.
+
 FROM python:3.12-slim AS base
 
-WORKDIR /app
+WORKDIR /app/backend
 ENV PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1 \
     PIP_NO_CACHE_DIR=1
 
-COPY pyproject.toml ./
-COPY app ./app
-COPY alembic ./alembic
-COPY alembic.ini ./
+# Copied to the same relative path as in the repo so the `file:../simulation`
+# dependency resolves inside the image exactly like it does on the host.
+COPY simulation /app/simulation
+
+COPY backend/pyproject.toml ./
+COPY backend/app ./app
+COPY backend/alembic ./alembic
+COPY backend/alembic.ini ./
 
 RUN pip install --no-cache-dir .
 
