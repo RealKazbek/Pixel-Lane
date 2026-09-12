@@ -34,6 +34,41 @@ Everything below "High-level components" describes the **target**
 architecture these services will grow into — treat it as planned unless
 explicitly noted otherwise.
 
+## Subsystems
+
+Compact registry of implemented subsystems -- keep this current as new
+subsystems are added (see AGENTS.md § 19). Each links to its detailed
+section below.
+
+| Subsystem | Location | Responsibility | Public entry point | Depends on |
+|---|---|---|---|---|
+| City Model v1 | `backend/app/city/` | Persisted city/road-network domain model | `city_service` (validate/create/get/list), REST `/api/v1/cities*` | PostgreSQL |
+| Traffic Engine v1 | `simulation/pixel_lane_simulation/traffic/` | Static network/routing/congestion analysis | `analyze_city()` / `TrafficEngine.analyze()` | Nothing in this repo (its own `CityInput` contract only) |
+| Traffic adapter | `backend/app/traffic/` | Translates City -> Traffic Engine input, serializes result | REST `POST /api/v1/cities/{id}/traffic-analysis` | City Model, Traffic Engine |
+| 2D Viewer v1 | `frontend/src/features/city-viewer/` | Read-only Canvas visualization | `CityViewerApp` component | City Model API, Traffic Analysis API |
+
+**Planned** (not implemented, see their sections under "High-level
+components" below): 2D Editor, SUMO adapter, external hardware
+integration, Auth/Users.
+
+**Dependency flow** (implemented parts only):
+
+```
+Frontend (2D Viewer)
+    | HTTP
+Backend API (FastAPI routes)
+    |
+Application services (city_service, traffic service/adapter)
+    |
+City Model domain/repositories  ---->  Traffic Engine (own CityInput contract)
+    |
+PostgreSQL (via repositories)
+```
+
+The Traffic Engine has no arrow pointing back at the backend, FastAPI,
+SQLAlchemy, or PostgreSQL -- it must stay that way (see AGENTS.md's
+dependency-direction rule).
+
 ## City Model v1 (implemented)
 
 **Purpose.** The City Model is the central, persisted representation of a
@@ -421,6 +456,7 @@ traffic/
 ## Updating this document
 
 When a planned component is actually implemented, update its section to
-remove the "(planned)" marker and describe the real implementation. Do not
+remove the "(planned)" marker and describe the real implementation, and add
+it to the "Subsystems" registry and dependency-flow diagram above. Do not
 let this document drift from the code — treat outdated architecture docs as
-a bug.
+a bug (see AGENTS.md's completion checklist).

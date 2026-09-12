@@ -24,6 +24,9 @@ Run before declaring any non-trivial task complete.
 - **Commit shape**: for architecture/database/foundation work, changes are
   split into focused commits (e.g. domain model, migration, API
   integration, tests/docs) rather than one opaque commit.
+- **Docs still accurate**: if the change touched architecture,
+  `docs/architecture.md` (including the Subsystems registry) still
+  matches reality.
 
 ## Rules
 

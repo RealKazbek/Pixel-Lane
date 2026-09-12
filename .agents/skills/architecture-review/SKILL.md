@@ -33,10 +33,15 @@ Run this when a change crosses or could weaken a Pixel Lane boundary (see
   intersections, sensors, real-time data, etc.) without an obvious
   rewrite — without adding complexity the task doesn't need yet?
 - Was a new dependency/framework/infra component actually justified against
-  the technology-decision criteria (AGENTS.md § 5), not just convenient?
+  the library-first criteria (AGENTS.md § 18), not just convenient, and
+  isolated to where it's actually needed?
+- Did you read the affected subsystem's public entry point and any
+  module-level README/ARCHITECTURE.md before changing its internals
+  (AGENTS.md § 19)?
 
 ## Output
 
 Note any boundary crossed and whether it's justified or should be
-refactored. Update `docs/architecture.md` if a planned component becomes
-real, or if a new boundary is introduced.
+refactored. Update `docs/architecture.md` (including the Subsystems
+registry and dependency-flow diagram) if a planned component becomes real,
+or if a new boundary/subsystem is introduced.

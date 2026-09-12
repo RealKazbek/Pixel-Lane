@@ -41,6 +41,12 @@ actually needed.
 - External systems (SUMO, cameras, sensors, other hardware, maps, AI
   services) are isolated behind clear adapters, never called directly from
   domain or UI code.
+- **Dependency direction**: lower-level domain/core code must never depend
+  on a delivery/infrastructure layer. Correct: FastAPI → service → domain.
+  Incorrect: domain → FastAPI. The Traffic Engine specifically must not
+  depend on FastAPI, SQLAlchemy, React, Canvas, PostgreSQL, or a SUMO
+  adapter (see § 19, "Large codebase navigation," for how this generalizes
+  to future subsystems).
 
 See `docs/architecture.md` for the current and planned architecture.
 
@@ -66,12 +72,31 @@ important code.
     persistence — the database schema/migrations, before making a
     locally-correct but globally-wrong change.
 
+**Task-scoping algorithm.** Before any non-trivial task, run through this
+instead of grepping/reading everything or opening every file:
+
+1. Identify the subsystem the task belongs to (see § 19).
+2. Read `AGENTS.md` (this file) and the relevant `docs/architecture.md`
+   section.
+3. Find the subsystem's public entry points (service/engine API, schema,
+   component) before its internals.
+4. Find callers/consumers of what you're about to change.
+5. Read the tests covering the affected behavior (not the whole suite).
+6. Modify the minimum necessary files.
+7. Run targeted checks for what changed.
+8. Run broader regression checks only if a public boundary changed.
+
 ## 3. Code quality and readability
 
 - Prefer simple code over clever code.
 - One module has one clear responsibility.
 - Avoid god classes, god services, god components.
-- Do not create huge generic "utils" files — group by domain.
+- Do not create huge generic "utils" files — group by domain. A helper
+  lives next to the subsystem it belongs to; it only becomes a genuinely
+  shared helper once multiple independent subsystems actually use it —
+  premature "common"/"shared" abstractions are not allowed. New logic goes
+  into its natural subsystem home (see § 19), never into a catch-all
+  `utils.py`/`helpers.py`/`common.py`/`misc.py`.
 - Use meaningful names.
 - Avoid deeply nested logic; prefer early returns.
 - Extract reusable logic only when reuse is real (not speculative).
@@ -88,7 +113,9 @@ never let a file grow into a 5,000–10,000 line monolith when it can
 reasonably be separated. Watch specifically for: massive route files, huge
 React pages that mix all logic and markup, huge service classes, and
 generic `utils`-style dumping grounds. Split only along meaningful
-responsibility boundaries, never arbitrarily.
+responsibility boundaries, never arbitrarily — when a file grows, first
+identify its natural responsibilities, don't mechanically cut it into
+`part1.py`/`part2.py`.
 
 ## 4. Project structure philosophy
 
@@ -148,17 +175,10 @@ PostgreSQL-specific behavior. Prefer PostgreSQL-compatible testing over
 silently swapping in SQLite for integration/database tests.
 
 **Before adding a new dependency, database, framework, or infrastructure
-component**, evaluate:
-
-1. Does the project already have a suitable technology for this?
-2. Is the new dependency solving a real, current problem?
-3. Is it actively maintained?
-4. Does it fit the existing architecture?
-5. Does it improve maintainability or scalability?
-6. Is there a simpler solution using existing tools?
-7. Will it introduce unnecessary vendor/framework coupling?
-
-Do not add a dependency just because it's popular or "the modern choice."
+component**, evaluate the checklist in § 18 (Library-first engineering).
+Do not add a dependency just because it's popular or "the modern choice,"
+and do not write a handwritten replacement for what a mature library
+already does well — see § 18 for the full reasoning.
 
 **Future growth — consider, don't build.** When designing foundational
 components, keep plausible future extensions in mind so today's decisions
@@ -380,3 +400,153 @@ Before declaring a task complete:
    unrelated edits.
 6. Changes committed in small, logical, well-described commits.
 7. Completed work pushed to the remote per the push rules above.
+8. Before changing a public contract (API schema, domain model, DB schema,
+   engine result, frontend contract), its consumers/callers/tests/docs
+   were found and updated — not just the definition — and a
+   backward-compatible change was preferred over breaking it for a small
+   refactor's sake.
+9. If the task touched architecture in a way `docs/architecture.md`
+   describes, that file still matches reality — update it if not (see
+   § 19). Documentation that lies is worse than no documentation.
+
+## 18. Library-first engineering
+
+Do not write from scratch what a mature, reliable, well-fitted library
+already solves. Do not add a dependency for something trivial either.
+Prefer, in order:
+
+**reuse a mature library > a small custom adapter around it > a large
+handwritten replacement**
+
+**When to look for a library.** Before implementing infrastructure or a
+standard/solved problem, check whether a production-grade library already
+fits — especially for: HTTP clients, parsing, validation, serialization,
+database access, migrations, geometry/GIS, OpenStreetMap, cryptography,
+auth, date/time, file formats, caching, retry/backoff, logging, testing
+utilities, UI primitives, accessibility, forms, charts, protocol clients,
+image/video processing, and scientific algorithms. Do not hand-roll a
+parser, protocol implementation, client, or framework when a mature
+library does it better.
+
+**When not to add a dependency.** Skip it when: the task is a transparent
+function of a few dozen lines; the dependency has a large runtime/memory
+cost for what it buys; it's poorly maintained; it covers far more scope
+than needed; it creates lock-in without real benefit; it conflicts with
+existing architecture; it duplicates a dependency already in the project;
+or the language's standard library already handles it well. Never add a
+library just because "it's faster to reach for one."
+
+**Evaluation criteria** before adding any new dependency, database,
+framework, or infrastructure component:
+
+1. Does the project already have something suitable for this?
+2. Is it solving a real, current problem (not a hypothetical one)?
+3. Is it actively maintained?
+4. What are the security implications?
+5. What's its runtime/memory/dependency-weight cost?
+6. Is its license compatible with the project?
+7. Does it fit the existing architecture, or can it be isolated (see
+   below) if it doesn't fully fit?
+8. Does it need a lockfile/docs update?
+
+A web search isn't needed for every small, obvious dependency choice —
+reserve deeper research for infrastructural or hard-to-reverse choices.
+
+**Core Pixel Lane logic stays ours.** Libraries may help inside an
+implementation, but must never become or hide the core of the system.
+Under our control, always: City Model contracts, Traffic Engine domain
+logic, traffic metrics, bottleneck logic, future optimization logic,
+recommendation rules, and integration boundaries. Example: OSMnx is fine
+for importing OpenStreetMap data; OSMnx must never become Pixel Lane's
+Traffic Engine.
+
+**Dependency isolation.** A new heavy dependency should be scoped to where
+it's actually needed, not pulled into the whole system by default. An OSM
+importer dependency, for example, must not automatically become a required
+dependency of the frontend, the Traffic Engine, or the core backend
+runtime unless it genuinely is one. Prefer optional extras, tooling/dev
+dependency groups, or an isolated adapter module over a blanket new
+top-level dependency — but don't build a bespoke package-management
+framework just to isolate one library; use the packaging ecosystem's
+normal mechanisms (extras, dev groups, a dedicated sub-package).
+
+**Resource cost matters.** Per § 10's 8 GB RAM constraint, factor
+memory/runtime cost into the choice itself — e.g. don't add Electron-like
+tooling, a heavy GIS stack in the core backend, or multiple competing
+visualization frameworks unless the task genuinely requires it.
+
+## 19. Large codebase navigation
+
+Pixel Lane will keep growing. Agents must not try to hold the whole
+repository in context — use hierarchical navigation instead.
+
+**Source of truth hierarchy**, most general to most specific:
+
+```
+AGENTS.md
+    ↓
+docs/architecture.md
+    ↓
+module-level README / architecture notes
+    ↓
+actual code
+    ↓
+tests
+```
+
+`AGENTS.md` holds general rules; `docs/architecture.md` holds high-level
+architecture and dependency boundaries. Every large subsystem should be
+understandable without reading the entire repository.
+
+**Public interfaces first.** Find and read a subsystem's public entry
+point before its internals: `TrafficEngine.analyze(...)` for the Traffic
+Engine; the city service/repository/API schema for City; the API layer,
+renderer, and feature entry component for the Viewer. Don't read a
+module's internals when its public API is enough for the task.
+
+**Module architecture notes.** Once a subsystem is large enough that a
+newcomer (human or AI) can't quickly understand it from its code alone,
+give it a short local `README.md` (e.g. `backend/app/city/README.md`,
+`simulation/pixel_lane_simulation/traffic/README.md`,
+`frontend/src/features/city-viewer/README.md`). Do not create one for
+every small folder — only where it genuinely helps. Keep it short:
+
+```
+Purpose
+Public API
+Main modules
+Dependency direction
+Important invariants
+Where to add new code
+What must not depend on this module
+```
+
+A subsystem-level `ARCHITECTURE.md` is also acceptable in place of/beside
+a README for this purpose. Either way: describe architecture, don't
+restate the code; no generated dumps; stay short; stay current; don't
+duplicate `AGENTS.md`.
+
+**Code ownership by subsystem.** Every feature has a clear home, e.g.
+city-domain logic → `backend/app/city`, traffic analysis →
+`simulation/.../traffic`, the backend adapter → `backend/app/traffic`,
+viewer logic → `frontend/.../city-viewer`, a future OSM importer →
+something like `city/importers/osm`. New logic goes into its natural
+subsystem, never into a catch-all utils file (see § 3).
+
+**Dependency boundary review.** Before changing a public contract (schema,
+service interface, domain object, DB model, API, shared type), find its
+consumers, callers, tests, and docs *first* — this matters more than
+saving context (see § 2's task-scoping algorithm and § 17's completion
+checklist).
+
+**Tests as navigation.** Use tests to understand existing behavior: when
+touching a subsystem, read the tests covering the affected behavior before
+the rest of the suite. Name tests so the behavior they check is obvious
+from the name alone.
+
+**Architecture map.** `docs/architecture.md` keeps a compact, current map
+of subsystems and the dependency flow between them (frontend → backend API
+→ services → City Model/adapters → Traffic Engine → PostgreSQL, etc.).
+When a new large subsystem is added, update that map — don't let it drift
+from reality (see § 17). Don't add a future subsystem to the map as if it
+already exists; use a separate "Planned" section for those.

@@ -27,6 +27,24 @@ Before touching code:
 
 Full rules: see AGENTS.md § Context efficiency rules.
 
+## Large codebase navigation workflow
+
+As the repository grows, don't try to hold it all in context:
+
+1. Identify the subsystem the task belongs to and read its public entry
+   point first (e.g. `TrafficEngine.analyze(...)`, the city
+   service/repository/schema, the viewer's feature entry component) before
+   its internals.
+2. Check for a subsystem-level `README.md`/`ARCHITECTURE.md` and read that
+   before the code, if one exists.
+3. Read `docs/architecture.md`'s subsystem map for where things live and
+   how dependencies are supposed to flow.
+4. Before changing a public contract, find its consumers/callers/tests/
+   docs first.
+
+Full rules and the source-of-truth hierarchy: see AGENTS.md § 19 (Large
+codebase navigation).
+
 ## Security workflow
 
 1. Determine whether the task is security-sensitive (touches auth, input
@@ -55,8 +73,9 @@ Full rules: see AGENTS.md § Context efficiency rules.
 ## Scalability and technology-selection workflow
 
 1. Before introducing anything new (dependency, database, framework,
-   infrastructure component), run the seven-question check in AGENTS.md
-   § 5 — don't add it just because it's popular.
+   infrastructure component), run the library-first evaluation in
+   AGENTS.md § 18 — don't add it just because it's popular, and don't
+   hand-write what a mature library already solves well.
 2. Default to the project's production-grade technology (PostgreSQL for
    persistence, etc.); only reach for a toy/dev-only substitute under the
    documented, narrow conditions in AGENTS.md § 5.
