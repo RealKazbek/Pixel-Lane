@@ -14,6 +14,7 @@ export const LAYER_IDS = {
   laneMarkings: "pixel-lane-lane-markings",
   selection: "pixel-lane-selection",
   intersections: "pixel-lane-intersections",
+  intersectionDetails: "pixel-lane-intersection-details",
   trafficLights: "pixel-lane-traffic-lights",
   roadLabels: "pixel-lane-road-labels",
 } as const;
@@ -26,6 +27,7 @@ export const LAYER_DRAW_ORDER: readonly string[] = [
   LAYER_IDS.laneMarkings,
   LAYER_IDS.selection,
   LAYER_IDS.intersections,
+  LAYER_IDS.intersectionDetails,
   LAYER_IDS.trafficLights,
   LAYER_IDS.roadLabels,
 ];

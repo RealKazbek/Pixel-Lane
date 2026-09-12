@@ -1,6 +1,6 @@
 import type { ExpressionSpecification, LayerSpecification } from "maplibre-gl";
 import { LAYER_IDS, SOURCE_IDS } from "./layerIds";
-import { roadWidthPixelsExpression, withMinPixelWidth } from "./roadWidth";
+import { roadWidthPixelsExpression } from "./roadWidth";
 import {
   ROAD_CASING_COLOR,
   ROAD_CASING_MIN_PIXEL_WIDTH,
@@ -33,16 +33,28 @@ function matchOnHierarchy<T extends string | number>(
 export function buildRoadLayers(
   referenceLatitudeDeg: number,
 ): LayerSpecification[] {
-  const surfaceWidth = withMinPixelWidth(
-    roadWidthPixelsExpression(referenceLatitudeDeg, "width_m"),
+  const surfaceWidth = roadWidthPixelsExpression(
+    referenceLatitudeDeg,
+    "width_m",
     matchOnHierarchy(ROAD_MIN_PIXEL_WIDTH, ROAD_MIN_PIXEL_WIDTH.OTHER),
   );
-  const casingWidth = withMinPixelWidth(
-    roadWidthPixelsExpression(referenceLatitudeDeg, "casing_width_m"),
+  const casingMinimumWidth = matchOnHierarchy(
+    ROAD_CASING_MIN_PIXEL_WIDTH,
+    ROAD_CASING_MIN_PIXEL_WIDTH.OTHER,
+  );
+  const casingWidth = roadWidthPixelsExpression(
+    referenceLatitudeDeg,
+    "casing_width_m",
+    casingMinimumWidth,
+  );
+  const selectionWidth = roadWidthPixelsExpression(
+    referenceLatitudeDeg,
+    "casing_width_m",
     matchOnHierarchy(
       ROAD_CASING_MIN_PIXEL_WIDTH,
       ROAD_CASING_MIN_PIXEL_WIDTH.OTHER,
     ),
+    5,
   );
   const isSelected: ExpressionSpecification = [
     "boolean",
@@ -92,11 +104,7 @@ export function buildRoadLayers(
     type: "line",
     source: SOURCE_IDS.roads,
     minzoom: 16,
-    filter: [
-      "all",
-      [">", ["get", "lane_count"], 1],
-      [">=", surfaceWidth, 10],
-    ] as unknown as ExpressionSpecification,
+    filter: [">", ["get", "lane_count"], 1],
     layout: { "line-cap": "butt", "line-join": "round" },
     paint: {
       "line-color": "#fafaf9",
@@ -110,12 +118,14 @@ export function buildRoadLayers(
     id: LAYER_IDS.selection,
     type: "line",
     source: SOURCE_IDS.roads,
-    filter: ["==", isSelected, true] as unknown as ExpressionSpecification,
     layout: { "line-cap": "round", "line-join": "round" },
     paint: {
       "line-color": SELECTED_COLOR,
-      "line-width": ["+", casingWidth, 5] as ExpressionSpecification,
-      "line-opacity": 0.25,
+      "line-width": selectionWidth,
+      // MapLibre permits feature-state in paint expressions, but not in a
+      // layer filter. Keeping unselected features transparent preserves the
+      // same visual result without invalidating the entire layer.
+      "line-opacity": ["case", isSelected, 0.25, 0] as ExpressionSpecification,
     },
   };
 

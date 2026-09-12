@@ -9,7 +9,7 @@
  * Terra Draw) never leaves this component as React state.
  */
 
-import { useEffect, useMemo, useRef } from "react";
+import { useCallback, useEffect, useMemo, useRef } from "react";
 import type { Map as MapLibreMap, MapLayerMouseEvent } from "maplibre-gl";
 import { useMapLibreMap } from "./hooks/useMapLibreMap";
 import {
@@ -79,6 +79,7 @@ export function PixelLaneMap({
     [city],
   );
   const editor = useGeometryEditor();
+  const appliedStyleKeyRef = useRef<string | null>(null);
 
   const { mapRef, isLoaded } = useMapLibreMap(containerRef, {
     style: resolveMapStyle(basemapEnabled, mapStyleUrl),
@@ -97,31 +98,50 @@ export function PixelLaneMap({
     }),
     [city],
   );
+  const styleKey =
+    basemapEnabled && mapStyleUrl ? mapStyleUrl : "pixel-lane-empty";
 
   // Re-applies the current selection as feature-state -- needed any time
   // sources are (re)created, since a fresh GeoJSONSource starts with no
   // feature-state regardless of what was selected before.
-  const applyCurrentSelection = (map: MapLibreMap) => {
-    const roadId = selected?.type === "road" ? selected.id : null;
-    const intersectionId = selected?.type === "intersection" ? selected.id : null;
-    const lightId = intersectionId
-      ? (city.traffic_lights.find((l) => l.intersection_id === intersectionId)
-          ?.id ?? null)
-      : null;
-    setSelectedFeature(map, SOURCE_IDS.roads, null, roadId);
-    setSelectedFeature(map, SOURCE_IDS.intersections, null, intersectionId);
-    setSelectedFeature(map, SOURCE_IDS.trafficLights, null, lightId);
-  };
+  const applyCurrentSelection = useCallback(
+    (map: MapLibreMap) => {
+      const roadId = selected?.type === "road" ? selected.id : null;
+      const intersectionId =
+        selected?.type === "intersection" ? selected.id : null;
+      const lightId = intersectionId
+        ? (city.traffic_lights.find((l) => l.intersection_id === intersectionId)
+            ?.id ?? null)
+        : null;
+      setSelectedFeature(map, SOURCE_IDS.roads, null, roadId);
+      setSelectedFeature(map, SOURCE_IDS.intersections, null, intersectionId);
+      setSelectedFeature(map, SOURCE_IDS.trafficLights, null, lightId);
+    },
+    [city.traffic_lights, selected],
+  );
+
+  // Safe to call after the initial style load and after every later style
+  // swap: source/layer creation is idempotent, while data, visibility, and
+  // feature-state are all refreshed from the City Model and React state.
+  const ensurePixelLaneLayers = useCallback(
+    (map: MapLibreMap) => {
+      addPixelLaneSourcesAndLayers(map, geoJson, referenceLatitude);
+      setPixelLaneLayersVisible(map, overlayVisible);
+      applyCurrentSelection(map);
+    },
+    [applyCurrentSelection, geoJson, overlayVisible, referenceLatitude],
+  );
 
   // Initial layer setup once the map has loaded its (possibly empty) style.
   useEffect(() => {
     const map = mapRef.current;
     if (!map || !isLoaded) return;
-    addPixelLaneSourcesAndLayers(map, geoJson, referenceLatitude);
-    setPixelLaneLayersVisible(map, overlayVisible);
-    applyCurrentSelection(map);
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- only re-run for isLoaded transitions
-  }, [isLoaded]);
+    ensurePixelLaneLayers(map);
+    // The constructor already received this style. Recording it avoids an
+    // immediate redundant setStyle(), which would otherwise clear the
+    // freshly-created overlay during initial rendering.
+    appliedStyleKeyRef.current = styleKey;
+  }, [ensurePixelLaneLayers, isLoaded, mapRef, styleKey]);
 
   useEffect(() => {
     const map = mapRef.current;
@@ -142,14 +162,22 @@ export function PixelLaneMap({
   useEffect(() => {
     const map = mapRef.current;
     if (!map || !isLoaded) return;
+    if (appliedStyleKeyRef.current === styleKey) return;
+
+    // Register before setStyle: an in-memory empty style can finish loading
+    // quickly, and the overlay must be restored after—not before—the new
+    // style is ready.
+    map.once("style.load", () => ensurePixelLaneLayers(map));
     map.setStyle(resolveMapStyle(basemapEnabled, mapStyleUrl));
-    map.once("style.load", () => {
-      addPixelLaneSourcesAndLayers(map, geoJson, referenceLatitude);
-      setPixelLaneLayersVisible(map, overlayVisible);
-      applyCurrentSelection(map);
-    });
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- fires only on basemap/style changes
-  }, [basemapEnabled, mapStyleUrl]);
+    appliedStyleKeyRef.current = styleKey;
+  }, [
+    basemapEnabled,
+    ensurePixelLaneLayers,
+    isLoaded,
+    mapRef,
+    mapStyleUrl,
+    styleKey,
+  ]);
 
   // Fit-to-view: on demand (button) and whenever the city itself changes.
   useEffect(() => {
@@ -188,12 +216,14 @@ export function PixelLaneMap({
     const handleBackgroundClick = () => onSelect(null);
 
     map.on("click", LAYER_IDS.intersections, handleIntersectionClick);
+    map.on("click", LAYER_IDS.intersectionDetails, handleIntersectionClick);
     map.on("click", LAYER_IDS.roadSurface, handleRoadClick);
     map.on("click", LAYER_IDS.trafficLights, handleTrafficLightClick);
     map.on("click", handleBackgroundClick);
 
     return () => {
       map.off("click", LAYER_IDS.intersections, handleIntersectionClick);
+      map.off("click", LAYER_IDS.intersectionDetails, handleIntersectionClick);
       map.off("click", LAYER_IDS.roadSurface, handleRoadClick);
       map.off("click", LAYER_IDS.trafficLights, handleTrafficLightClick);
       map.off("click", handleBackgroundClick);

@@ -24,6 +24,7 @@ editing (see "Editing data flow" below). Nothing in this directory persists
 state independently of the backend.
 
 Concretely:
+
 - `adapters/cityModelToGeoJson.ts` is the only place that walks
   `City`/`Road`/`Intersection`/`TrafficLight` objects to build map-ready
   GeoJSON. It never mutates the City Model.
@@ -36,6 +37,7 @@ Concretely:
 ## Basemap is optional and provider-independent
 
 The basemap (background reference tiles/labels) can be:
+
 - fully disabled (`NEXT_PUBLIC_MAP_BASEMAP_ENABLED=false`, the default) —
   Pixel Lane's own overlay renders on an empty style with no external tile
   requests at all;
@@ -65,7 +67,8 @@ Pixel Lane's overlay is four GeoJSON sources (`layers/layerIds.ts`:
 rebuilt via `adapters/cityModelToGeoJson.ts` and pushed into MapLibre with
 `updatePixelLaneData()`. Layers are drawn in a fixed order
 (`LAYER_DRAW_ORDER`): road casing → road surface → lane markings →
-selection highlight → intersections → traffic lights → labels.
+selection highlight → junctions/signals → detailed topology intersections
+(from zoom 17) → traffic lights → labels.
 
 **Road width.** Width and casing width are derived from lane count plus a
 per-hierarchy bonus (`styles/roadStyle.ts`), converted from meters to
@@ -90,7 +93,7 @@ otherwise every topology node painted the same as a real junction visually
 dominated the map. All intersections become visible again once zoomed in
 far enough to be doing detailed inspection/editing.
 
-**Labels.** One label per *street name*, not one per road segment
+**Labels.** One label per _street name_, not one per road segment
 (`buildRoadLabelFeatureCollection` picks the longest segment per name) —
 OSM-derived roads are frequently split into many short same-named
 segments, and labeling every segment clustered so much near-duplicate

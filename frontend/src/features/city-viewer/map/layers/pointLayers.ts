@@ -18,52 +18,73 @@ const isSelected: ExpressionSpecification = [
  * be doing detailed inspection/editing. Without this, every topology node
  * painted the same as a real junction is what made the map read as an
  * abstract node graph instead of a road network. */
-const isRelevantAtCurrentZoom: ExpressionSpecification = [
+const isJunctionOrSignal: ExpressionSpecification = [
   "any",
   [">=", ["get", "connected_road_count"], 3],
   ["get", "has_traffic_light"],
-  [">=", ["zoom"], 17],
 ] as unknown as ExpressionSpecification;
 
-export function buildIntersectionLayer(): LayerSpecification {
-  return {
-    id: LAYER_IDS.intersections,
-    type: "circle",
-    source: SOURCE_IDS.intersections,
-    filter: isRelevantAtCurrentZoom,
-    paint: {
-      "circle-radius": [
-        "case",
-        isSelected,
-        8,
-        [
-          "interpolate",
-          ["linear"],
-          ["zoom"],
-          13,
-          1.2,
-          16,
-          2.6,
-          20,
-          5,
-        ] as ExpressionSpecification,
-      ] as ExpressionSpecification,
-      "circle-color": [
-        "case",
-        isSelected,
-        SELECTED_COLOR,
-        JUNCTION_FILL,
-      ] as ExpressionSpecification,
-      "circle-stroke-color": [
-        "case",
-        isSelected,
-        SELECTED_COLOR,
-        JUNCTION_STROKE,
-      ] as ExpressionSpecification,
-      "circle-stroke-width": 1,
-      "circle-opacity": 0.9,
-    },
+const isTopologyPassThrough: ExpressionSpecification = [
+  "all",
+  ["<", ["get", "connected_road_count"], 3],
+  ["!", ["get", "has_traffic_light"]],
+] as unknown as ExpressionSpecification;
+
+function circleRadiusExpression(
+  selectedRadius: number,
+  zoomStops: readonly [number, number][],
+): ExpressionSpecification {
+  return [
+    "interpolate",
+    ["linear"],
+    ["zoom"],
+    ...zoomStops.flatMap(([zoom, radius]) => [
+      zoom,
+      ["case", isSelected, selectedRadius, radius],
+    ]),
+  ] as ExpressionSpecification;
+}
+
+export function buildIntersectionLayers(): LayerSpecification[] {
+  const radius = circleRadiusExpression(8, [
+    [13, 1.2],
+    [16, 2.6],
+    [20, 5],
+  ]);
+  const paint = {
+    "circle-radius": radius,
+    "circle-color": [
+      "case",
+      isSelected,
+      SELECTED_COLOR,
+      JUNCTION_FILL,
+    ] as ExpressionSpecification,
+    "circle-stroke-color": [
+      "case",
+      isSelected,
+      SELECTED_COLOR,
+      JUNCTION_STROKE,
+    ] as ExpressionSpecification,
+    "circle-stroke-width": 1,
+    "circle-opacity": 0.9,
   };
+  return [
+    {
+      id: LAYER_IDS.intersections,
+      type: "circle",
+      source: SOURCE_IDS.intersections,
+      filter: isJunctionOrSignal,
+      paint,
+    },
+    {
+      id: LAYER_IDS.intersectionDetails,
+      type: "circle",
+      source: SOURCE_IDS.intersections,
+      minzoom: 17,
+      filter: isTopologyPassThrough,
+      paint,
+    },
+  ];
 }
 
 /** A compact signal-housing marker: a dark ring with an amber center, sat
@@ -78,22 +99,11 @@ export function buildTrafficLightLayer(): LayerSpecification {
     source: SOURCE_IDS.trafficLights,
     minzoom: 13,
     paint: {
-      "circle-radius": [
-        "case",
-        isSelected,
-        7,
-        [
-          "interpolate",
-          ["linear"],
-          ["zoom"],
-          13,
-          2.5,
-          17,
-          4,
-          20,
-          6,
-        ] as ExpressionSpecification,
-      ] as ExpressionSpecification,
+      "circle-radius": circleRadiusExpression(7, [
+        [13, 2.5],
+        [17, 4],
+        [20, 6],
+      ]),
       "circle-color": [
         "case",
         isSelected,

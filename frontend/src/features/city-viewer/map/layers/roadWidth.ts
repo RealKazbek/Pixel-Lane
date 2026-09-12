@@ -22,18 +22,41 @@ export function metersPerPixel(zoom: number, latitudeDeg: number): number {
  * off each feature and scales it to pixels at the current zoom, anchored
  * to `referenceLatitudeDeg` (roads far from that latitude will be very
  * slightly off since true meters-per-pixel varies with latitude -- fine
- * for a single-city map). */
+ * for a single-city map). The outer interpolate is intentional: MapLibre
+ * requires a zoom expression to be the input of a top-level camera
+ * expression, while each stop can still combine feature data and a
+ * hierarchy-specific minimum width. */
 export function roadWidthPixelsExpression(
   referenceLatitudeDeg: number,
-  widthProperty = "width_m",
+  widthProperty: string,
+  minPixelsExpression: ExpressionSpecification,
+  additionalPixels = 0,
 ): ExpressionSpecification {
   const stops = REFERENCE_ZOOMS.flatMap((zoom) => [
     zoom,
-    [
-      "*",
-      ["get", widthProperty],
-      1 / metersPerPixel(zoom, referenceLatitudeDeg),
-    ],
+    additionalPixels > 0
+      ? [
+          "+",
+          [
+            "max",
+            [
+              "*",
+              ["get", widthProperty],
+              1 / metersPerPixel(zoom, referenceLatitudeDeg),
+            ],
+            minPixelsExpression,
+          ],
+          additionalPixels,
+        ]
+      : [
+          "max",
+          [
+            "*",
+            ["get", widthProperty],
+            1 / metersPerPixel(zoom, referenceLatitudeDeg),
+          ],
+          minPixelsExpression,
+        ],
   ]);
   return [
     "interpolate",
@@ -41,17 +64,4 @@ export function roadWidthPixelsExpression(
     ["zoom"],
     ...stops,
   ] as ExpressionSpecification;
-}
-
-/** Wraps a pixel-width expression with a per-feature minimum, via
- * `minPixelsExpression` (typically a `match` on hierarchy). Real-world
- * road widths collapse to sub-pixel size at city-overview zoom levels;
- * without a floor, a highway and a footpath render identically and the
- * whole map reads as a bare graph rather than a road network (see
- * styles/roadStyle.ts's ROAD_MIN_PIXEL_WIDTH). */
-export function withMinPixelWidth(
-  widthExpression: ExpressionSpecification,
-  minPixelsExpression: ExpressionSpecification,
-): ExpressionSpecification {
-  return ["max", widthExpression, minPixelsExpression] as ExpressionSpecification;
 }

@@ -15,7 +15,7 @@ import {
   type Map as MapLibreMap,
 } from "maplibre-gl";
 import {
-  buildIntersectionLayer,
+  buildIntersectionLayers,
   buildRoadLabelLayer,
   buildTrafficLightLayer,
 } from "./pointLayers";
@@ -61,7 +61,7 @@ export function addPixelLaneSourcesAndLayers(
 
   const layers = [
     ...buildRoadLayers(referenceLatitudeDeg),
-    buildIntersectionLayer(),
+    ...buildIntersectionLayers(),
     buildTrafficLightLayer(),
     buildRoadLabelLayer(),
   ];
@@ -126,7 +126,10 @@ export function setSelectedFeature(
   nextId: string | null,
 ): void {
   if (previousId && previousId !== nextId) {
-    map.setFeatureState({ source: sourceId, id: previousId }, { selected: false });
+    map.setFeatureState(
+      { source: sourceId, id: previousId },
+      { selected: false },
+    );
   }
   if (nextId) {
     map.setFeatureState({ source: sourceId, id: nextId }, { selected: true });
