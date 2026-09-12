@@ -6,12 +6,14 @@ designing and analyzing traffic systems.
 
 ## Status
 
-**Early-stage.** The backend now has a real domain foundation, **City
+**Early-stage.** The backend now has a real domain foundation: **City
 Model v1** (roads, lanes, intersections, traffic lights, traffic rules,
-parking, traffic demand -- persisted in PostgreSQL via
-`/api/v1/cities*`, see `docs/architecture.md`). Authentication, the 2D
-editor, computer vision, SUMO integration, and traffic
-optimization/simulation are not implemented yet. See
+parking, traffic demand -- persisted in PostgreSQL via `/api/v1/cities*`)
+and **Traffic Engine v1** (a framework-independent static network/routing/
+congestion analysis engine in `simulation/`, exposed via `POST
+/api/v1/cities/{id}/traffic-analysis`). Authentication, the 2D editor,
+computer vision, SUMO integration, vehicle-level simulation, and traffic
+optimization are not implemented yet. See
 [`docs/architecture.md`](docs/architecture.md) for what's implemented vs.
 planned.
 
@@ -130,7 +132,8 @@ full lifecycle command list (`start`, `stop`, `restart`, `status`, `ps`,
 
 ## What is intentionally NOT implemented yet
 
-- Traffic optimization, routing, or live simulation
+- Traffic-signal/route optimization, live/real-time traffic
+- Vehicle-level or timestep simulation (Traffic Engine v1 is static analysis)
 - Authentication and authorization (no users/ownership on the City Model
   yet)
 - The 2D editor

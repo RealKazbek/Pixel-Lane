@@ -1,7 +1,7 @@
 """API/integration tests for the City endpoints, backed by real PostgreSQL.
 
 Skipped (not silently faked) if PostgreSQL isn't reachable -- see
-tests/city/conftest.py.
+tests/conftest.py.
 """
 
 import copy
@@ -11,7 +11,7 @@ from sqlalchemy import select
 
 from app.city.examples import load_four_way_intersection
 from app.city.models.road import Road
-from tests.city.conftest import requires_postgres
+from tests.conftest import requires_postgres
 
 
 def _payload() -> dict:

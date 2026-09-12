@@ -1,4 +1,5 @@
-"""Fixtures for City Model tests.
+"""Shared fixtures for backend integration tests (City Model, Traffic Engine
+API, ...).
 
 Per repository policy, database-backed tests run against real PostgreSQL --
 never a substitute like SQLite. If PostgreSQL is not reachable (e.g. Docker

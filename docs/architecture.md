@@ -17,13 +17,17 @@ UI, simulation, and hardware concerns.
   editor, no domain logic.
 - `backend/` — FastAPI + Pydantic + SQLAlchemy + Alembic, PostgreSQL.
   App wiring (settings, DB session/engine, error handling, a body-size
-  safeguard) plus a real domain module: **City Model v1** (`app/city/`,
-  described below). No auth yet.
-- `simulation/` — a Python package skeleton with a placeholder status
-  check. No simulation, optimization, or SUMO code.
+  safeguard) plus two real domain modules: **City Model v1** (`app/city/`)
+  and a thin **Traffic Engine adapter** (`app/traffic/`), both described
+  below. No auth yet.
+- `simulation/` — a Python package. No SUMO/simulation runtime yet, but it
+  now hosts the framework-independent **Traffic Engine v1**
+  (`pixel_lane_simulation/traffic/`, described below) as an importable
+  library (the backend depends on it as a sibling package).
 - `docker-compose.yml` — runs `postgres`, `backend`, `frontend` with
-  healthchecks. `simulation` has no runnable service yet, so it is not
-  wired into Compose.
+  healthchecks. The backend image is built from the repo root so it can
+  install the sibling `simulation` package. `simulation` has no runnable
+  server of its own yet, so it is not wired into Compose as a service.
 
 Everything below "High-level components" describes the **target**
 architecture these services will grow into — treat it as planned unless
@@ -124,7 +128,109 @@ parking zone, and two traffic-demand entries. It is meant to be reused by
 tests, the future 2D editor, and simulation development -- not a
 throwaway test-only fixture.
 
-## High-level components (planned)
+## Traffic Engine v1 (implemented, no SUMO yet)
+
+**Purpose.** A framework-independent traffic-analysis engine that sits on
+top of the City Model: it builds a network graph, assigns manually-entered
+`TrafficDemand` onto shortest routes, and reports congestion/bottleneck
+metrics. It answers "how would this network cope with this demand?" as a
+static analytical estimate -- it does not simulate vehicles, signals, or
+time.
+
+```
+City Model
+    |
+Network Graph          (app/city -> pixel_lane_simulation.traffic.graph)
+    |
+Capacity Model          (traffic.capacity)
+    |
+Traffic Demand Assignment  (traffic.routing + traffic.flow)
+    |
+Flow Estimation
+    |
+Congestion Metrics      (traffic.metrics)
+    |
+Bottleneck Detection    (traffic.analysis)
+```
+
+**Where it lives.** `simulation/pixel_lane_simulation/traffic/` -- a pure
+Python package with no FastAPI/SQLAlchemy/Pydantic/Next.js dependency. It
+defines its own minimal input contract
+(`traffic/models/inputs.py`: `CityInput`, `RoadInput`, `LaneInput`,
+`IntersectionInput`, `TrafficDemandInput`) instead of importing the
+backend's Pydantic City schemas, and its own result contract
+(`traffic/models/result.py`, plain dataclasses). Dependency direction is
+one-way:
+
+```
+backend/app/traffic (adapter + API)
+    -> pixel_lane_simulation.traffic (engine)
+        -> its own CityInput/TrafficAnalysisResult contract
+```
+
+The engine never imports anything from `backend/app/*`; `backend/app/traffic/`
+is the only place allowed to depend on both sides (`app/traffic/adapter.py`
+converts a persisted `CityRead` into `CityInput`).
+
+**Network graph.** Node = intersection, edge = a directed road/lane
+connection. The City Model does not record which end of a road touches
+which intersection, only that an intersection's `connected_road_ids`
+includes it -- so the builder (`traffic/graph/builder.py`) resolves each
+road's two endpoints by matching its polyline's first/last point to the
+closest connected intersections. A road referenced by 0 or 1 intersections
+produces a warning and no edge (unusable for routing, e.g. the four-way
+example fixture's dead-end roads); a road referenced by more than 2 raises
+`InvalidNetworkTopologyError` -- the engine fails clearly on network data
+it cannot resolve rather than guessing. Multiple lanes travelling the same
+direction on the same road aggregate into one directed edge.
+
+**Capacity.** One flat, documented baseline: `1800 vehicles/hour/lane`
+(`pixel_lane_simulation.traffic.config.DEFAULT_CAPACITY_PER_LANE_VPH`), a
+common rough per-lane baseline, not calibrated to any real city and not
+varying by lane/road type or signal control yet. Road capacity sums its
+lanes' capacity (both directions).
+
+**Routing.** One deterministic strategy for v1: Dijkstra's shortest path by
+free-flow travel time (`traffic/routing/router.py`) -- not a raw-distance
+shortest path, and not equilibrium/multi-path/stochastic routing. Edge
+length uses Euclidean distance for `LOCAL_CARTESIAN` cities (coordinate
+units assumed to be meters) and haversine distance for `WGS84` cities
+(`Point.x`=longitude, `Point.y`=latitude). Free-flow travel time uses the
+road's speed limit, or a configurable default if none is set.
+
+**Flow assignment.** Static, all-or-nothing: each `TrafficDemand` with both
+a source and destination intersection is routed once and its full volume
+is loaded onto every edge on that route (`traffic/flow/assignment.py`). No
+per-vehicle or timestep simulation. A demand with only a `movement` (no
+destination -- the shape used when a city has just one intersection, like
+the four-way example fixture) is not routable in v1 and is reported as a
+warning, not silently dropped.
+
+**Congestion metrics & bottlenecks.** Volume/capacity ratio classified as
+`FREE_FLOW` (<0.50), `MODERATE` (0.50-0.80), `HEAVY` (0.80-1.00), or
+`SATURATED` (>1.00) -- thresholds centralized in `TrafficEngineConfig`.
+`HEAVY`/`SATURATED` roads, lanes, or intersections are reported as
+bottlenecks (`medium`/`high` severity) by
+`traffic/analysis/bottlenecks.py` -- an explicitly-labeled baseline
+threshold heuristic, not a validated traffic-engineering bottleneck model
+(no queueing, no signal timing, no turning-movement conflicts).
+
+**Endpoint.** `POST /api/v1/cities/{city_id}/traffic-analysis` -- loads the
+City from PostgreSQL, converts it, runs the engine, returns the result. No
+analysis is persisted (no `analysis_runs`/`traffic_metrics_history` table);
+it is computed on demand each call.
+
+**Known v1 limitations** (all deliberate, to be revisited alongside SUMO):
+- Static traffic assignment only -- no dynamic equilibrium, no rerouting
+  as congestion changes.
+- No vehicle-level or timestep simulation.
+- No traffic-light timing simulation or adaptive signal control.
+- No SUMO integration yet.
+- No real-time traffic data.
+- Flat, uncalibrated capacity assumption (no per-lane-type/road-type/
+  signal-control variation).
+- Intersection congestion is a rough inbound-volume heuristic, not a real
+  capacity/turning-movement model.
 
 ## High-level components (planned)
 
@@ -167,16 +273,21 @@ the current entities, persistence design, and API.
 A UI layer that edits and generates City Model data. It contains
 presentation/interaction logic only — it does not own traffic domain rules.
 
-### Traffic domain logic **(planned)**
+### Traffic domain logic (implemented -- v1 analysis engine, optimization still planned)
 
-Optimization and traffic-rule logic, independently testable without a
-running frontend or simulation engine.
+The v1 Traffic Engine (network graph, routing, static flow assignment,
+congestion/bottleneck analysis) is implemented and independently testable
+without a running frontend or SUMO -- see "Traffic Engine v1" above.
+Traffic *optimization* (signal timing, route optimization) is not
+implemented yet.
 
-### Simulation adapter/service boundary **(planned)**
+### Simulation adapter/service boundary **(planned -- SUMO specifically)**
 
-Simulation (including SUMO) is accessed only through an adapter/service
-layer. SUMO-specific concepts must not leak into the City Model or domain
-logic — if SUMO were replaced, only the adapter should change.
+The v1 Traffic Engine is its own static analysis, not a SUMO adapter.
+When SUMO is integrated, it will sit behind its own adapter/service layer;
+SUMO-specific concepts must not leak into the City Model or the v1 engine's
+domain logic -- if SUMO were added or replaced, only that adapter should
+change.
 
 ### External hardware integration **(planned)**
 
