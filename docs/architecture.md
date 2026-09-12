@@ -269,93 +269,100 @@ it is computed on demand each call.
 - Intersection congestion is a rough inbound-volume heuristic, not a real
   capacity/turning-movement model.
 
-## Frontend 2D Viewer v1 (implemented, read-only)
+## Frontend 2D Map/Editor v2 (implemented)
 
-**Purpose.** A read-only Canvas visualization of a persisted City Model and
-its Traffic Analysis results -- open the frontend, pick a city, see its
-road network, run analysis, see congestion and bottlenecks. This is
-explicitly **not** the 2D Editor: no drawing, editing, dragging, or saving.
+**Purpose.** A hybrid 2D map view of a persisted City Model and its
+Traffic Analysis results, built on MapLibre GL JS, with an optional
+reference basemap underneath and Pixel Lane's own road network rendered
+as an authoritative overlay on top. It replaces the earlier Canvas-based
+read-only viewer (v1) and adds a first geometry-editing capability (moving
+a road's existing vertices).
 
 ```
-Frontend 2D Viewer
+Frontend 2D Map/Editor
       |
-City Model API      (GET /api/v1/cities, GET /api/v1/cities/{id})
-      |
+City Model API      (GET /api/v1/cities, GET /api/v1/cities/{id},
+      |               PATCH /api/v1/cities/{id}/roads/{id}/geometry)
 Traffic Analysis API (POST /api/v1/cities/{id}/traffic-analysis)
 ```
+
+**Why MapLibre.** MapLibre GL JS is open-source (BSD), requires no account
+or API key, and gives real map interaction (pan/zoom/click) and
+GPU-accelerated rendering without hand-rolling projection, hit-testing, or
+a render loop (library-first, per `AGENTS.md`). It is used purely as a
+rendering/interaction engine -- it owns no Pixel Lane data.
+
+**City Model remains the only source of truth.** MapLibre's GeoJSON
+sources and Terra Draw's in-memory feature store (used only during
+geometry editing) are transient UI state, rebuilt from the City Model on
+every relevant change. Terra Draw's store is read exactly once, at the
+moment a user clicks "Apply," to extract edited coordinates -- it is never
+otherwise treated as authoritative. See
+`frontend/src/features/city-viewer/map/README.md` for the full
+subsystem breakdown (layer stack, coordinate handling, editing data flow).
 
 **Where it lives.** `frontend/src/features/city-viewer/`:
 
 ```
 city-viewer/
   types/         TypeScript mirrors of the City/TrafficAnalysis API contracts
-  api/           getCities()/getCity()/runTrafficAnalysis() -- the only fetch() calls
-  lib/           pure functions: geometry, projection, lane offset, congestion
-                 colors, analysis lookup, hit-testing -- no React, no Canvas
-  state/         layer-visibility and selection types (local UI state only)
-  hooks/         data fetching, viewport (pan/zoom), resize, dark-mode
+  api/           getCities()/getCity()/runTrafficAnalysis()/updateRoadGeometry()
+  lib/           pure functions not specific to the map (analysis lookup)
+  hooks/         data fetching (with silent refresh after an edit), city list
+  map/           MapLibre map, City Model <-> GeoJSON adapters, styling,
+                 layer setup, and the geometry editor (see map/README.md)
   components/
-    canvas/      CityCanvas.tsx (React glue) + renderer.ts and draw-*.ts
-                 (pure Canvas 2D drawing, one file per entity type)
-    sidebar/     city list, layer toggles, bottleneck list
-    details/     per-entity-type details panels (Road/Lane/Intersection)
+    sidebar/     city list, bottleneck list
+    details/     per-entity-type details panels (Road/Intersection)
 ```
 
-Drawing logic (`components/canvas/draw-*.ts`, `renderer.ts`) is plain
-functions operating on `CanvasRenderingContext2D` -- no React state, no
-Canvas library (no Three.js/Konva/PixiJS/Leaflet/Mapbox/deck.gl): a 2D
-road network at LOCAL_CARTESIAN scale doesn't need them, and avoiding them
-keeps the dependency count and memory footprint low for an 8 GB dev
-machine (see AGENTS.md's resource-efficiency rules).
+**Basemap: optional and provider-independent.** Controlled by
+`NEXT_PUBLIC_MAP_BASEMAP_ENABLED` (default `false`) and
+`NEXT_PUBLIC_MAP_STYLE_URL` (any MapLibre-compatible style URL). With the
+basemap off, Pixel Lane's overlay renders on an empty style and makes no
+external tile requests. Toggling at runtime uses `map.setStyle()` +
+re-adding Pixel Lane's sources/layers on `style.load` -- the underlying
+`maplibregl.Map` instance is created once and never recreated. No provider
+API key is ever hardcoded or shipped by Pixel Lane.
 
-**Rendering triggers.** The canvas redraws only when something that
-affects pixels changes (city, analysis result, viewport, layer toggles,
-selection, container resize) -- there is no `requestAnimationFrame` loop
-and no polling.
+**Road styling.** Road width and casing width are derived from lane count,
+converted from meters to on-screen pixels via a zoom- and latitude-aware
+Web Mercator expression (so roads scale realistically with zoom). Color is
+a neutral slate/zinc grayscale keyed by road-type hierarchy -- deliberately
+not the yellow/orange highway styling of consumer navigation apps, since
+this is an analysis/editing tool, not a navigation product.
 
-**LOCAL_CARTESIAN handling.** All of a city's road/intersection points are
-gathered, their bounding box computed, and a `Viewport {scale, translateX,
-translateY}` is derived to fit that box into the canvas with padding
-("fit to view"). Pan translates the viewport directly in screen space;
-wheel-zoom rescales around the cursor's world point so it stays fixed
-under the cursor. `devicePixelRatio` is applied to the canvas backing
-store so rendering stays sharp on Retina displays.
+**Coordinate handling.** WGS84 cities pass `Point.x/y` (lon/lat) straight
+through to MapLibre. LOCAL_CARTESIAN cities (no real-world reference) are
+anchored at an arbitrary (0, 0) via an inverse-equirectangular projection
+purely so they have *some* valid position to render at -- this placement
+is explicitly not geographically meaningful.
 
-**WGS84 handling.** `lib/projection.ts` applies a simple equirectangular
-projection around the city's mean latitude (`x`=longitude, `y`=latitude,
-matching the Traffic Engine's convention) to get local, roughly-metric
-coordinates, which then go through the same bounds/viewport pipeline as
-LOCAL_CARTESIAN. **This is a visualization projection, not GIS-grade
-rendering** -- there is no real basemap, and PostGIS is not used.
+**Geometry editing (foundation).** A road's existing vertices can be
+selected, dragged, and have midpoints added/removed via Terra Draw
+(`terra-draw` + `terra-draw-maplibre-gl-adapter`), then persisted with
+`PATCH /api/v1/cities/{id}/roads/{id}/geometry`. This is intentionally
+narrow: replacing one road's polyline, not a general lane/turn/intersection
+editor.
 
-**Lane rendering.** The City Model doesn't store per-lane geometry, only
-`Lane -> Road` plus `index`/`direction`. `lib/lane-offset.ts` approximates
-each lane's centerline as a perpendicular offset from the road centerline
-(FORWARD lanes fan out one way, BACKWARD the other, ordered by index) --
-an approximation, not exact GIS offset geometry, but enough to make
-individual lanes and their count visually distinguishable. Direction is
-shown with small arrows spaced along the lane (not on every pixel).
+**Selection & bottlenecks.** Clicking a road/intersection on the map shows
+its details in a bottom panel; clicking a bottleneck in the sidebar selects
+the corresponding road/intersection (lane-level bottlenecks aren't
+separately selectable on the map yet).
 
-**Congestion visualization.** Roads/lanes/intersections are colored by
-Traffic Engine congestion level once an analysis has run:
-FREE_FLOW=green, MODERATE=yellow, HEAVY=orange, SATURATED=red (with a
-legend) -- one of the few places a fixed color palette is justified, since
-it *is* the domain meaning, not a UI style choice.
-
-**Selection & bottlenecks.** Clicking a road/lane/intersection (hit-tested
-in world space, intersections take priority) shows its details in a bottom
-panel; clicking a bottleneck in the sidebar selects and re-centers the
-viewport on it (without changing zoom).
-
-**Known v1 limitations:**
-- Read-only: no drawing, editing, moving, or saving anything (2D Editor is
-  a separate, later effort).
-- No real GIS basemap; WGS84 rendering is an approximate local projection.
-- No SUMO visualization yet.
-- Lane geometry is an offset approximation, not true parallel-curve GIS
-  geometry.
+**Known v2 limitations:**
+- No congestion-level color overlay on the new map yet (v1's congestion
+  coloring was not carried over in this pass -- see "Next steps" below).
+- No 3D buildings, satellite imagery, turn-by-turn navigation UI,
+  heatmaps, or emergency routing (explicitly out of scope for this pass).
+- Editing is limited to moving/adding/removing a road's existing vertices
+  -- no drawing new roads, splitting/merging roads, or editing
+  intersections/lanes/signals from the map yet.
 - No traffic-light phase animation -- a signalized intersection just shows
   a static marker indicating a light is present.
+- Glyphs (map text labels) are served from MapLibre's own demo font
+  endpoint even with the basemap off; self-hosting is a reasonable future
+  improvement.
 
 ## Almaty OpenStreetMap demo
 
@@ -438,12 +445,14 @@ components read/write against. It must not depend on the UI or on any
 specific simulation backend. See "City Model v1 (implemented)" above for
 the current entities, persistence design, and API.
 
-### 2D Editor **(planned -- a read-only Viewer v1 exists)**
+### 2D Editor **(foundation implemented -- geometry editing only)**
 
 A UI layer that edits and generates City Model data. It contains
 presentation/interaction logic only — it does not own traffic domain rules.
-The read-only 2D Viewer (see "Frontend 2D Viewer v1" above) covers
-visualization; drawing/editing/saving is still planned.
+The 2D Map/Editor (see "Frontend 2D Map/Editor v2" above) covers
+visualization plus a first editing capability: moving/adding/removing a
+road's existing vertices. Drawing new roads, editing intersections/lanes/
+signals, and other structural edits are still planned.
 
 ### Traffic domain logic (implemented -- v1 analysis engine, optimization still planned)
 
