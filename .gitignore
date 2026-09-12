@@ -1,5 +1,8 @@
-# Root Docker Compose environment. Never commit the real file.
+# Root Docker Compose environment. Persistent local developer config --
+# never commit it, and never delete/recreate an existing one automatically.
 .env
+.env.local
+.env.*.local
 !.env.example
 
 .DS_Store

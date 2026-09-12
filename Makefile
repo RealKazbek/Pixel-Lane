@@ -1,4 +1,5 @@
 .PHONY: help check-env start stop restart status ps logs build rebuild clean reset \
+	start-db stop-db start-backend resources \
 	frontend-dev frontend-lint frontend-typecheck frontend-build \
 	backend-dev backend-lint backend-typecheck backend-test migrate migration \
 	simulation-test
@@ -18,6 +19,13 @@ help:
 	@echo "make reset      DESTRUCTIVE: stop the stack and delete the Postgres volume"
 	@echo "make help       Show this help"
 	@echo ""
+	@echo "Lightweight subsets (use the smallest one your task needs):"
+	@echo "make start-db       Start only PostgreSQL (e.g. for a migration)"
+	@echo "make stop-db        Stop only PostgreSQL"
+	@echo "make start-backend  Start only PostgreSQL + backend (no frontend)"
+	@echo "make frontend-dev   Run the frontend alone, no Docker at all"
+	@echo "make resources      Show CPU/memory usage of running containers"
+	@echo ""
 	@echo "make frontend-dev        - run frontend dev server"
 	@echo "make frontend-lint       - lint frontend"
 	@echo "make frontend-typecheck  - typecheck frontend"
@@ -34,11 +42,14 @@ help:
 
 # docker-compose.yml requires POSTGRES_PASSWORD etc. from .env -- fail with
 # a clear message instead of letting `docker compose` error out obscurely.
-# Never auto-create .env here: config should stay visible to the developer.
+# Never auto-create, overwrite, or delete .env here: it is persistent local
+# developer configuration, not a temporary file -- only the developer
+# creates or resets it.
 check-env:
 	@if [ ! -f .env ]; then \
-		echo ".env file is missing."; \
-		echo "Run:"; \
+		echo "Missing .env file."; \
+		echo ""; \
+		echo "Create it with:"; \
 		echo "  cp .env.example .env"; \
 		exit 1; \
 	fi
@@ -72,12 +83,35 @@ clean: check-env
 	docker image prune -f
 
 # DESTRUCTIVE: deletes the Postgres data volume. Never run this as part of
-# start/stop/restart/clean.
+# start/stop/restart/clean. Never deletes .env -- data and local
+# configuration are different things.
 reset: check-env
 	@echo "WARNING: this deletes the Postgres data volume (all local city data)."
 	@echo "Press Ctrl+C within 5 seconds to cancel..."
 	@sleep 5
 	docker compose down -v
+
+# --- Lightweight subsets (8 GB RAM dev machine: use the smallest one a
+# task actually needs, instead of always running the full stack) --------
+
+start-db: check-env
+	docker compose up -d postgres
+
+stop-db: check-env
+	docker compose stop postgres
+
+# Backend work needs Postgres but not the frontend container; for
+# frontend-only work, prefer `make frontend-dev` (no Docker at all).
+start-backend: check-env
+	docker compose up -d postgres backend
+
+# Quick view of what's actually using CPU/RAM right now.
+resources:
+	@if ! docker info >/dev/null 2>&1; then \
+		echo "Docker is not running."; \
+		exit 1; \
+	fi
+	docker stats --no-stream
 
 # --- App-specific dev commands ------------------------------------------
 

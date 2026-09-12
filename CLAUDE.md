@@ -4,8 +4,8 @@ This is the shared development policy for Pixel Lane.
 
 - Read **[AGENTS.md](AGENTS.md)** first — it is the authoritative policy
   (context efficiency, architecture, scalability, technology selection,
-  database, code quality, security, testing, frontend/design, git, commit,
-  push, and multi-agent rules).
+  database, code quality, security, testing, local resource efficiency,
+  frontend/design, git, commit, push, and multi-agent rules).
 - Architecture and technology-selection decisions (new dependencies,
   databases, frameworks, module boundaries) always follow AGENTS.md — do
   not make ad hoc calls.

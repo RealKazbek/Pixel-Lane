@@ -12,12 +12,13 @@ platform complexity.
 
 When rules conflict, resolve in this order:
 
-**Correctness > Security > Maintainability > Scalability > Context efficiency > Speed**
+**Correctness > Security > Maintainability > Scalability > Resource efficiency > Context efficiency > Speed**
 
 Never sacrifice correctness or security to save tokens, move faster, or make
 something "scale better". Scalability work never justifies weakening
 security or correctness — see § 5 for what scalability does and does not
-mean here.
+mean here. Resource efficiency (§ 10) never justifies skipping a test that's
+actually needed.
 
 ## 1. Project principles (Pixel Lane architecture boundaries)
 
@@ -243,7 +244,33 @@ access patterns, oversized payloads where a smaller query would do, repeated
 full-city-graph loads, unnecessary frontend re-renders, and loading entire
 datasets where pagination/filtering is appropriate.
 
-## 10. Frontend / design rules
+## 10. Local resource efficiency
+
+Pixel Lane is developed locally on a machine with 8 GB RAM. Agents must
+economize RAM/CPU/Docker resources without weakening correctness — a
+skipped necessary test is never an acceptable trade for saved resources.
+
+- Don't run multiple instances of the same dev server at once; check
+  whether a service is already running before starting it.
+- Don't leave stray background processes running after a task.
+- Don't run a frontend production build, the full backend test suite, and
+  a Docker rebuild all at once unless the task actually needs all three.
+- Use targeted tests while iterating; run the full suite when it's
+  actually needed before finishing a task (see § 8, § 17).
+- Don't run `docker compose build --no-cache` or rebuild images without a
+  reason — only rebuild when the change actually requires it.
+- Don't leave temporary containers running once a check is done.
+- Don't auto-start heavy future services (e.g. SUMO) or add
+  Redis/Kafka/etc. merely for development convenience.
+- Avoid unnecessary file watchers.
+- Pick the minimal set of services a task actually needs — e.g. only
+  `postgres` for a migration (`make start-db`), only the backend for a
+  backend-only task (`make start-backend`), or just `make frontend-dev`
+  (no Docker) for frontend-only work.
+- After a resource-heavy check, return the environment to a reasonable
+  state — but never stop the user's primary dev stack without a reason.
+
+## 11. Frontend / design rules
 
 Use the `frontend-review` and `design-review` skills for UI work. Check:
 responsive layout (mobile/tablet/desktop), spacing consistency, typography,
@@ -253,7 +280,7 @@ disabled/error/loading/empty states, and consistent visual language.
 Prefer existing project components and design tokens over inventing new
 patterns. Do not build massive page components that mix all logic and UI.
 
-## 11. Git rules
+## 12. Git rules
 
 - Inspect `git status` before making changes; before any destructive
   operation (`checkout`/`restore`/`reset`/`clean`, `rm -rf`), stash or commit
@@ -263,7 +290,17 @@ patterns. Do not build massive page components that mix all logic and UI.
 - Verify before committing: no accidental generated files, no secrets
   staged, no unrelated edits staged, no leftover debug code, no temp files.
 
-## 12. Commit rules
+**Local developer environment files.** `.env` is ignored by Git but is
+persistent local developer configuration, not a temporary or disposable
+file — `untracked ≠ temporary`, `ignored ≠ disposable`.
+
+- Never delete, overwrite, recreate, or reset an existing `.env` — not
+  after tests, not after `make stop`/`clean`/`restart`, not "because it's
+  untracked" — unless the user explicitly asks for it.
+- `.env.example` is the tracked template; never commit `.env` or put real
+  secrets in `.env.example`.
+
+## 13. Commit rules
 
 - Small, focused, internally coherent commits. Do not mix unrelated changes.
 - A task touching many concerns should usually be split into logical
@@ -284,7 +321,7 @@ patterns. Do not build massive page components that mix all logic and UI.
 - Never use vague messages like `update`, `fix stuff`, `changes`, `final`,
   `work`.
 
-## 13. Push rules
+## 14. Push rules
 
 After completing a user-requested task: run relevant validation, review the
 diff, ensure no secrets/accidental files are included, create appropriately
@@ -300,7 +337,7 @@ If a push fails, report the exact reason. Never force-push, rewrite
 published history, or delete remote branches unless the user explicitly
 requests it.
 
-## 14. Multi-agent compatibility
+## 15. Multi-agent compatibility
 
 Claude Code and Codex may work on the same repository.
 
@@ -312,7 +349,7 @@ Claude Code and Codex may work on the same repository.
 - Avoid broad formatting changes or mass file rewrites unrelated to the
   task. Keep changes scoped; prefer targeted patches.
 
-## 15. Skill routing
+## 16. Skill routing
 
 Load the relevant skill from `.agents/skills/` for the task type:
 
@@ -328,7 +365,7 @@ Load the relevant skill from `.agents/skills/` for the task type:
 
 Skills contain only specialized instructions — they do not repeat this file.
 
-## 16. Completion checklist
+## 17. Completion checklist
 
 Before declaring a task complete:
 
