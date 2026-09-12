@@ -1,4 +1,4 @@
-.PHONY: help start stop restart status ps logs build rebuild clean reset \
+.PHONY: help check-env start stop restart status ps logs build rebuild clean reset \
 	frontend-dev frontend-lint frontend-typecheck frontend-build \
 	backend-dev backend-lint backend-typecheck backend-test migrate migration \
 	simulation-test
@@ -32,37 +32,48 @@ help:
 
 # --- Project lifecycle (Docker Compose) --------------------------------
 
-start:
+# docker-compose.yml requires POSTGRES_PASSWORD etc. from .env -- fail with
+# a clear message instead of letting `docker compose` error out obscurely.
+# Never auto-create .env here: config should stay visible to the developer.
+check-env:
+	@if [ ! -f .env ]; then \
+		echo ".env file is missing."; \
+		echo "Run:"; \
+		echo "  cp .env.example .env"; \
+		exit 1; \
+	fi
+
+start: check-env
 	docker compose up -d
 
-stop:
+stop: check-env
 	docker compose down
 
 restart: stop start
 
-status:
+status: check-env
 	docker compose ps
 
 ps: status
 
-logs:
+logs: check-env
 	docker compose logs -f --tail=100
 
-build:
+build: check-env
 	docker compose build
 
 rebuild: build restart
 
 # Removes recoverable local artifacts (stopped containers, orphans, dangling
 # images). Never touches the named Postgres volume -- use `make reset` for that.
-clean:
+clean: check-env
 	docker compose down --remove-orphans
 	docker compose rm -f
 	docker image prune -f
 
 # DESTRUCTIVE: deletes the Postgres data volume. Never run this as part of
 # start/stop/restart/clean.
-reset:
+reset: check-env
 	@echo "WARNING: this deletes the Postgres data volume (all local city data)."
 	@echo "Press Ctrl+C within 5 seconds to cancel..."
 	@sleep 5
