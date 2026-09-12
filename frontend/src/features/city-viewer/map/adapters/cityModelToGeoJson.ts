@@ -5,7 +5,13 @@
  */
 
 import { toLngLat } from "./coordinates";
-import { roadHierarchy, roadWidthMeters } from "../styles/roadStyle";
+import { roadLengthMeters } from "./geometryLength";
+import {
+  HIERARCHY_LABEL_RANK,
+  roadCasingWidthMeters,
+  roadHierarchy,
+  roadWidthMeters,
+} from "../styles/roadStyle";
 import type {
   City,
   CoordinateSystem,
@@ -14,21 +20,28 @@ import type {
   TrafficLight,
 } from "../../types/city";
 
+/** A junction connecting fewer roads than this is treated as a topology
+ * pass-through node (e.g. where OSM splits one street into segments),
+ * not a real intersection -- see `IntersectionFeatureProperties.
+ * connected_road_count` and layers/pointLayers.ts's zoom-gated filter. */
+const MIN_ROADS_FOR_JUNCTION = 3;
+
 export interface RoadFeatureProperties {
   id: string;
   name: string;
   road_type: string;
   hierarchy: string;
+  label_rank: number;
   lane_count: number;
   width_m: number;
-  selected: boolean;
+  casing_width_m: number;
 }
 
 export interface IntersectionFeatureProperties {
   id: string;
   control_type: string;
   has_traffic_light: boolean;
-  selected: boolean;
+  connected_road_count: number;
 }
 
 export interface TrafficLightFeatureProperties {
@@ -39,6 +52,8 @@ export interface TrafficLightFeatureProperties {
 export interface LabelFeatureProperties {
   id: string;
   name: string;
+  hierarchy: string;
+  label_rank: number;
 }
 
 export type RoadFeatureCollection = GeoJSON.FeatureCollection<
@@ -77,30 +92,32 @@ function roadToLineString(
 
 export function buildRoadFeatureCollection(
   city: Pick<City, "roads" | "coordinate_system">,
-  selectedRoadId: string | null,
 ): RoadFeatureCollection {
   return {
     type: "FeatureCollection",
-    features: city.roads.map((road) => ({
-      type: "Feature",
-      id: road.id,
-      geometry: roadToLineString(city.coordinate_system, road),
-      properties: {
+    features: city.roads.map((road) => {
+      const hierarchy = roadHierarchy(road.road_type);
+      return {
+        type: "Feature",
         id: road.id,
-        name: road.name,
-        road_type: road.road_type,
-        hierarchy: roadHierarchy(road.road_type),
-        lane_count: road.lanes.length,
-        width_m: roadWidthMeters(road),
-        selected: road.id === selectedRoadId,
-      },
-    })),
+        geometry: roadToLineString(city.coordinate_system, road),
+        properties: {
+          id: road.id,
+          name: road.name,
+          road_type: road.road_type,
+          hierarchy,
+          label_rank: HIERARCHY_LABEL_RANK[hierarchy],
+          lane_count: road.lanes.length,
+          width_m: roadWidthMeters(road),
+          casing_width_m: roadCasingWidthMeters(road),
+        },
+      };
+    }),
   };
 }
 
 export function buildIntersectionFeatureCollection(
   city: Pick<City, "intersections" | "coordinate_system">,
-  selectedIntersectionId: string | null,
 ): IntersectionFeatureCollection {
   return {
     type: "FeatureCollection",
@@ -115,10 +132,22 @@ export function buildIntersectionFeatureCollection(
         id: intersection.id,
         control_type: intersection.control_type,
         has_traffic_light: intersection.traffic_light_id !== null,
-        selected: intersection.id === selectedIntersectionId,
+        connected_road_count: intersection.connected_road_ids.length,
       },
     })),
   };
+}
+
+/** Whether an intersection is a real junction (as opposed to a topology
+ * pass-through node) -- exported so PixelLaneMap can decide what's
+ * reasonably selectable at low zoom without duplicating this threshold. */
+export function isJunction(
+  intersection: Pick<Intersection, "connected_road_ids" | "traffic_light_id">,
+): boolean {
+  return (
+    intersection.connected_road_ids.length >= MIN_ROADS_FOR_JUNCTION ||
+    intersection.traffic_light_id !== null
+  );
 }
 
 export function buildTrafficLightFeatureCollection(
@@ -153,12 +182,31 @@ function roadMidpoint(
   return toLngLat(coordinateSystem, mid);
 }
 
+/** One label per street name, not one per road segment. OSM/City Model
+ * roads are frequently split into many short segments that share a
+ * name (e.g. one per block); labeling every segment clusters near-
+ * duplicate text so densely that MapLibre's overlap suppression hides
+ * almost all of it. Picking the single longest segment per name keeps
+ * exactly one legible label per street. */
 export function buildRoadLabelFeatureCollection(
   city: Pick<City, "roads" | "coordinate_system">,
 ): LabelFeatureCollection {
-  const features: LabelFeatureCollection["features"] = [];
+  const longestByName = new Map<string, Road>();
   for (const road of city.roads) {
     if (!road.name || road.name.startsWith(FALLBACK_NAME_PREFIX)) continue;
+    const current = longestByName.get(road.name);
+    if (
+      !current ||
+      roadLengthMeters(road, city.coordinate_system) >
+        roadLengthMeters(current, city.coordinate_system)
+    ) {
+      longestByName.set(road.name, road);
+    }
+  }
+
+  const features: LabelFeatureCollection["features"] = [];
+  for (const road of longestByName.values()) {
+    const hierarchy = roadHierarchy(road.road_type);
     features.push({
       type: "Feature",
       id: road.id,
@@ -166,7 +214,12 @@ export function buildRoadLabelFeatureCollection(
         type: "Point",
         coordinates: roadMidpoint(city.coordinate_system, road),
       },
-      properties: { id: road.id, name: road.name },
+      properties: {
+        id: road.id,
+        name: road.name,
+        hierarchy,
+        label_rank: HIERARCHY_LABEL_RANK[hierarchy],
+      },
     });
   }
   return { type: "FeatureCollection", features };

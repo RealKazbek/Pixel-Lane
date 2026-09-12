@@ -114,6 +114,25 @@ export function setPixelLaneLayersVisible(
   }
 }
 
+/** Moves the "selected" feature-state flag from `previousId` to `nextId`
+ * on one source, without touching the source's data. Selection is
+ * intentionally never baked into the GeoJSON payload itself -- clicking a
+ * road/intersection/signal shouldn't require rebuilding or re-sending the
+ * whole dataset (see map/README.md's performance notes). */
+export function setSelectedFeature(
+  map: MapLibreMap,
+  sourceId: string,
+  previousId: string | null,
+  nextId: string | null,
+): void {
+  if (previousId && previousId !== nextId) {
+    map.setFeatureState({ source: sourceId, id: previousId }, { selected: false });
+  }
+  if (nextId) {
+    map.setFeatureState({ source: sourceId, id: nextId }, { selected: true });
+  }
+}
+
 /** Hides Pixel Lane's normal road rendering for one road id (used while
  * that road is being edited via Terra Draw, so the same geometry isn't
  * drawn twice). Pass `null` to show everything again. */

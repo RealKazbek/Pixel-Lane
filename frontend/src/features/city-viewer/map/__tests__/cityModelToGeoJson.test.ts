@@ -46,10 +46,7 @@ function makeIntersection(overrides: Partial<Intersection> = {}): Intersection {
 describe("buildRoadFeatureCollection", () => {
   it("converts each road into a LineString feature with derived properties", () => {
     const road = makeRoad();
-    const fc = buildRoadFeatureCollection(
-      { roads: [road], coordinate_system: "WGS84" },
-      null,
-    );
+    const fc = buildRoadFeatureCollection({ roads: [road], coordinate_system: "WGS84" });
     expect(fc.features).toHaveLength(1);
     const feature = fc.features[0];
     expect(feature.geometry.coordinates).toEqual([[0, 0], [10, 10]]);
@@ -60,27 +57,32 @@ describe("buildRoadFeatureCollection", () => {
       hierarchy: "ARTERIAL",
       lane_count: 1,
     });
-  });
-
-  it("marks the selected road via the selected property", () => {
-    const road = makeRoad();
-    const fc = buildRoadFeatureCollection(
-      { roads: [road], coordinate_system: "WGS84" },
-      "road-1",
+    expect(feature.properties.casing_width_m).toBeGreaterThan(
+      feature.properties.width_m,
     );
-    expect(fc.features[0].properties.selected).toBe(true);
   });
 });
 
 describe("buildIntersectionFeatureCollection", () => {
   it("converts intersections into Point features and flags traffic lights", () => {
     const intersection = makeIntersection({ traffic_light_id: "tl-1" });
-    const fc = buildIntersectionFeatureCollection(
-      { intersections: [intersection], coordinate_system: "WGS84" },
-      null,
-    );
+    const fc = buildIntersectionFeatureCollection({
+      intersections: [intersection],
+      coordinate_system: "WGS84",
+    });
     expect(fc.features[0].geometry.coordinates).toEqual([5, 5]);
     expect(fc.features[0].properties.has_traffic_light).toBe(true);
+  });
+
+  it("reports how many roads connect at each intersection", () => {
+    const intersection = makeIntersection({
+      connected_road_ids: ["road-1", "road-2", "road-3"],
+    });
+    const fc = buildIntersectionFeatureCollection({
+      intersections: [intersection],
+      coordinate_system: "WGS84",
+    });
+    expect(fc.features[0].properties.connected_road_count).toBe(3);
   });
 });
 
@@ -144,5 +146,24 @@ describe("buildRoadLabelFeatureCollection", () => {
       coordinate_system: "WGS84",
     });
     expect(fc.features).toHaveLength(0);
+  });
+
+  it("emits exactly one label for multiple segments sharing a street name, at the longest segment", () => {
+    const shortSegment = makeRoad({
+      id: "seg-short",
+      name: "Abay Avenue",
+      geometry: { points: [{ x: 0, y: 0 }, { x: 1, y: 0 }] },
+    });
+    const longSegment = makeRoad({
+      id: "seg-long",
+      name: "Abay Avenue",
+      geometry: { points: [{ x: 10, y: 0 }, { x: 10, y: 100 }] },
+    });
+    const fc = buildRoadLabelFeatureCollection({
+      roads: [shortSegment, longSegment],
+      coordinate_system: "WGS84",
+    });
+    expect(fc.features).toHaveLength(1);
+    expect(fc.features[0].id).toBe("seg-long");
   });
 });

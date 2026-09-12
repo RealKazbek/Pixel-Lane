@@ -10,7 +10,7 @@
  */
 
 import { useEffect, useMemo, useRef } from "react";
-import type { MapLayerMouseEvent } from "maplibre-gl";
+import type { Map as MapLibreMap, MapLayerMouseEvent } from "maplibre-gl";
 import { useMapLibreMap } from "./hooks/useMapLibreMap";
 import {
   useGeometryEditor,
@@ -29,10 +29,11 @@ import {
 import {
   addPixelLaneSourcesAndLayers,
   setPixelLaneLayersVisible,
+  setSelectedFeature,
   updatePixelLaneData,
   type PixelLaneGeoJson,
 } from "./layers/setupLayers";
-import { LAYER_IDS } from "./layers/layerIds";
+import { SOURCE_IDS, LAYER_IDS } from "./layers/layerIds";
 import { resolveMapStyle } from "./styles/mapStyle";
 import type { City } from "../types/city";
 import type { MapMode, MapSelection } from "./types";
@@ -89,19 +90,28 @@ export function PixelLaneMap({
 
   const geoJson = useMemo<PixelLaneGeoJson>(
     () => ({
-      roads: buildRoadFeatureCollection(
-        city,
-        selected?.type === "road" ? selected.id : null,
-      ),
-      intersections: buildIntersectionFeatureCollection(
-        city,
-        selected?.type === "intersection" ? selected.id : null,
-      ),
+      roads: buildRoadFeatureCollection(city),
+      intersections: buildIntersectionFeatureCollection(city),
       trafficLights: buildTrafficLightFeatureCollection(city),
       labels: buildRoadLabelFeatureCollection(city),
     }),
-    [city, selected],
+    [city],
   );
+
+  // Re-applies the current selection as feature-state -- needed any time
+  // sources are (re)created, since a fresh GeoJSONSource starts with no
+  // feature-state regardless of what was selected before.
+  const applyCurrentSelection = (map: MapLibreMap) => {
+    const roadId = selected?.type === "road" ? selected.id : null;
+    const intersectionId = selected?.type === "intersection" ? selected.id : null;
+    const lightId = intersectionId
+      ? (city.traffic_lights.find((l) => l.intersection_id === intersectionId)
+          ?.id ?? null)
+      : null;
+    setSelectedFeature(map, SOURCE_IDS.roads, null, roadId);
+    setSelectedFeature(map, SOURCE_IDS.intersections, null, intersectionId);
+    setSelectedFeature(map, SOURCE_IDS.trafficLights, null, lightId);
+  };
 
   // Initial layer setup once the map has loaded its (possibly empty) style.
   useEffect(() => {
@@ -109,6 +119,7 @@ export function PixelLaneMap({
     if (!map || !isLoaded) return;
     addPixelLaneSourcesAndLayers(map, geoJson, referenceLatitude);
     setPixelLaneLayersVisible(map, overlayVisible);
+    applyCurrentSelection(map);
     // eslint-disable-next-line react-hooks/exhaustive-deps -- only re-run for isLoaded transitions
   }, [isLoaded]);
 
@@ -135,6 +146,7 @@ export function PixelLaneMap({
     map.once("style.load", () => {
       addPixelLaneSourcesAndLayers(map, geoJson, referenceLatitude);
       setPixelLaneLayersVisible(map, overlayVisible);
+      applyCurrentSelection(map);
     });
     // eslint-disable-next-line react-hooks/exhaustive-deps -- fires only on basemap/style changes
   }, [basemapEnabled, mapStyleUrl]);
@@ -147,8 +159,10 @@ export function PixelLaneMap({
     // eslint-disable-next-line react-hooks/exhaustive-deps -- fitSignal is a manual trigger
   }, [isLoaded, bounds, fitSignal]);
 
-  // Selection via click -- roads and intersections are separate layers,
-  // clicking empty map clears the selection.
+  // Selection via click -- roads, intersections, and traffic lights are
+  // separate layers; clicking a traffic light selects its parent
+  // intersection (there's no dedicated traffic-light details view yet).
+  // Clicking empty map clears the selection.
   useEffect(() => {
     const map = mapRef.current;
     if (!map || !isLoaded) return;
@@ -165,18 +179,71 @@ export function PixelLaneMap({
         onSelect({ type: "road", id: String(feature.properties.id) });
       }
     };
+    const handleTrafficLightClick = (event: MapLayerMouseEvent) => {
+      const intersectionId = event.features?.[0]?.properties?.intersection_id;
+      if (intersectionId) {
+        onSelect({ type: "intersection", id: String(intersectionId) });
+      }
+    };
     const handleBackgroundClick = () => onSelect(null);
 
     map.on("click", LAYER_IDS.intersections, handleIntersectionClick);
     map.on("click", LAYER_IDS.roadSurface, handleRoadClick);
+    map.on("click", LAYER_IDS.trafficLights, handleTrafficLightClick);
     map.on("click", handleBackgroundClick);
 
     return () => {
       map.off("click", LAYER_IDS.intersections, handleIntersectionClick);
       map.off("click", LAYER_IDS.roadSurface, handleRoadClick);
+      map.off("click", LAYER_IDS.trafficLights, handleTrafficLightClick);
       map.off("click", handleBackgroundClick);
     };
   }, [isLoaded, onSelect, mapRef]);
+
+  // Reflect `selected` as MapLibre feature-state rather than rebuilding
+  // any GeoJSON source -- selection changes are cheap regardless of city
+  // size. Also highlights the traffic light belonging to a selected
+  // intersection, if it has one.
+  const previousSelectionRef = useRef<MapSelection | null>(null);
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map || !isLoaded) return;
+    const previous = previousSelectionRef.current;
+
+    const previousRoadId = previous?.type === "road" ? previous.id : null;
+    const nextRoadId = selected?.type === "road" ? selected.id : null;
+    setSelectedFeature(map, SOURCE_IDS.roads, previousRoadId, nextRoadId);
+
+    const previousIntersectionId =
+      previous?.type === "intersection" ? previous.id : null;
+    const nextIntersectionId =
+      selected?.type === "intersection" ? selected.id : null;
+    setSelectedFeature(
+      map,
+      SOURCE_IDS.intersections,
+      previousIntersectionId,
+      nextIntersectionId,
+    );
+
+    const previousLightId = previousIntersectionId
+      ? (city.traffic_lights.find(
+          (light) => light.intersection_id === previousIntersectionId,
+        )?.id ?? null)
+      : null;
+    const nextLightId = nextIntersectionId
+      ? (city.traffic_lights.find(
+          (light) => light.intersection_id === nextIntersectionId,
+        )?.id ?? null)
+      : null;
+    setSelectedFeature(
+      map,
+      SOURCE_IDS.trafficLights,
+      previousLightId,
+      nextLightId,
+    );
+
+    previousSelectionRef.current = selected;
+  }, [selected, isLoaded, mapRef, city.traffic_lights]);
 
   // Enter edit mode: load the selected road into the geometry editor.
   useEffect(() => {
