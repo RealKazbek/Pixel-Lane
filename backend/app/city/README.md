@@ -24,7 +24,9 @@ manually-entered traffic demand. The source of truth other subsystems
 (cross-reference/business-rule checks) → `repositories/` (transactional
 persistence + ORM graph building) → `services/` (orchestration) →
 `api/` (thin FastAPI routes). `examples/` holds reusable demo City
-payloads (not application code).
+payloads (not application code). `importers/osm/` is a separate, isolated
+tooling subsystem that produces `CityCreate` payloads from OpenStreetMap
+data and calls `services/` like any other caller -- see its own README.
 
 ## Dependency direction
 

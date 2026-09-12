@@ -9,3 +9,7 @@ venv/
 
 .env
 !.env.example
+
+# osmnx's local HTTP cache for the OSM importer -- never a source of
+# truth, safe to delete, not committed.
+.osmnx_cache/
