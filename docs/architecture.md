@@ -1,8 +1,7 @@
 # Pixel Lane — Architecture
 
-Pixel Lane is a smart-city / traffic-management platform. The repository is
-currently early-stage (bootstrap only, no application code yet). This
-document describes the intended high-level architecture. Sections describing
+Pixel Lane is a smart-city / traffic-management platform. This document
+describes the intended high-level architecture. Sections describing
 components that do not exist yet are marked **(planned)**.
 
 ## Goals
@@ -10,6 +9,28 @@ components that do not exist yet are marked **(planned)**.
 Build the system core correctly before adding platform complexity. The
 domain/traffic logic must remain independently testable and decoupled from
 UI, simulation, and hardware concerns.
+
+## Current implementation status
+
+The repository currently has a minimal three-service skeleton and nothing
+else — no domain/traffic logic exists yet.
+
+- `frontend/` — Next.js (App Router, TypeScript strict, Tailwind). Only a
+  layout, a home page, and a `/health` status page exist. No auth, no 2D
+  editor, no domain logic.
+- `backend/` — FastAPI + Pydantic + SQLAlchemy + Alembic. Only app wiring
+  exists: settings, DB session/engine, a versioned `/api/v1/health`
+  endpoint, a generic error handler, and an empty Alembic setup (no models,
+  no migrations). No domain models, no auth.
+- `simulation/` — a Python package skeleton with a placeholder status
+  check. No simulation, optimization, or SUMO code.
+- `docker-compose.yml` — runs `postgres`, `backend`, `frontend` with
+  healthchecks. `simulation` has no runnable service yet, so it is not
+  wired into Compose.
+
+Everything below this section describes the **target** architecture these
+services will grow into — treat it as planned unless explicitly noted
+otherwise above.
 
 ## High-level components (planned)
 
