@@ -4,17 +4,19 @@ import { Panel } from "@/components/ui/Panel";
 import { StatusBadge } from "@/components/ui/StatusBadge";
 import { StatusCheck } from "@/components/status-check";
 
-/** Landing dashboard. Deliberately does not reach into the city-viewer
- * feature's internal hooks (its README limits imports to its
- * `CityViewerApp` entry component) -- live network metrics live on the
- * City Model screen instead of being duplicated here. */
+/** Landing dashboard for the internal app. Deliberately does not reach
+ * into the city-viewer feature's internal hooks (its README limits
+ * imports to its `CityViewerApp` entry component) -- live network
+ * metrics live on the City Model screen instead of being duplicated
+ * here; everything else is an explicit "not connected" state rather
+ * than a fabricated number. */
 export default function DashboardPage() {
   return (
     <div className="mx-auto flex w-full max-w-4xl flex-1 flex-col gap-6 overflow-y-auto px-6 py-8">
       <div>
-        <h1 className="text-lg font-semibold tracking-tight">Dashboard</h1>
+        <h1 className="text-xl font-semibold tracking-tight">Dashboard</h1>
         <p className="mt-1 text-sm text-zinc-500 dark:text-zinc-400">
-          Overview of the Pixel Lane smart-city platform.
+          Operational overview of the Pixel Lane smart-city platform.
         </p>
       </div>
 
@@ -52,22 +54,34 @@ export default function DashboardPage() {
             </span>
             <StatusBadge label="Not connected" tone="neutral" />
           </div>
+          <div className="flex items-center justify-between">
+            <span className="text-zinc-600 dark:text-zinc-400">
+              Incident feed
+            </span>
+            <StatusBadge label="Not connected" tone="neutral" />
+          </div>
         </div>
       </Panel>
 
-      <Panel title="Quick links">
+      <Panel title="Quick actions">
         <div className="flex flex-wrap gap-2">
           <Link
-            href="/city-model"
-            className="rounded-md bg-blue-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-blue-500"
+            href="/app/city-model"
+            className="rounded-md bg-primary px-3 py-1.5 text-xs font-medium text-white hover:bg-primary-hover"
           >
             Open City Model
           </Link>
           <Link
-            href="/analytics"
+            href="/app/analytics"
             className="rounded-md border border-border-subtle px-3 py-1.5 text-xs font-medium text-zinc-700 hover:bg-zinc-100 dark:text-zinc-300 dark:hover:bg-zinc-800"
           >
             View analytics
+          </Link>
+          <Link
+            href="/app/emergency-priority"
+            className="rounded-md border border-border-subtle px-3 py-1.5 text-xs font-medium text-zinc-700 hover:bg-zinc-100 dark:text-zinc-300 dark:hover:bg-zinc-800"
+          >
+            Emergency priority preview
           </Link>
         </div>
       </Panel>

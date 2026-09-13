@@ -6,18 +6,50 @@ export interface NavItem {
   status?: "planned";
 }
 
-export const NAV_ITEMS: NavItem[] = [
-  { href: "/", label: "Dashboard" },
-  { href: "/city-model", label: "City Model" },
-  { href: "/traffic", label: "Traffic", status: "planned" },
-  { href: "/infrastructure", label: "Infrastructure", status: "planned" },
-  { href: "/simulation", label: "Simulation", status: "planned" },
-  { href: "/analytics", label: "Analytics", status: "planned" },
-  { href: "/incidents", label: "Incidents", status: "planned" },
+export interface NavGroup {
+  label: string;
+  items: NavItem[];
+}
+
+export const NAV_GROUPS: NavGroup[] = [
   {
-    href: "/emergency-priority",
-    label: "Emergency Priority",
-    status: "planned",
+    label: "Overview",
+    items: [{ href: "/app", label: "Dashboard" }],
   },
-  { href: "/settings", label: "Settings", status: "planned" },
+  {
+    label: "City Operations",
+    items: [
+      { href: "/app/city-model", label: "City Model" },
+      { href: "/app/traffic", label: "Traffic", status: "planned" },
+      {
+        href: "/app/infrastructure",
+        label: "Infrastructure",
+        status: "planned",
+      },
+    ],
+  },
+  {
+    label: "Simulation",
+    items: [
+      { href: "/app/simulation", label: "Simulation", status: "planned" },
+      { href: "/app/analytics", label: "Analytics", status: "planned" },
+    ],
+  },
+  {
+    label: "Operations",
+    items: [
+      { href: "/app/incidents", label: "Incidents", status: "planned" },
+      {
+        href: "/app/emergency-priority",
+        label: "Emergency Priority",
+        status: "planned",
+      },
+    ],
+  },
+  {
+    label: "System",
+    items: [{ href: "/app/settings", label: "Settings", status: "planned" }],
+  },
 ];
+
+export const NAV_ITEMS: NavItem[] = NAV_GROUPS.flatMap((group) => group.items);

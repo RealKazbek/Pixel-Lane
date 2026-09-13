@@ -33,8 +33,8 @@ export function MobileNav() {
         >
           {NAV_ITEMS.map((item) => {
             const isActive =
-              item.href === "/"
-                ? pathname === "/"
+              item.href === "/app"
+                ? pathname === "/app"
                 : pathname.startsWith(item.href);
             return (
               <Link
