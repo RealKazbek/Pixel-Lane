@@ -1,5 +1,10 @@
 # Pixel Lane documentation
 
+New to the repository? Start with
+[Developer onboarding](developer-onboarding.md) — it's a guided path
+through everything below.
+
+- [Developer onboarding](developer-onboarding.md) — start here for Git access, setup, and collaboration rules.
 - [Architecture](architecture.md) — implemented boundaries and planned systems.
 - [Project structure](project-structure.md) — directory ownership.
 - [Development](development.md) — local workflow and Docker commands.
@@ -9,6 +14,10 @@
 - [Map and editor](map-editor.md) — MapLibre/Terra Draw data flow.
 - [OSM import](osm-import.md) — Almaty demo normalization.
 - [API](api.md) — API groups and OpenAPI source of truth.
+- [Internationalization](i18n.md) — kk/ru/en workflow and requirements.
 - [Testing](testing.md) — checks and database safety.
 - [Troubleshooting](troubleshooting.md) — common local issues.
 - [Roadmap](roadmap.md) — implemented, next, and future work.
+- [AI development workflow](ai-development.md) — how Claude/Codex/Gemini operate here.
+- [AI agent audit](ai-agent-audit.md) — verified cross-agent consistency findings.
+- [AI prompting standard](ai-prompting.md) — how to write a task prompt for this repo.
