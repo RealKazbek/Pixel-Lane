@@ -67,5 +67,14 @@
   "editor": {
     "minPointsError": "Дороге нужно минимум 2 точки.",
     "saveFailed": "Не удалось сохранить изменённую геометрию дороги."
+  },
+  "layers": {
+    "groupLabel": "Слои карты",
+    "roads": "Дороги",
+    "roadsTooltip": "Показать или скрыть дорожную сеть",
+    "intersections": "Перекрёстки",
+    "intersectionsTooltip": "Показать или скрыть перекрёстки",
+    "trafficLights": "Светофоры",
+    "trafficLightsTooltip": "Показать или скрыть светофоры"
   }
 }

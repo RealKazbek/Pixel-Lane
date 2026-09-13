@@ -20,7 +20,8 @@ import {
   buildTrafficLightLayer,
 } from "./pointLayers";
 import { buildRoadLayers } from "./roadLayers";
-import { LAYER_DRAW_ORDER, SOURCE_IDS } from "./layerIds";
+import { LAYER_DRAW_ORDER, LAYER_GROUPS, SOURCE_IDS } from "./layerIds";
+import type { LayerVisibility } from "../types";
 import type {
   IntersectionFeatureCollection,
   LabelFeatureCollection,
@@ -99,16 +100,33 @@ export function updatePixelLaneData(
   if (labelsSource instanceof GeoJSONSource) labelsSource.setData(data.labels);
 }
 
-/** Shows/hides every Pixel Lane layer at once -- a debugging aid for
- * comparing against the basemap alone (see the toolbar's "Overlay"
- * toggle). */
-export function setPixelLaneLayersVisible(
+/** Applies the master "Overlay" toggle (a debugging aid for comparing
+ * against the basemap alone) together with the per-entity-type toggles
+ * from `MapLayersPanel`. A layer is visible only when both the overlay
+ * master switch and its own group are on -- this is the single place
+ * that combines the two, so `PixelLaneMap` never has to reason about
+ * layer ids directly. */
+export function setLayerGroupVisibility(
   map: MapLibreMap,
-  visible: boolean,
+  overlayVisible: boolean,
+  layerVisibility: LayerVisibility,
 ): void {
-  const visibility = visible ? "visible" : "none";
+  for (const [group, layerIds] of Object.entries(LAYER_GROUPS)) {
+    const visible =
+      overlayVisible && layerVisibility[group as keyof LayerVisibility];
+    const visibility = visible ? "visible" : "none";
+    for (const layerId of layerIds) {
+      if (map.getLayer(layerId)) {
+        map.setLayoutProperty(layerId, "visibility", visibility);
+      }
+    }
+  }
+  // Anything not covered by a group (currently nothing, kept for safety
+  // if a future layer is added to LAYER_DRAW_ORDER before a group).
+  const groupedIds = new Set(Object.values(LAYER_GROUPS).flat() as string[]);
+  const visibility = overlayVisible ? "visible" : "none";
   for (const layerId of LAYER_DRAW_ORDER) {
-    if (map.getLayer(layerId)) {
+    if (!groupedIds.has(layerId) && map.getLayer(layerId)) {
       map.setLayoutProperty(layerId, "visibility", visibility);
     }
   }

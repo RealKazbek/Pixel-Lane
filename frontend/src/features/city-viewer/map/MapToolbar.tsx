@@ -1,5 +1,7 @@
 import { useTranslations } from "next-intl";
-import type { MapMode } from "./types";
+import { MapLayersToggle } from "./MapLayersToggle";
+import type { LayerGroupId } from "./layers/layerIds";
+import type { LayerVisibility, MapMode } from "./types";
 import type { EditorStatus } from "./editor/useGeometryEditor";
 
 interface MapToolbarProps {
@@ -8,6 +10,8 @@ interface MapToolbarProps {
   basemapConfigured: boolean;
   overlayVisible: boolean;
   onToggleOverlay: () => void;
+  layerVisibility: LayerVisibility;
+  onToggleLayer: (layer: LayerGroupId) => void;
   mode: MapMode;
   onSetMode: (mode: MapMode) => void;
   canEditSelection: boolean;
@@ -31,6 +35,8 @@ export function MapToolbar({
   basemapConfigured,
   overlayVisible,
   onToggleOverlay,
+  layerVisibility,
+  onToggleLayer,
   mode,
   onSetMode,
   canEditSelection,
@@ -65,6 +71,13 @@ export function MapToolbar({
       >
         {overlayVisible ? t("overlayOn") : t("overlayOff")}
       </button>
+
+      <div className="mx-1 h-4 w-px bg-border-subtle" />
+
+      <MapLayersToggle
+        layerVisibility={layerVisibility}
+        onToggleLayer={onToggleLayer}
+      />
 
       <div className="mx-1 h-4 w-px bg-border-subtle" />
 

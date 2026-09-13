@@ -31,3 +31,21 @@ export const LAYER_DRAW_ORDER: readonly string[] = [
   LAYER_IDS.trafficLights,
   LAYER_IDS.roadLabels,
 ];
+
+/** Groups the layer stack into the user-facing toggles exposed by
+ * `MapLayersPanel` -- one entry per independently-hideable entity type
+ * (see setupLayers.ts's `setLayerGroupVisibility`). Selection/casing stay
+ * with "roads" since they only ever render alongside road geometry. */
+export const LAYER_GROUPS = {
+  roads: [
+    LAYER_IDS.roadCasing,
+    LAYER_IDS.roadSurface,
+    LAYER_IDS.laneMarkings,
+    LAYER_IDS.selection,
+    LAYER_IDS.roadLabels,
+  ],
+  intersections: [LAYER_IDS.intersections, LAYER_IDS.intersectionDetails],
+  trafficLights: [LAYER_IDS.trafficLights],
+} as const;
+
+export type LayerGroupId = keyof typeof LAYER_GROUPS;

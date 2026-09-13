@@ -4,3 +4,17 @@ export interface MapSelection {
   type: "road" | "intersection";
   id: string;
 }
+
+/** Per-entity-type layer toggles shown in `MapLayersPanel` (see
+ * `map/layers/layerIds.ts`'s `LAYER_GROUPS`). */
+export interface LayerVisibility {
+  roads: boolean;
+  intersections: boolean;
+  trafficLights: boolean;
+}
+
+export const DEFAULT_LAYER_VISIBILITY: LayerVisibility = {
+  roads: true,
+  intersections: true,
+  trafficLights: true,
+};

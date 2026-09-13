@@ -67,5 +67,14 @@
   "editor": {
     "minPointsError": "Жол үшін кемінде 2 нүкте қажет.",
     "saveFailed": "Өзгертілген жол геометриясын сақтау мүмкін болмады."
+  },
+  "layers": {
+    "groupLabel": "Карта қабаттары",
+    "roads": "Жолдар",
+    "roadsTooltip": "Жол желісін көрсету немесе жасыру",
+    "intersections": "Қиылыстар",
+    "intersectionsTooltip": "Қиылыстарды көрсету немесе жасыру",
+    "trafficLights": "Бағдаршамдар",
+    "trafficLightsTooltip": "Бағдаршамдарды көрсету немесе жасыру"
   }
 }

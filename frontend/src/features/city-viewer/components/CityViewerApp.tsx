@@ -15,7 +15,12 @@ import { buildAnalysisLookup } from "../lib/analysis-lookup";
 import { mapBasemapEnabledByDefault, mapStyleUrl } from "@/lib/config";
 import type { EditorStatus } from "../map/editor/useGeometryEditor";
 import type { ApplyRoadEditError } from "../map/editor/applyRoadEdit";
-import type { MapMode, MapSelection } from "../map/types";
+import {
+  DEFAULT_LAYER_VISIBILITY,
+  type LayerVisibility,
+  type MapMode,
+  type MapSelection,
+} from "../map/types";
 import type { Bottleneck } from "../types/traffic-analysis";
 
 export function CityViewerApp() {
@@ -42,6 +47,9 @@ export function CityViewerApp() {
     mapBasemapEnabledByDefault,
   );
   const [overlayVisible, setOverlayVisible] = useState(true);
+  const [layerVisibility, setLayerVisibility] = useState<LayerVisibility>(
+    DEFAULT_LAYER_VISIBILITY,
+  );
   const [mode, setMode] = useState<MapMode>("view");
   const [editorAction, setEditorAction] = useState<EditorAction | null>(null);
   const [editorStatus, setEditorStatus] = useState<EditorStatus>("idle");
@@ -173,6 +181,7 @@ export function CityViewerApp() {
               basemapEnabled={basemapEnabled}
               mapStyleUrl={mapStyleUrl}
               overlayVisible={overlayVisible}
+              layerVisibility={layerVisibility}
               fitSignal={fitSignal}
               mode={mode}
               editorAction={editorAction}
@@ -187,6 +196,13 @@ export function CityViewerApp() {
                 basemapConfigured={mapStyleUrl !== null}
                 overlayVisible={overlayVisible}
                 onToggleOverlay={() => setOverlayVisible((v) => !v)}
+                layerVisibility={layerVisibility}
+                onToggleLayer={(layer) =>
+                  setLayerVisibility((prev) => ({
+                    ...prev,
+                    [layer]: !prev[layer],
+                  }))
+                }
                 mode={mode}
                 onSetMode={setMode}
                 canEditSelection={selected?.type === "road"}

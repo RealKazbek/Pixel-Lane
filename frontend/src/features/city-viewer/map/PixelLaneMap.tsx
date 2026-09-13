@@ -29,7 +29,7 @@ import {
 } from "./adapters/cityModelToGeoJson";
 import {
   addPixelLaneSourcesAndLayers,
-  setPixelLaneLayersVisible,
+  setLayerGroupVisibility,
   setSelectedFeature,
   updatePixelLaneData,
   type PixelLaneGeoJson,
@@ -37,7 +37,7 @@ import {
 import { SOURCE_IDS, LAYER_IDS } from "./layers/layerIds";
 import { resolveMapStyle } from "./styles/mapStyle";
 import type { City } from "../types/city";
-import type { MapMode, MapSelection } from "./types";
+import type { LayerVisibility, MapMode, MapSelection } from "./types";
 
 export interface EditorAction {
   type: "apply" | "cancel";
@@ -51,6 +51,7 @@ interface PixelLaneMapProps {
   basemapEnabled: boolean;
   mapStyleUrl: string | null;
   overlayVisible: boolean;
+  layerVisibility: LayerVisibility;
   /** Bumped by the parent to request a re-fit (e.g. a "Fit to view"
    * button, or switching to a new city). */
   fitSignal: number;
@@ -70,6 +71,7 @@ export function PixelLaneMap({
   basemapEnabled,
   mapStyleUrl,
   overlayVisible,
+  layerVisibility,
   fitSignal,
   mode,
   editorAction,
@@ -130,10 +132,16 @@ export function PixelLaneMap({
   const ensurePixelLaneLayers = useCallback(
     (map: MapLibreMap) => {
       addPixelLaneSourcesAndLayers(map, geoJson, referenceLatitude);
-      setPixelLaneLayersVisible(map, overlayVisible);
+      setLayerGroupVisibility(map, overlayVisible, layerVisibility);
       applyCurrentSelection(map);
     },
-    [applyCurrentSelection, geoJson, overlayVisible, referenceLatitude],
+    [
+      applyCurrentSelection,
+      geoJson,
+      overlayVisible,
+      layerVisibility,
+      referenceLatitude,
+    ],
   );
 
   // Initial layer setup once the map has loaded its (possibly empty) style.
@@ -150,8 +158,8 @@ export function PixelLaneMap({
   useEffect(() => {
     const map = mapRef.current;
     if (!map || !isLoaded) return;
-    setPixelLaneLayersVisible(map, overlayVisible);
-  }, [overlayVisible, isLoaded, mapRef]);
+    setLayerGroupVisibility(map, overlayVisible, layerVisibility);
+  }, [overlayVisible, layerVisibility, isLoaded, mapRef]);
 
   // Keep rendered data current without re-adding sources/layers.
   useEffect(() => {
