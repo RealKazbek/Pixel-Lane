@@ -20,6 +20,9 @@ Run this for UI/component changes.
 - No duplicate logic copy-pasted across components.
 - Props/state kept minimal and clearly named.
 - For anything visual/UX-facing, also run `design-review`.
+- **i18n**: no hardcoded user-facing strings in JSX (see AGENTS.md § 20).
+  New/changed copy has a translation key in `frontend/messages/{kk,ru,en}/`
+  for all three locales, and `npm run check:i18n` passes.
 
 ## Output
 

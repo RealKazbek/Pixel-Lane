@@ -17,6 +17,10 @@ This is the shared development policy for Pixel Lane.
   (`docs/architecture.md`, `docs/ai-development.md`) — not both up front.
 - Use the appropriate local skill from `.agents/skills/` for the task type
   (see AGENTS.md § Skill routing).
+- **Mandatory:** Pixel Lane is trilingual (`kk`/`ru`/`en`, see AGENTS.md
+  § 20 and `docs/i18n.md`). Any user-facing change must add/keep
+  translations for all three locales in the same change and pass
+  `npm run check:i18n` — treat a missing locale like a failing test.
 - Do not repeatedly re-read unchanged files during the same task.
 - Inspect `git status` before editing; respect other agents' in-progress or
   uncommitted work.

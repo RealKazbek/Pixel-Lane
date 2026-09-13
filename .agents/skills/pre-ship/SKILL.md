@@ -14,6 +14,9 @@ Run before declaring any non-trivial task complete.
 - **Typecheck**: run the project's type checker if configured.
 - **Tests**: run the smallest relevant set, then broader if the change
   warrants it (see `testing` skill).
+- **i18n** (any user-facing frontend change): `npm run check:i18n` passes,
+  all 3 locales (`kk`/`ru`/`en`) have matching translation keys, and no
+  hardcoded user-facing strings were introduced (see AGENTS.md § 20).
 - **Build**: run the project build if one exists.
 - **Security review**: run `security-review` if the change is
   security-sensitive.

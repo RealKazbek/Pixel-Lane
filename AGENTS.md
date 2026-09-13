@@ -568,3 +568,68 @@ of subsystems and the dependency flow between them (frontend → backend API
 When a new large subsystem is added, update that map — don't let it drift
 from reality (see § 17). Don't add a future subsystem to the map as if it
 already exists; use a separate "Planned" section for those.
+
+## 20. Internationalization — Mandatory
+
+Pixel Lane is a **trilingual product**. Every user-facing feature must
+support:
+
+- Kazakh (`kk`) — default locale
+- Russian (`ru`)
+- English (`en`)
+
+This is a permanent architectural requirement, not a one-off feature —
+see `docs/i18n.md` for the full workflow (routing, translation file
+structure, how to add a key/page, `check:i18n`). The i18n system is
+`next-intl`, with locale-prefixed routing (`/kk/...`, `/ru/...`,
+`/en/...`) and namespaced JSON files under `frontend/messages/<locale>/`.
+
+**Agents MUST NOT:**
+
+- hardcode user-facing strings directly in components;
+- implement new pages in only one language;
+- add English-only buttons, tooltips, empty states, form errors, dialogs,
+  notifications, metadata, or accessibility labels;
+- introduce backend error messages that are directly shown to users
+  without localization;
+- add a new translation key to only one locale;
+- merge a user-facing feature with missing translations.
+
+**Agents MUST:**
+
+- use the project i18n system (`next-intl`, `frontend/src/i18n/*`,
+  `frontend/messages/`) — never an improvised ad hoc string table;
+- add translation keys for all 3 locales (`kk`, `ru`, `en`) in the same
+  change;
+- preserve translations when refactoring;
+- check responsive layouts across languages (Russian and Kazakh strings
+  often run longer than English — prefer flexible layout over fixed
+  widths or shrinking text to fit);
+- localize metadata (title/description, and `hreflang` alternates on
+  public routes) when adding a public route;
+- localize validation/error messages;
+- keep terminology consistent with the project glossary in
+  `docs/i18n.md` / `frontend/messages/*/cityModel.json`'s domain terms;
+- run `npm run check:i18n` (from `frontend/`) before completing work.
+
+**Definition of Done** for any user-facing change includes complete `kk`,
+`ru`, and `en` translations — not "English now, translations later."
+
+**Code review rule.** A user-facing change is incomplete — treat it like a
+failing test, not a nice-to-have — if any of the following is true:
+
+- one locale is missing a translation;
+- untranslated (English, or any single language) text is visible in the
+  UI where the other locales show something different;
+- a translation key exists in one locale's JSON file but not another's
+  (this is exactly what `npm run check:i18n` catches);
+- English text is hardcoded directly in JSX instead of a translation key;
+- metadata (title/description/OG) is only available in one language on a
+  public route;
+- accessibility labels (`aria-label`, `alt`, etc.) are not localized.
+
+This section is canonical policy for **every** agent working on this
+repository — Claude Code, Codex, Gemini, or otherwise. `AGENTS.md` is the
+canonical instruction set for Codex and any other agent that reads it
+directly; `CLAUDE.md` and `GEMINI.md` are short entry points that point
+back here rather than duplicating this section.
