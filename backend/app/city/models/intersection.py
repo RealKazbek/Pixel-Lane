@@ -1,6 +1,7 @@
 import uuid
 from typing import TYPE_CHECKING
 
+from geoalchemy2 import Geometry, WKBElement
 from sqlalchemy import Float, ForeignKey, String
 from sqlalchemy.dialects.postgresql import UUID as PGUUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
@@ -24,6 +25,14 @@ class Intersection(Base):
     )
     position_x: Mapped[float] = mapped_column(Float, nullable=False)
     position_y: Mapped[float] = mapped_column(Float, nullable=False)
+    # PostGIS mirror of position_x/position_y, WGS84 (SRID 4326), used only
+    # for spatial (bbox) queries -- see docs/city-model.md. NULL for
+    # LOCAL_CARTESIAN cities (see Road.geom's docstring for the same
+    # reasoning). `spatial_index=False`: the GiST index is created
+    # explicitly by the Alembic migration that adds this column.
+    geom: Mapped[WKBElement | None] = mapped_column(
+        Geometry("POINT", srid=4326, spatial_index=False), nullable=True
+    )
     control_type: Mapped[str] = mapped_column(String(30), nullable=False)
 
     city: Mapped["City"] = relationship(back_populates="intersections")

@@ -1,6 +1,11 @@
 services:
   postgres:
-    image: postgres:16-alpine
+    # PostGIS-enabled image (built on the official postgres:16 image) --
+    # plain postgres:16-alpine does not ship the PostGIS shared libraries,
+    # so `CREATE EXTENSION postgis` (see the Alembic migration that adds
+    # it) would fail against it. See docs/city-model.md's spatial schema
+    # section for why PostGIS was introduced.
+    image: postgis/postgis:16-3.4
     restart: unless-stopped
     environment:
       POSTGRES_DB: ${POSTGRES_DB:-pixel_lane}

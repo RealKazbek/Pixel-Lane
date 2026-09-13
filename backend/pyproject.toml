@@ -11,6 +11,11 @@ dependencies = [
   "sqlalchemy>=2.0,<3.0",
   "alembic>=1.13,<2.0",
   "psycopg[binary]>=3.2,<4.0",
+  # PostGIS/SQLAlchemy integration for bbox-scoped spatial queries (see
+  # docs/city-model.md's spatial schema section). A core runtime
+  # dependency, not the OSM importer's optional extra: viewport-scoped
+  # City Model reads need this on every request, not just at import time.
+  "geoalchemy2>=0.15,<1.0",
   # Framework-independent Traffic Engine, a sibling package in this
   # monorepo (see ../simulation). The backend depends on it; it must never
   # depend back on the backend (see docs/architecture.md).

@@ -1,6 +1,7 @@
 import uuid
 from typing import TYPE_CHECKING, Any
 
+from geoalchemy2 import Geometry, WKBElement
 from sqlalchemy import Float, ForeignKey, String
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.dialects.postgresql import UUID as PGUUID
@@ -29,6 +30,19 @@ class Road(Base):
     # exception here (see docs/architecture.md). Revisit if/when PostGIS
     # geometry columns are introduced.
     geometry: Mapped[list[dict[str, Any]]] = mapped_column(JSONB, nullable=False)
+    # PostGIS mirror of `geometry` above, in WGS84 (SRID 4326), used only
+    # for spatial (bbox) queries -- see docs/city-model.md's spatial
+    # schema section. NULL for LOCAL_CARTESIAN cities, whose coordinates
+    # aren't real geographic positions and so aren't spatially queryable.
+    # `geometry` (JSONB) remains the source of truth for ordered points
+    # and non-WGS84 cities; this column is deliberately kept in sync with
+    # it rather than replacing it in this task.
+    # `spatial_index=False`: the GiST index is created explicitly by the
+    # Alembic migration that adds this column, not by GeoAlchemy2's DDL
+    # event hook, so there is exactly one place that owns it.
+    geom: Mapped[WKBElement | None] = mapped_column(
+        Geometry("LINESTRING", srid=4326, spatial_index=False), nullable=True
+    )
     default_speed_limit_kmh: Mapped[float] = mapped_column(Float, nullable=False)
 
     city: Mapped["City"] = relationship(back_populates="roads")

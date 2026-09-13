@@ -7,6 +7,10 @@ is not re-checked here, only translated into ORM relationships.
 
 from uuid import UUID
 
+from geoalchemy2 import WKTElement
+
+from app.city.domain.enums import CoordinateSystem
+from app.city.domain.geometry import WGS84_SRID, point_to_wkt, polyline_to_wkt
 from app.city.models.city import City
 from app.city.models.intersection import Intersection
 from app.city.models.lane import Lane
@@ -19,6 +23,12 @@ from app.city.schemas.city import CityCreate
 
 
 def build_city(payload: CityCreate) -> City:
+    # Only WGS84 cities have coordinates that are real geographic
+    # positions -- LOCAL_CARTESIAN coordinates (e.g. the four-way-
+    # intersection example) would produce nonsensical "geometry" if
+    # stamped with SRID 4326, so `geom` stays NULL for them (see
+    # Road.geom's/Intersection.geom's docstrings).
+    is_wgs84 = payload.coordinate_system == CoordinateSystem.WGS84
     lanes_by_id: dict[UUID, Lane] = {}
     roads_by_id: dict[UUID, Road] = {}
     intersections_by_id: dict[UUID, Intersection] = {}
@@ -41,6 +51,11 @@ def build_city(payload: CityCreate) -> City:
             name=road_data.name,
             road_type=road_data.road_type.value,
             geometry=[p.model_dump() for p in road_data.geometry.points],
+            geom=(
+                WKTElement(polyline_to_wkt(road_data.geometry), srid=WGS84_SRID)
+                if is_wgs84
+                else None
+            ),
             default_speed_limit_kmh=road_data.default_speed_limit_kmh,
             lanes=lanes,
         )
@@ -55,6 +70,11 @@ def build_city(payload: CityCreate) -> City:
             id=intersection_data.id,
             position_x=intersection_data.position.x,
             position_y=intersection_data.position.y,
+            geom=(
+                WKTElement(point_to_wkt(intersection_data.position), srid=WGS84_SRID)
+                if is_wgs84
+                else None
+            ),
             control_type=intersection_data.control_type.value,
             connected_roads=[roads_by_id[rid] for rid in intersection_data.connected_road_ids],
             connected_lanes=[lanes_by_id[lid] for lid in intersection_data.connected_lane_ids],

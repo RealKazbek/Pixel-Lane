@@ -19,6 +19,12 @@ MAX_POLYLINE_POINTS = 2000
 # LOCAL_CARTESIAN coordinates, which we simply allow a generous range for.
 _COORDINATE_BOUND = 1_000_000.0
 
+# SRID for WGS84 geographic coordinates -- the only coordinate_system for
+# which `Road.geom`/`Intersection.geom` are populated (see their model
+# docstrings). Shared here so every module that builds a WKTElement uses
+# the same literal.
+WGS84_SRID = 4326
+
 
 class Point(BaseModel):
     """A single 2D coordinate."""
@@ -38,3 +44,18 @@ class Polyline(BaseModel):
         min_length=MIN_POLYLINE_POINTS,
         max_length=MAX_POLYLINE_POINTS,
     )
+
+
+def point_to_wkt(point: Point) -> str:
+    """Plain WKT text for a `Point` -- `x`/`y` map to WKT's `x y` order,
+    which is `lon lat` for WGS84 coordinates (see `to_wgs84_geometry`
+    below). No PostGIS/GeoAlchemy2 import here: WKT is just text, so this
+    stays a pure domain function."""
+    return f"POINT({point.x} {point.y})"
+
+
+def polyline_to_wkt(polyline: Polyline) -> str:
+    """Plain WKT text for a `Polyline` (`LINESTRING`), same axis order as
+    `point_to_wkt`."""
+    coords = ", ".join(f"{p.x} {p.y}" for p in polyline.points)
+    return f"LINESTRING({coords})"

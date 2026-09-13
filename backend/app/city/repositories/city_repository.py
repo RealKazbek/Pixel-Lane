@@ -7,10 +7,11 @@ strategy.
 
 from uuid import UUID
 
-from sqlalchemy import select
+from geoalchemy2 import WKTElement
+from sqlalchemy import exists, select
 from sqlalchemy.orm import Session, selectinload
 
-from app.city.domain.geometry import Polyline
+from app.city.domain.geometry import WGS84_SRID, Polyline, polyline_to_wkt
 from app.city.models.city import City
 from app.city.models.intersection import Intersection
 from app.city.models.road import Road
@@ -53,6 +54,14 @@ def create_city(db: Session, payload: CityCreate) -> City:
     return loaded
 
 
+def city_exists(db: Session, city_id: UUID) -> bool:
+    """Cheap existence check for the bbox endpoints -- avoids loading
+    the whole city (all roads/lanes/intersections) just to 404 or
+    proceed with a spatially-scoped query."""
+    stmt = select(exists().where(City.id == city_id))
+    return bool(db.execute(stmt).scalar())
+
+
 def get_city(db: Session, city_id: UUID) -> City | None:
     stmt = select(City).where(City.id == city_id).options(*_CITY_LOAD_OPTIONS)
     return db.execute(stmt).unique().scalar_one_or_none()
@@ -77,6 +86,14 @@ def update_road_geometry(
         return None
 
     road.geometry = [point.model_dump() for point in geometry.points]
+    # Keep the spatial mirror in sync -- see Road.geom's docstring. Only
+    # WGS84 roads have one to begin with (None for LOCAL_CARTESIAN roads,
+    # which have no `geom` to update).
+    if road.geom is not None:
+        # GeoAlchemy2's Geometry-typed column has a loose mypy signature
+        # (SQLCoreOperations | WKBElement | None); assigning a WKTElement
+        # for the ORM to write on flush is the documented usage.
+        road.geom = WKTElement(polyline_to_wkt(geometry), srid=WGS84_SRID)  # type: ignore[assignment]
     try:
         db.commit()
     except Exception:
