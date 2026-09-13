@@ -1,0 +1,33 @@
+{
+  "heading": "Басқару тақтасы",
+  "description": "Pixel Lane смарт-қала платформасының операциялық шолуы.",
+  "metrics": {
+    "cityModel": {
+      "label": "Қала моделі",
+      "value": "—",
+      "hint": "Қаланы жүктеп, жол/қиылыс санын көру үшін «Қала моделі» бөлімін ашыңыз."
+    },
+    "simulation": {
+      "label": "Симуляция",
+      "value": "Басталмаған",
+      "hint": "SUMO интеграциясы әлі енгізілмеген."
+    },
+    "incidents": {
+      "label": "Белсенді оқиғалар",
+      "value": "—",
+      "hint": "Оқиғаларды анықтау әлі енгізілмеген."
+    }
+  },
+  "systemStatus": {
+    "heading": "Жүйе күйі",
+    "backendApi": "Backend API",
+    "simulationEngine": "Симуляция қозғалтқышы",
+    "incidentFeed": "Оқиғалар ағыны"
+  },
+  "quickActions": {
+    "heading": "Жылдам әрекеттер",
+    "openCityModel": "Қала моделін ашу",
+    "viewAnalytics": "Аналитиканы көру",
+    "emergencyPreview": "Арнайы көлік басымдығының алдын ала көрінісі"
+  }
+}

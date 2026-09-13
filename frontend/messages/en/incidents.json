@@ -1,0 +1,13 @@
+{
+  "heading": "Incidents",
+  "description": "Incident detection and reporting is not implemented yet — it needs a live traffic feed or manual reporting workflow feeding a backend incidents API. The layout below previews the intended structure.",
+  "feedHeading": "Incident feed",
+  "emptyFeed": "No incidents detected — live monitoring is not connected.",
+  "types": {
+    "accident": "Accident",
+    "roadClosure": "Road closure",
+    "congestion": "Congestion",
+    "signalFailure": "Signal failure",
+    "roadworks": "Roadworks"
+  }
+}

@@ -1,0 +1,33 @@
+{
+  "heading": "Dashboard",
+  "description": "Operational overview of the Pixel Lane smart-city platform.",
+  "metrics": {
+    "cityModel": {
+      "label": "City Model",
+      "value": "—",
+      "hint": "Open City Model to load a city and see live road/intersection counts."
+    },
+    "simulation": {
+      "label": "Simulation",
+      "value": "Not started",
+      "hint": "SUMO integration is not implemented yet."
+    },
+    "incidents": {
+      "label": "Active incidents",
+      "value": "—",
+      "hint": "Incident detection is not implemented yet."
+    }
+  },
+  "systemStatus": {
+    "heading": "System status",
+    "backendApi": "Backend API",
+    "simulationEngine": "Simulation engine",
+    "incidentFeed": "Incident feed"
+  },
+  "quickActions": {
+    "heading": "Quick actions",
+    "openCityModel": "Open City Model",
+    "viewAnalytics": "View analytics",
+    "emergencyPreview": "Emergency priority preview"
+  }
+}

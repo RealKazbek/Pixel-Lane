@@ -1,0 +1,24 @@
+{
+  "heading": "Emergency Priority",
+  "description": "Future signal-preemption workflow for ambulances, fire trucks, and police — routing an emergency vehicle and temporarily prioritizing the traffic lights along its path. Not implemented; no control logic runs from this screen.",
+  "workflowHeading": "Planned workflow",
+  "workflow": {
+    "request": "Emergency vehicle request",
+    "routeAnalysis": "Route analysis",
+    "affectedIntersections": "Affected intersections",
+    "signalPriority": "Signal priority",
+    "routeNormalization": "Route normalization"
+  },
+  "sample": {
+    "heading": "Sample request",
+    "previewBadge": "Preview — not connected to backend",
+    "vehicle": "Vehicle",
+    "vehicleValue": "Ambulance",
+    "route": "Route",
+    "routeValue": "A → B",
+    "status": "Status",
+    "statusValue": "Priority requested",
+    "lightsAffected": "Traffic lights affected",
+    "note": "Emergency vehicle priority is not implemented. This screen shows sample data only, to illustrate the intended layout for future integration."
+  }
+}

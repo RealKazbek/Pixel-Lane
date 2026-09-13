@@ -1,0 +1,8 @@
+{
+  "heading": "Analytics",
+  "emptyState": {
+    "title": "No analytics data yet",
+    "description": "Historical metrics (average speed, congestion trend, travel time, throughput) require running traffic analysis on a City Model first. Open City Model, select a city, and run traffic analysis to see current-run metrics there.",
+    "action": "Open City Model"
+  }
+}

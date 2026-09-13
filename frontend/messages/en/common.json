@@ -1,0 +1,61 @@
+{
+  "siteTitle": "Pixel Lane — Intelligent Urban Traffic Management",
+  "siteDescription": "Pixel Lane models city road networks, analyzes traffic, and prepares infrastructure for simulation-driven urban mobility decisions.",
+  "languageSwitcherLabel": "Choose language",
+  "nav": {
+    "dashboard": "Dashboard",
+    "cityModel": "City Model",
+    "traffic": "Traffic",
+    "infrastructure": "Infrastructure",
+    "simulation": "Simulation",
+    "analytics": "Analytics",
+    "incidents": "Incidents",
+    "emergencyPriority": "Emergency Priority",
+    "settings": "Settings",
+    "groupOverview": "Overview",
+    "groupCityOperations": "City Operations",
+    "groupSimulation": "Simulation",
+    "groupOperations": "Operations",
+    "groupSystem": "System"
+  },
+  "featureStatus": {
+    "available": "Available",
+    "inDevelopment": "In development",
+    "planned": "Planned"
+  },
+  "status": {
+    "checking": "Checking…",
+    "reachable": "Reachable",
+    "unreachable": "Unreachable",
+    "backendApi": "Backend API: {status}",
+    "notConnected": "Not connected",
+    "notStarted": "Not started",
+    "noLiveFeed": "No live feed"
+  },
+  "actions": {
+    "openMenu": "Open menu",
+    "closeMenu": "Close menu",
+    "openNavigationMenu": "Open navigation menu",
+    "closeNavigationMenu": "Close navigation menu",
+    "signIn": "Sign In",
+    "openPlatform": "Open Platform",
+    "exitToWebsite": "Exit to website",
+    "guestSession": "Guest session",
+    "signInNotAvailable": "Sign-in not yet available",
+    "notImplementedYet": "Not implemented yet"
+  },
+  "footer": {
+    "productHeading": "Product",
+    "companyHeading": "Company",
+    "legalHeading": "Legal",
+    "platform": "Platform",
+    "features": "Features",
+    "cityModel": "City Model",
+    "about": "About",
+    "contact": "Contact",
+    "privacy": "Privacy Policy",
+    "terms": "Terms of Service",
+    "tagline": "A developing smart-city platform for modeling road networks, analyzing traffic, and preparing infrastructure for simulation-driven urban mobility decisions.",
+    "copyright": "© {year} Pixel Lane. An early-stage smart-city traffic-management project."
+  }
+}

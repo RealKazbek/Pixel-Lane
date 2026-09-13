@@ -1,0 +1,30 @@
+{
+  "heading": "Traffic Monitoring",
+  "description": "Live network monitoring is not implemented yet. Stored-city traffic analysis (bottlenecks, routed/unrouted demand) is available today on the <l>City Model</l> screen.",
+  "liveMonitoring": {
+    "heading": "Live network monitoring",
+    "requires": "Requires: {needs}",
+    "metrics": {
+      "trafficFlow": {
+        "label": "Traffic flow",
+        "needs": "Live vehicle counting (cameras/sensors)"
+      },
+      "signalState": {
+        "label": "Signal state",
+        "needs": "Traffic-light controller integration"
+      },
+      "congestion": {
+        "label": "Congestion",
+        "needs": "Real-time speed/volume feed"
+      },
+      "activeVehicles": {
+        "label": "Active vehicles",
+        "needs": "Vehicle detection pipeline"
+      }
+    }
+  },
+  "severityLegend": {
+    "heading": "Traffic severity legend",
+    "description": "The severity scale used across analysis, bottlenecks, and (in the future) live monitoring."
+  }
+}

@@ -1,0 +1,71 @@
+{
+  "severity": {
+    "low": "Төмен",
+    "moderate": "Орташа",
+    "high": "Жоғары",
+    "critical": "Сыни"
+  },
+  "sidebar": {
+    "citiesHeading": "Қалалар",
+    "loadingCities": "Қалалар жүктелуде…",
+    "backendUnavailable": "Backend қолжетімсіз.",
+    "noCities": "Әзірге қала жоқ.",
+    "noCitiesDescription": "API арқылы қала құрыңыз немесе үлгі деректерді жүктеңіз.",
+    "analysisHeading": "Талдау",
+    "runAnalysis": "Көлік талдауын іске қосу",
+    "runningAnalysis": "Орындалуда…",
+    "analysisFailed": "Көлік талдауы орындалмады.",
+    "demandSummary": "{routed} бағытталды · {unrouted} бағытталмады",
+    "bottlenecksHeading": "Тарылу орындары",
+    "noBottlenecks": "Тарылу орындары анықталмады.",
+    "warningsCount": "Ескертулер: {count}"
+  },
+  "map": {
+    "loadingCity": "Қала жүктелуде…",
+    "cityFailedToLoad": "Қаланы жүктеу мүмкін болмады.",
+    "selectCityPrompt": "Жол желісін көру үшін бүйір панельден қаланы таңдаңыз."
+  },
+  "details": {
+    "clickToSeeDetails": "Мұнда толығырақ ақпаратты көру үшін картадан жол немесе қиылысты басыңыз.",
+    "intersectionHeading": "Қиылыс",
+    "id": "ID",
+    "control": "Басқару",
+    "connectedRoads": "Байланысты жолдар",
+    "connectedLanes": "Байланысты жолақтар",
+    "trafficLight": "Бағдаршам",
+    "yes": "Иә",
+    "no": "Жоқ",
+    "inboundVolume": "Кіріс ағыны",
+    "inboundCapacity": "Кіріс өткізу қабілеті",
+    "vcRatio": "V/C",
+    "congestion": "Кептеліс",
+    "runAnalysisHint": "Ағын мен кептелісті көру үшін көлік талдауын іске қосыңыз.",
+    "roadType": "Түрі",
+    "length": "Ұзындығы",
+    "laneCount": "Жолақ саны",
+    "speedLimit": "Жылдамдық шегі",
+    "trafficVolume": "Көлік ағыны",
+    "capacity": "Өткізу қабілеті"
+  },
+  "toolbar": {
+    "basemapOn": "Негізгі карта қосулы",
+    "basemapOff": "Негізгі карта өшірулі",
+    "basemapTooltip": "Анықтамалық негізгі картаны ауыстыру",
+    "basemapUnconfiguredTooltip": "Негізгі карта стилі бапталмаған",
+    "overlayOn": "Қабат қосулы",
+    "overlayOff": "Қабат өшірулі",
+    "overlayTooltip": "Pixel Lane жол желісі қабатын ауыстыру (жөндеу үшін)",
+    "select": "Таңдау",
+    "editGeometry": "Геометрияны өңдеу",
+    "editGeometryTooltip": "Таңдалған жолдың геометриясын өңдеу",
+    "editGeometryDisabledTooltip": "Алдымен жолды таңдаңыз",
+    "apply": "Қолдану",
+    "applying": "Сақталуда…",
+    "cancel": "Бас тарту",
+    "fitToView": "Экранға сыйдыру"
+  },
+  "editor": {
+    "minPointsError": "Жол үшін кемінде 2 нүкте қажет.",
+    "saveFailed": "Өзгертілген жол геометриясын сақтау мүмкін болмады."
+  }
+}

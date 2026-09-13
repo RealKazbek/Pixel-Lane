@@ -1,0 +1,71 @@
+{
+  "severity": {
+    "low": "Низкая",
+    "moderate": "Средняя",
+    "high": "Высокая",
+    "critical": "Критическая"
+  },
+  "sidebar": {
+    "citiesHeading": "Города",
+    "loadingCities": "Загрузка городов…",
+    "backendUnavailable": "Бэкенд недоступен.",
+    "noCities": "Пока нет городов.",
+    "noCitiesDescription": "Создайте город через API или загрузите тестовый набор данных.",
+    "analysisHeading": "Анализ",
+    "runAnalysis": "Запустить анализ трафика",
+    "runningAnalysis": "Выполняется…",
+    "analysisFailed": "Анализ трафика не выполнен.",
+    "demandSummary": "{routed} маршрутизировано · {unrouted} без маршрута",
+    "bottlenecksHeading": "Узкие места",
+    "noBottlenecks": "Узкие места не обнаружены.",
+    "warningsCount": "Предупреждений: {count}"
+  },
+  "map": {
+    "loadingCity": "Загрузка города…",
+    "cityFailedToLoad": "Не удалось загрузить город.",
+    "selectCityPrompt": "Выберите город в боковой панели, чтобы увидеть его дорожную сеть."
+  },
+  "details": {
+    "clickToSeeDetails": "Нажмите на дорогу или перекрёсток на карте, чтобы увидеть детали здесь.",
+    "intersectionHeading": "Перекрёсток",
+    "id": "ID",
+    "control": "Управление",
+    "connectedRoads": "Связанные дороги",
+    "connectedLanes": "Связанные полосы",
+    "trafficLight": "Светофор",
+    "yes": "Да",
+    "no": "Нет",
+    "inboundVolume": "Входящий поток",
+    "inboundCapacity": "Входящая пропускная способность",
+    "vcRatio": "V/C",
+    "congestion": "Загруженность",
+    "runAnalysisHint": "Запустите анализ трафика, чтобы увидеть поток и загруженность.",
+    "roadType": "Тип",
+    "length": "Длина",
+    "laneCount": "Количество полос",
+    "speedLimit": "Ограничение скорости",
+    "trafficVolume": "Транспортный поток",
+    "capacity": "Пропускная способность"
+  },
+  "toolbar": {
+    "basemapOn": "Подложка вкл.",
+    "basemapOff": "Подложка выкл.",
+    "basemapTooltip": "Переключить справочную подложку карты",
+    "basemapUnconfiguredTooltip": "Стиль подложки не настроен",
+    "overlayOn": "Слой вкл.",
+    "overlayOff": "Слой выкл.",
+    "overlayTooltip": "Переключить оверлей дорожной сети Pixel Lane (для отладки)",
+    "select": "Выбор",
+    "editGeometry": "Редактировать геометрию",
+    "editGeometryTooltip": "Редактировать геометрию выбранной дороги",
+    "editGeometryDisabledTooltip": "Сначала выберите дорогу",
+    "apply": "Применить",
+    "applying": "Сохранение…",
+    "cancel": "Отмена",
+    "fitToView": "Вписать в экран"
+  },
+  "editor": {
+    "minPointsError": "Дороге нужно минимум 2 точки.",
+    "saveFailed": "Не удалось сохранить изменённую геометрию дороги."
+  }
+}

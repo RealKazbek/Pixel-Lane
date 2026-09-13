@@ -1,0 +1,258 @@
+{
+  "header": {
+    "product": "Product",
+    "features": "Features",
+    "about": "About",
+    "contact": "Contact"
+  },
+  "hero": {
+    "eyebrow": "Smart-city traffic platform",
+    "title": "Smarter roads. Better cities.",
+    "description": "Pixel Lane helps cities model road infrastructure, analyze traffic, and prepare for simulation-driven improvements to urban mobility — in one connected platform.",
+    "ctaExplore": "Explore Platform",
+    "ctaViewCityModel": "View City Model",
+    "ctaContact": "Contact Us"
+  },
+  "productOverview": {
+    "heading": "One platform for urban mobility",
+    "description": "Pixel Lane connects city modeling, traffic analysis, and infrastructure planning into a single workflow.",
+    "items": {
+      "cityModel": {
+        "title": "City Model",
+        "description": "A structured digital representation of roads, intersections, and lanes — the source of truth every other module builds on."
+      },
+      "trafficAnalysis": {
+        "title": "Traffic Analysis",
+        "description": "Run analysis on a modeled city to surface bottlenecks and routing demand."
+      },
+      "infrastructurePlanning": {
+        "title": "Infrastructure Planning",
+        "description": "Track road and intersection assets today, with camera/sensor integration planned."
+      },
+      "trafficSimulation": {
+        "title": "Traffic Simulation",
+        "description": "Simulation-ready architecture designed for a future SUMO-based digital twin."
+      },
+      "incidentMonitoring": {
+        "title": "Incident Monitoring",
+        "description": "A planned module for surfacing accidents, closures, and signal failures as they happen."
+      },
+      "emergencyPriority": {
+        "title": "Emergency Priority",
+        "description": "A planned signal-preemption workflow to route ambulances, fire trucks, and police faster."
+      }
+    }
+  },
+  "howItWorks": {
+    "heading": "How it works",
+    "steps": {
+      "model": {
+        "title": "Model the city",
+        "description": "Build or import a road network as a structured City Model."
+      },
+      "analyze": {
+        "title": "Analyze traffic",
+        "description": "Run traffic analysis to surface bottlenecks and demand patterns."
+      },
+      "simulate": {
+        "title": "Simulate improvements",
+        "description": "A simulation layer is being built to test changes before they're made."
+      },
+      "optimize": {
+        "title": "Optimize infrastructure",
+        "description": "Use findings to plan roads, signals, and future hardware upgrades."
+      }
+    }
+  },
+  "platformPreview": {
+    "heading": "A focused operational platform",
+    "description": "Behind the public site is a dedicated dashboard for city modeling and traffic analysis.",
+    "urlLabel": "pixellane.app/city-model",
+    "stats": {
+      "roads": { "label": "Roads", "value": "Modeled" },
+      "intersections": { "label": "Intersections", "value": "Modeled" },
+      "bottlenecks": { "label": "Bottlenecks", "value": "On analysis" }
+    },
+    "cta": "Open the real City Model →"
+  },
+  "capabilities": {
+    "heading": "Key capabilities",
+    "items": {
+      "digitalCityModel": {
+        "title": "Digital city model",
+        "status": "available"
+      },
+      "roadEditor": {
+        "title": "Road/intersection editor",
+        "status": "available"
+      },
+      "severityVisualization": {
+        "title": "Traffic severity visualization",
+        "status": "available"
+      },
+      "simulationArchitecture": {
+        "title": "Simulation-ready architecture",
+        "status": "inDevelopment"
+      },
+      "analytics": { "title": "Analytics", "status": "inDevelopment" },
+      "emergencyPriority": {
+        "title": "Emergency vehicle priority",
+        "status": "planned"
+      },
+      "computerVision": {
+        "title": "Computer vision integration",
+        "status": "planned"
+      }
+    }
+  },
+  "impact": {
+    "heading": "Smart-city impact",
+    "outcomes": {
+      "congestion": {
+        "title": "Reduced congestion",
+        "description": "Identify bottlenecks before they become chronic delays."
+      },
+      "planning": {
+        "title": "Better infrastructure planning",
+        "description": "Ground road and intersection decisions in modeled data."
+      },
+      "emergency": {
+        "title": "Faster emergency response",
+        "description": "A signal-priority workflow is designed for future integration."
+      },
+      "dataDriven": {
+        "title": "Data-driven city decisions",
+        "description": "Move from intuition to a shared, structured city model."
+      }
+    }
+  },
+  "cta": {
+    "heading": "Build smarter mobility systems with Pixel Lane.",
+    "openPlatform": "Open Platform",
+    "contactTeam": "Contact Team"
+  },
+  "footerTagline": "Model road networks, analyze traffic, and prepare for simulation-driven urban mobility improvements.",
+  "about": {
+    "heading": "About Pixel Lane",
+    "subheading": "Pixel Lane is a developing smart-city traffic-management project — not yet a deployed commercial product.",
+    "building": {
+      "heading": "What we're building",
+      "body": "Pixel Lane is a platform for modeling city road networks as structured data, analyzing traffic on that model, and — over time — simulating and optimizing infrastructure changes before they're made in the real world."
+    },
+    "problem": {
+      "heading": "The problem",
+      "body": "Urban traffic decisions are often made without a shared, precise model of the underlying road network. Bottlenecks are diagnosed informally, infrastructure changes are planned without a way to test their effect first, and emergency vehicles navigate the same signal timing as everyone else. Pixel Lane's goal is to give cities a structured foundation to reason about these problems with data."
+    },
+    "approach": {
+      "heading": "Our approach",
+      "body": "We start from a City Model — a stable, queryable representation of roads and intersections — and build traffic analysis directly on top of it. Every future capability (simulation, emergency priority, computer-vision integration) is designed to sit behind clear boundaries around that same model, rather than being bolted on as a one-off feature."
+    },
+    "vision": {
+      "heading": "Vision",
+      "body": "Long term, we want Pixel Lane to support a simulation-driven digital twin of a city's road network, so that infrastructure and traffic-management changes can be tested before they're deployed. That work is in progress; today, the platform's functional core is city modeling and traffic analysis."
+    }
+  },
+  "features": {
+    "heading": "Features",
+    "description": "An honest look at what is available today versus what is planned. Nothing marked \"Planned\" or \"In development\" is presented as production-ready.",
+    "items": {
+      "cityModel": {
+        "title": "City Model",
+        "status": "available",
+        "description": "Model roads, intersections, and lanes as a structured, persisted city network."
+      },
+      "trafficMonitoring": {
+        "title": "Traffic Monitoring",
+        "status": "planned",
+        "description": "Live traffic flow, signal state, and congestion views require a real-time data feed."
+      },
+      "infrastructureManagement": {
+        "title": "Infrastructure Management",
+        "status": "inDevelopment",
+        "description": "Road/intersection assets are modeled today; camera and sensor asset tracking is planned."
+      },
+      "simulation": {
+        "title": "Simulation",
+        "status": "planned",
+        "description": "A SUMO-based simulation adapter is designed but not yet integrated."
+      },
+      "analytics": {
+        "title": "Analytics",
+        "status": "inDevelopment",
+        "description": "Traffic-analysis results (bottlenecks, demand) are available per run; historical trend analytics is planned."
+      },
+      "incidentManagement": {
+        "title": "Incident Management",
+        "status": "planned",
+        "description": "Detecting and reporting accidents, closures, and signal failures requires a live feed or reporting workflow."
+      },
+      "emergencyPriority": {
+        "title": "Emergency Priority",
+        "status": "planned",
+        "description": "Signal preemption for ambulances, fire trucks, and police is designed as a future workflow."
+      },
+      "computerVision": {
+        "title": "Computer Vision Integration",
+        "status": "planned",
+        "description": "Camera-based vehicle detection is planned as an external adapter, isolated from core traffic logic."
+      }
+    }
+  },
+  "contact": {
+    "heading": "Contact",
+    "description": "Have a question about Pixel Lane, or want to talk about a pilot? Send a message below.",
+    "form": {
+      "name": "Name",
+      "email": "Email",
+      "organization": "Organization",
+      "subject": "Subject",
+      "message": "Message",
+      "submit": "Send message",
+      "submittedNotice": "Thanks for the interest. Pixel Lane doesn't have a contact backend connected yet, so this form can't deliver messages right now — the UI is ready for that integration once it exists."
+    }
+  },
+  "privacy": {
+    "heading": "Privacy Policy",
+    "lastUpdated": "Last updated: {date}",
+    "status": {
+      "heading": "Where Pixel Lane stands today",
+      "body": "Pixel Lane is an early-stage, developing project. This policy describes our current, honest position rather than a mature commercial privacy program — it will be expanded as the platform and its user base grow."
+    },
+    "collection": {
+      "heading": "What we collect",
+      "body": "The public website does not currently have an authentication backend, analytics tracking, or a connected contact-form endpoint. Information you type into the contact form on this site is not transmitted anywhere yet — the form is a UI preview. City Model data you create in the application is stored by the Pixel Lane backend for the purpose of displaying it back to you."
+    },
+    "cookies": {
+      "heading": "Cookies",
+      "body": "We do not currently set marketing or tracking cookies. A single functional cookie remembers your chosen interface language."
+    },
+    "contact": {
+      "heading": "Contact",
+      "body": "Questions about this policy can be sent through the <l>contact page</l>."
+    }
+  },
+  "terms": {
+    "heading": "Terms of Service",
+    "lastUpdated": "Last updated: {date}",
+    "status": {
+      "heading": "Project status",
+      "body": "Pixel Lane is an early-stage, developing smart-city project. It is provided \"as is\" without warranty, and functionality — including anything marked \"Planned\" or \"In development\" on the <l>Features page</l> — may change or be unavailable at any time."
+    },
+    "acceptableUse": {
+      "heading": "Acceptable use",
+      "body": "You agree not to misuse the website or application, attempt to disrupt its operation, or use it to store or transmit unlawful content."
+    },
+    "availability": {
+      "heading": "No guarantee of availability",
+      "body": "As a developing project, Pixel Lane does not currently commit to uptime, data-retention, or support-level guarantees."
+    },
+    "changes": {
+      "heading": "Changes",
+      "body": "These terms may be updated as the platform matures. Continued use after a change constitutes acceptance of the updated terms."
+    },
+    "contact": {
+      "heading": "Contact",
+      "body": "Questions about these terms can be sent through the <l>contact page</l>."
+    }
+  }
+}

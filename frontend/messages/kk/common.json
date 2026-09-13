@@ -1,0 +1,61 @@
+{
+  "siteTitle": "Pixel Lane — қалалық көлік қозғалысын интеллектуалды басқару жүйесі",
+  "siteDescription": "Pixel Lane қала жол желісін модельдейді, көлік қозғалысын талдайды және симуляцияға негізделген шешімдер үшін инфрақұрылымды дайындайды.",
+  "languageSwitcherLabel": "Тілді таңдау",
+  "nav": {
+    "dashboard": "Басқару тақтасы",
+    "cityModel": "Қала моделі",
+    "traffic": "Көлік қозғалысы",
+    "infrastructure": "Инфрақұрылым",
+    "simulation": "Симуляция",
+    "analytics": "Аналитика",
+    "incidents": "Оқиғалар",
+    "emergencyPriority": "Арнайы көлік басымдығы",
+    "settings": "Баптаулар",
+    "groupOverview": "Шолу",
+    "groupCityOperations": "Қалалық операциялар",
+    "groupSimulation": "Симуляция",
+    "groupOperations": "Операциялық жұмыс",
+    "groupSystem": "Жүйе"
+  },
+  "featureStatus": {
+    "available": "Қолжетімді",
+    "inDevelopment": "Әзірленуде",
+    "planned": "Жоспарда"
+  },
+  "status": {
+    "checking": "Тексерілуде…",
+    "reachable": "Қолжетімді",
+    "unreachable": "Қолжетімсіз",
+    "backendApi": "Backend API: {status}",
+    "notConnected": "Қосылмаған",
+    "notStarted": "Басталмаған",
+    "noLiveFeed": "Тікелей ағын жоқ"
+  },
+  "actions": {
+    "openMenu": "Мәзірді ашу",
+    "closeMenu": "Мәзірді жабу",
+    "openNavigationMenu": "Навигация мәзірін ашу",
+    "closeNavigationMenu": "Навигация мәзірін жабу",
+    "signIn": "Кіру",
+    "openPlatform": "Платформаны ашу",
+    "exitToWebsite": "Сайтқа оралу",
+    "guestSession": "Қонақ сессиясы",
+    "signInNotAvailable": "Кіру функциясы әлі қолжетімсіз",
+    "notImplementedYet": "Әлі енгізілмеген"
+  },
+  "footer": {
+    "productHeading": "Өнім",
+    "companyHeading": "Компания",
+    "legalHeading": "Құқықтық ақпарат",
+    "platform": "Платформа",
+    "features": "Мүмкіндіктер",
+    "cityModel": "Қала моделі",
+    "about": "Жоба туралы",
+    "contact": "Байланыс",
+    "privacy": "Құпиялылық саясаты",
+    "terms": "Пайдалану шарттары",
+    "tagline": "Смарт-қала үшін дамып келе жатқан платформа: жол желісін модельдеу, көлік қозғалысын талдау және симуляцияға негізделген шешімдер үшін инфрақұрылымды дайындау.",
+    "copyright": "© {year} Pixel Lane. Қалалық көлік қозғалысын басқару бойынша дамудың бастапқы кезеңіндегі жоба."
+  }
+}

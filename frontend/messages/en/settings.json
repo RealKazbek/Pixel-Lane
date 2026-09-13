@@ -1,0 +1,6 @@
+{
+  "heading": "Settings",
+  "description": "Account, notification, and platform settings are not implemented yet.",
+  "notImplemented": "Not implemented yet",
+  "statusPageNotice": "Backend connectivity can be checked on the <l>status page</l>."
+}

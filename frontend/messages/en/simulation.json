@@ -1,0 +1,13 @@
+{
+  "heading": "Simulation",
+  "statusHeading": "Simulation status",
+  "state": "State",
+  "notice": "SUMO-based simulation is not integrated yet. The controls below are a UI prototype only — they are disabled and do not run anything.",
+  "controls": {
+    "start": "Start",
+    "pause": "Pause",
+    "stop": "Stop",
+    "reset": "Reset",
+    "disabledTitle": "Not operational yet"
+  }
+}

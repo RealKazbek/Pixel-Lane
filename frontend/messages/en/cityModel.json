@@ -1,0 +1,71 @@
+{
+  "severity": {
+    "low": "Low",
+    "moderate": "Moderate",
+    "high": "High",
+    "critical": "Critical"
+  },
+  "sidebar": {
+    "citiesHeading": "Cities",
+    "loadingCities": "Loading cities…",
+    "backendUnavailable": "Backend unavailable.",
+    "noCities": "No cities yet.",
+    "noCitiesDescription": "Create one through the API or load the example fixture.",
+    "analysisHeading": "Analysis",
+    "runAnalysis": "Run Traffic Analysis",
+    "runningAnalysis": "Running…",
+    "analysisFailed": "Traffic analysis failed.",
+    "demandSummary": "{routed} routed · {unrouted} unrouted demand(s)",
+    "bottlenecksHeading": "Bottlenecks",
+    "noBottlenecks": "No bottlenecks detected.",
+    "warningsCount": "{count} warning(s)"
+  },
+  "map": {
+    "loadingCity": "Loading city…",
+    "cityFailedToLoad": "City failed to load.",
+    "selectCityPrompt": "Select a city from the sidebar to view its road network."
+  },
+  "details": {
+    "clickToSeeDetails": "Click a road or intersection on the map to see its details here.",
+    "intersectionHeading": "Intersection",
+    "id": "ID",
+    "control": "Control",
+    "connectedRoads": "Connected roads",
+    "connectedLanes": "Connected lanes",
+    "trafficLight": "Traffic light",
+    "yes": "Yes",
+    "no": "No",
+    "inboundVolume": "Inbound volume",
+    "inboundCapacity": "Inbound capacity",
+    "vcRatio": "V/C",
+    "congestion": "Congestion",
+    "runAnalysisHint": "Run Traffic Analysis to see volume/congestion.",
+    "roadType": "Type",
+    "length": "Length",
+    "laneCount": "Lane count",
+    "speedLimit": "Speed limit",
+    "trafficVolume": "Traffic volume",
+    "capacity": "Capacity"
+  },
+  "toolbar": {
+    "basemapOn": "Basemap on",
+    "basemapOff": "Basemap off",
+    "basemapTooltip": "Toggle reference basemap",
+    "basemapUnconfiguredTooltip": "No basemap style configured",
+    "overlayOn": "Overlay on",
+    "overlayOff": "Overlay off",
+    "overlayTooltip": "Toggle the Pixel Lane road-network overlay (debugging aid)",
+    "select": "Select",
+    "editGeometry": "Edit geometry",
+    "editGeometryTooltip": "Edit the selected road's geometry",
+    "editGeometryDisabledTooltip": "Select a road first",
+    "apply": "Apply",
+    "applying": "Saving…",
+    "cancel": "Cancel",
+    "fitToView": "Fit to view"
+  },
+  "editor": {
+    "minPointsError": "A road needs at least 2 points.",
+    "saveFailed": "Failed to save the edited road geometry."
+  }
+}

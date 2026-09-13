@@ -1,0 +1,27 @@
+{
+  "heading": "Infrastructure",
+  "description": "Camera, sensor, and hardware asset management is not implemented yet. Road and intersection assets are already modeled as part of the City Model.",
+  "assetsHeading": "Infrastructure assets",
+  "assets": {
+    "roads": {
+      "label": "Roads & intersections",
+      "status": "available",
+      "note": "Modeled today via the City Model editor."
+    },
+    "trafficLights": {
+      "label": "Traffic lights",
+      "status": "inDevelopment",
+      "note": "Signal-state modeling planned alongside simulation."
+    },
+    "cameras": {
+      "label": "Cameras",
+      "status": "planned",
+      "note": "Requires a computer-vision ingestion pipeline."
+    },
+    "sensors": {
+      "label": "Sensors",
+      "status": "planned",
+      "note": "Requires hardware/telemetry integration."
+    }
+  }
+}

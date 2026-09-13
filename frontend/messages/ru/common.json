@@ -1,0 +1,61 @@
+{
+  "siteTitle": "Pixel Lane — интеллектуальная система управления городским движением",
+  "siteDescription": "Pixel Lane моделирует дорожную сеть города, анализирует трафик и готовит инфраструктуру к решениям на основе симуляции для развития городской мобильности.",
+  "languageSwitcherLabel": "Выбор языка",
+  "nav": {
+    "dashboard": "Панель управления",
+    "cityModel": "Модель города",
+    "traffic": "Трафик",
+    "infrastructure": "Инфраструктура",
+    "simulation": "Симуляция",
+    "analytics": "Аналитика",
+    "incidents": "Инциденты",
+    "emergencyPriority": "Приоритет спецтранспорта",
+    "settings": "Настройки",
+    "groupOverview": "Обзор",
+    "groupCityOperations": "Городские операции",
+    "groupSimulation": "Симуляция",
+    "groupOperations": "Оперативная работа",
+    "groupSystem": "Система"
+  },
+  "featureStatus": {
+    "available": "Доступно",
+    "inDevelopment": "В разработке",
+    "planned": "Планируется"
+  },
+  "status": {
+    "checking": "Проверка…",
+    "reachable": "Доступен",
+    "unreachable": "Недоступен",
+    "backendApi": "API бэкенда: {status}",
+    "notConnected": "Не подключено",
+    "notStarted": "Не запущена",
+    "noLiveFeed": "Нет живого потока данных"
+  },
+  "actions": {
+    "openMenu": "Открыть меню",
+    "closeMenu": "Закрыть меню",
+    "openNavigationMenu": "Открыть меню навигации",
+    "closeNavigationMenu": "Закрыть меню навигации",
+    "signIn": "Войти",
+    "openPlatform": "Открыть платформу",
+    "exitToWebsite": "Вернуться на сайт",
+    "guestSession": "Гостевая сессия",
+    "signInNotAvailable": "Вход пока недоступен",
+    "notImplementedYet": "Пока не реализовано"
+  },
+  "footer": {
+    "productHeading": "Продукт",
+    "companyHeading": "Компания",
+    "legalHeading": "Правовая информация",
+    "platform": "Платформа",
+    "features": "Возможности",
+    "cityModel": "Модель города",
+    "about": "О проекте",
+    "contact": "Контакты",
+    "privacy": "Политика конфиденциальности",
+    "terms": "Условия использования",
+    "tagline": "Развивающаяся платформа для умного города: моделирование дорожной сети, анализ трафика и подготовка инфраструктуры к решениям на основе симуляции.",
+    "copyright": "© {year} Pixel Lane. Проект по управлению городским трафиком на ранней стадии развития."
+  }
+}
