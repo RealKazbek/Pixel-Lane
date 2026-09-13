@@ -110,8 +110,10 @@ stop-db: check-env
 
 # Backend work needs Postgres but not the frontend container; for
 # frontend-only work, prefer `make frontend-dev` (no Docker at all).
+# --build for the same reason as `start` -- otherwise a stale backend
+# image can silently keep serving old code/API behavior after a change.
 start-backend: check-env
-	docker compose up -d postgres backend
+	docker compose up -d --build postgres backend
 
 # Quick view of what's actually using CPU/RAM right now.
 resources:
