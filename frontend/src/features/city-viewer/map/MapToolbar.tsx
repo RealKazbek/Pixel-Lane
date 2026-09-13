@@ -50,77 +50,98 @@ export function MapToolbar({
 
   return (
     <div className="pointer-events-auto flex flex-wrap items-center gap-1.5 rounded-md border border-border-subtle bg-surface/90 p-1.5 shadow-sm backdrop-blur">
-      <button
-        type="button"
-        onClick={onToggleBasemap}
-        disabled={!basemapConfigured}
-        title={
-          basemapConfigured
-            ? t("basemapTooltip")
-            : t("basemapUnconfiguredTooltip")
-        }
-        className={`${buttonBase} ${basemapEnabled ? buttonActive : buttonNeutral}`}
+      {/* Tools: what clicking the map does right now. */}
+      <div
+        role="group"
+        aria-label={t("toolGroupLabel")}
+        className="flex items-center gap-1.5"
       >
-        {basemapEnabled ? t("basemapOn") : t("basemapOff")}
-      </button>
-      <button
-        type="button"
-        onClick={onToggleOverlay}
-        title={t("overlayTooltip")}
-        className={`${buttonBase} ${overlayVisible ? buttonActive : buttonNeutral}`}
-      >
-        {overlayVisible ? t("overlayOn") : t("overlayOff")}
-      </button>
+        <button
+          type="button"
+          onClick={() => onSetMode("view")}
+          aria-pressed={!isEditing}
+          className={`${buttonBase} ${!isEditing ? buttonActive : buttonNeutral}`}
+        >
+          {t("select")}
+        </button>
+        <button
+          type="button"
+          disabled
+          title={t("drawRoadTooltip")}
+          className={`${buttonBase} ${buttonNeutral}`}
+        >
+          {t("drawRoad")}
+        </button>
+        <button
+          type="button"
+          onClick={() => onSetMode("edit-geometry")}
+          disabled={!canEditSelection && !isEditing}
+          aria-pressed={isEditing}
+          title={
+            canEditSelection
+              ? t("editGeometryTooltip")
+              : t("editGeometryDisabledTooltip")
+          }
+          className={`${buttonBase} ${isEditing ? buttonActive : buttonNeutral}`}
+        >
+          {t("editGeometry")}
+        </button>
+
+        {isEditing && (
+          <>
+            <button
+              type="button"
+              onClick={onApply}
+              disabled={editorStatus === "saving"}
+              className={`${buttonBase} ${buttonNeutral}`}
+            >
+              {editorStatus === "saving" ? t("applying") : t("apply")}
+            </button>
+            <button
+              type="button"
+              onClick={onCancel}
+              className={`${buttonBase} ${buttonNeutral}`}
+            >
+              {t("cancel")}
+            </button>
+          </>
+        )}
+      </div>
 
       <div className="mx-1 h-4 w-px bg-border-subtle" />
 
-      <MapLayersToggle
-        layerVisibility={layerVisibility}
-        onToggleLayer={onToggleLayer}
-      />
-
-      <div className="mx-1 h-4 w-px bg-border-subtle" />
-
-      <button
-        type="button"
-        onClick={() => onSetMode("view")}
-        className={`${buttonBase} ${!isEditing ? buttonActive : buttonNeutral}`}
+      {/* View: what's rendered, independent of the active tool. */}
+      <div
+        role="group"
+        aria-label={t("viewGroupLabel")}
+        className="flex items-center gap-1.5"
       >
-        {t("select")}
-      </button>
-      <button
-        type="button"
-        onClick={() => onSetMode("edit-geometry")}
-        disabled={!canEditSelection && !isEditing}
-        title={
-          canEditSelection
-            ? t("editGeometryTooltip")
-            : t("editGeometryDisabledTooltip")
-        }
-        className={`${buttonBase} ${isEditing ? buttonActive : buttonNeutral}`}
-      >
-        {t("editGeometry")}
-      </button>
-
-      {isEditing && (
-        <>
-          <button
-            type="button"
-            onClick={onApply}
-            disabled={editorStatus === "saving"}
-            className={`${buttonBase} ${buttonNeutral}`}
-          >
-            {editorStatus === "saving" ? t("applying") : t("apply")}
-          </button>
-          <button
-            type="button"
-            onClick={onCancel}
-            className={`${buttonBase} ${buttonNeutral}`}
-          >
-            {t("cancel")}
-          </button>
-        </>
-      )}
+        <button
+          type="button"
+          onClick={onToggleBasemap}
+          disabled={!basemapConfigured}
+          title={
+            basemapConfigured
+              ? t("basemapTooltip")
+              : t("basemapUnconfiguredTooltip")
+          }
+          className={`${buttonBase} ${basemapEnabled ? buttonActive : buttonNeutral}`}
+        >
+          {basemapEnabled ? t("basemapOn") : t("basemapOff")}
+        </button>
+        <button
+          type="button"
+          onClick={onToggleOverlay}
+          title={t("overlayTooltip")}
+          className={`${buttonBase} ${overlayVisible ? buttonActive : buttonNeutral}`}
+        >
+          {overlayVisible ? t("overlayOn") : t("overlayOff")}
+        </button>
+        <MapLayersToggle
+          layerVisibility={layerVisibility}
+          onToggleLayer={onToggleLayer}
+        />
+      </div>
 
       <div className="mx-1 h-4 w-px bg-border-subtle" />
 

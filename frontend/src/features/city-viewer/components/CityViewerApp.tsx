@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useTranslations } from "next-intl";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { PixelLaneMap, type EditorAction } from "../map/PixelLaneMap";
@@ -83,9 +83,23 @@ export function CityViewerApp() {
     if (status === "idle") setMode("view");
   }
 
+  // Escape backs out of an in-progress edit -- the same effect as the
+  // toolbar's Cancel button -- so the keyboard-only path matches the
+  // mouse-only path instead of leaving Escape a dead key while editing.
+  useEffect(() => {
+    if (mode !== "edit-geometry") return;
+    function handleKeyDown(event: KeyboardEvent) {
+      if (event.key === "Escape") {
+        setEditorAction({ type: "cancel", token: Date.now() });
+      }
+    }
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [mode]);
+
   return (
     <div className="flex flex-1 overflow-hidden">
-      <aside className="flex w-72 shrink-0 flex-col gap-5 overflow-y-auto border-r border-border-subtle bg-surface p-4">
+      <aside className="flex w-64 shrink-0 flex-col gap-5 overflow-y-auto border-r border-border-subtle bg-surface p-4">
         <section>
           <h2 className="mb-2 text-xs font-semibold uppercase tracking-wide text-zinc-400">
             {t("citiesHeading")}
@@ -217,24 +231,31 @@ export function CityViewerApp() {
               />
             </div>
 
-            <div className="pointer-events-none absolute inset-x-3 bottom-3 flex flex-col items-center gap-2">
-              {editorError && (
-                <p className="pointer-events-auto rounded-md bg-red-600 px-3 py-1.5 text-xs text-white shadow-sm">
-                  {tEditor(
-                    editorError === "min-points"
-                      ? "minPointsError"
-                      : "saveFailed",
-                  )}
-                </p>
-              )}
-              <div className="pointer-events-auto max-h-32 w-full max-w-xl overflow-y-auto rounded-md border border-border-subtle bg-surface/95 px-3 py-2 shadow-sm backdrop-blur">
-                <DetailsPanel
-                  city={city}
-                  analysis={analysisLookup}
-                  selected={selected}
-                />
+            {/* Contextual inspector: reserves no screen space at all when
+                nothing is selected, so the map stays the dominant working
+                area instead of a permanently-docked (mostly empty) panel. */}
+            {(selected || editorError) && (
+              <div className="pointer-events-none absolute inset-x-3 bottom-3 flex flex-col items-center gap-2 sm:inset-x-auto sm:right-3 sm:items-end">
+                {editorError && (
+                  <p className="pointer-events-auto rounded-md bg-red-600 px-3 py-1.5 text-xs text-white shadow-sm">
+                    {tEditor(
+                      editorError === "min-points"
+                        ? "minPointsError"
+                        : "saveFailed",
+                    )}
+                  </p>
+                )}
+                {selected && (
+                  <div className="pointer-events-auto max-h-64 w-full max-w-xs overflow-y-auto rounded-md border border-border-subtle bg-surface/95 px-3 py-2 shadow-md backdrop-blur">
+                    <DetailsPanel
+                      city={city}
+                      analysis={analysisLookup}
+                      selected={selected}
+                    />
+                  </div>
+                )}
               </div>
-            </div>
+            )}
           </>
         )}
       </div>

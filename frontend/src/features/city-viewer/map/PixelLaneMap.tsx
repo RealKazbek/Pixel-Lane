@@ -329,5 +329,16 @@ export function PixelLaneMap({
     onEditorStatusChange(editor.status, editor.error);
   }, [editor.status, editor.error, onEditorStatusChange]);
 
+  // A per-tool cursor is a cheap, immediate "which tool is active" signal
+  // that doesn't require looking back at the toolbar. MapLibre sets its
+  // own cursor directly on the canvas container, so the mode must be
+  // applied there rather than via a class on our own wrapper div.
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map || !isLoaded) return;
+    map.getCanvasContainer().style.cursor =
+      mode === "edit-geometry" ? "crosshair" : "";
+  }, [mode, isLoaded, mapRef]);
+
   return <div ref={containerRef} className="h-full w-full" />;
 }
