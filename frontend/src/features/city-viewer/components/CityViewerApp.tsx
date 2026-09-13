@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import { useTranslations } from "next-intl";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { PixelLaneMap, type EditorAction } from "../map/PixelLaneMap";
 import { MapToolbar } from "../map/MapToolbar";
@@ -13,10 +14,14 @@ import { useTrafficAnalysis } from "../hooks/useTrafficAnalysis";
 import { buildAnalysisLookup } from "../lib/analysis-lookup";
 import { mapBasemapEnabledByDefault, mapStyleUrl } from "@/lib/config";
 import type { EditorStatus } from "../map/editor/useGeometryEditor";
+import type { ApplyRoadEditError } from "../map/editor/applyRoadEdit";
 import type { MapMode, MapSelection } from "../map/types";
 import type { Bottleneck } from "../types/traffic-analysis";
 
 export function CityViewerApp() {
+  const t = useTranslations("cityModel.sidebar");
+  const tMap = useTranslations("cityModel.map");
+  const tEditor = useTranslations("cityModel.editor");
   const { cities, status: citiesStatus } = useCities();
   const [explicitCityId, setExplicitCityId] = useState<string | null>(null);
   // Auto-select when there's exactly one city; with several, leave the
@@ -40,7 +45,9 @@ export function CityViewerApp() {
   const [mode, setMode] = useState<MapMode>("view");
   const [editorAction, setEditorAction] = useState<EditorAction | null>(null);
   const [editorStatus, setEditorStatus] = useState<EditorStatus>("idle");
-  const [editorError, setEditorError] = useState<string | null>(null);
+  const [editorError, setEditorError] = useState<ApplyRoadEditError | null>(
+    null,
+  );
 
   const analysisLookup = useMemo(
     () => buildAnalysisLookup(analysis.result),
@@ -61,7 +68,7 @@ export function CityViewerApp() {
 
   function handleEditorStatusChange(
     status: EditorStatus,
-    error: string | null,
+    error: ApplyRoadEditError | null,
   ) {
     setEditorStatus(status);
     setEditorError(error);
@@ -73,14 +80,14 @@ export function CityViewerApp() {
       <aside className="flex w-72 shrink-0 flex-col gap-5 overflow-y-auto border-r border-border-subtle bg-surface p-4">
         <section>
           <h2 className="mb-2 text-xs font-semibold uppercase tracking-wide text-zinc-400">
-            Cities
+            {t("citiesHeading")}
           </h2>
           {citiesStatus === "loading" && (
-            <p className="text-xs text-zinc-500">Loading cities…</p>
+            <p className="text-xs text-zinc-500">{t("loadingCities")}</p>
           )}
           {citiesStatus === "error" && (
             <p className="text-xs text-red-600 dark:text-red-400">
-              Backend unavailable.
+              {t("backendUnavailable")}
             </p>
           )}
           {citiesStatus === "ready" && (
@@ -95,7 +102,7 @@ export function CityViewerApp() {
         {city && (
           <section>
             <h2 className="mb-2 text-xs font-semibold uppercase tracking-wide text-zinc-400">
-              Analysis
+              {t("analysisHeading")}
             </h2>
             <button
               type="button"
@@ -104,23 +111,25 @@ export function CityViewerApp() {
               className="w-full rounded-md bg-blue-600 px-3 py-1.5 text-sm font-medium text-white transition-colors hover:bg-blue-500 disabled:opacity-50"
             >
               {analysis.status === "loading"
-                ? "Running…"
-                : "Run Traffic Analysis"}
+                ? t("runningAnalysis")
+                : t("runAnalysis")}
             </button>
             {analysis.status === "error" && (
               <p className="mt-2 text-xs text-red-600 dark:text-red-400">
-                Traffic analysis failed.
+                {t("analysisFailed")}
               </p>
             )}
             {analysis.result && (
               <div className="mt-3 space-y-2">
                 <p className="text-xs text-zinc-500 dark:text-zinc-400">
-                  {analysis.result.network_summary.routed_demand_count} routed ·{" "}
-                  {analysis.result.network_summary.unrouted_demand_count}{" "}
-                  unrouted demand(s)
+                  {t("demandSummary", {
+                    routed: analysis.result.network_summary.routed_demand_count,
+                    unrouted:
+                      analysis.result.network_summary.unrouted_demand_count,
+                  })}
                 </p>
                 <h3 className="text-xs font-semibold uppercase tracking-wide text-zinc-400">
-                  Bottlenecks
+                  {t("bottlenecksHeading")}
                 </h3>
                 <BottleneckList
                   bottlenecks={analysis.result.bottlenecks}
@@ -129,7 +138,9 @@ export function CityViewerApp() {
                 {analysis.result.warnings.length > 0 && (
                   <details className="text-xs text-zinc-500 dark:text-zinc-400">
                     <summary className="cursor-pointer">
-                      {analysis.result.warnings.length} warning(s)
+                      {t("warningsCount", {
+                        count: analysis.result.warnings.length,
+                      })}
                     </summary>
                     <ul className="mt-1 list-disc space-y-1 pl-4">
                       {analysis.result.warnings.map((warning, i) => (
@@ -145,15 +156,12 @@ export function CityViewerApp() {
       </aside>
 
       <div className="relative flex-1 overflow-hidden">
-        {cityStatus === "loading" && <EmptyState title="Loading city model…" />}
+        {cityStatus === "loading" && <EmptyState title={tMap("loadingCity")} />}
         {cityStatus === "error" && (
-          <EmptyState title="City failed to load." tone="error" />
+          <EmptyState title={tMap("cityFailedToLoad")} tone="error" />
         )}
         {!selectedCityId && cityStatus !== "loading" && (
-          <EmptyState
-            title="No city model loaded."
-            description="Select a city from the sidebar to view its road network."
-          />
+          <EmptyState title={tMap("selectCityPrompt")} />
         )}
 
         {city && (
@@ -196,7 +204,11 @@ export function CityViewerApp() {
             <div className="pointer-events-none absolute inset-x-3 bottom-3 flex flex-col items-center gap-2">
               {editorError && (
                 <p className="pointer-events-auto rounded-md bg-red-600 px-3 py-1.5 text-xs text-white shadow-sm">
-                  {editorError}
+                  {tEditor(
+                    editorError === "min-points"
+                      ? "minPointsError"
+                      : "saveFailed",
+                  )}
                 </p>
               )}
               <div className="pointer-events-auto max-h-32 w-full max-w-xl overflow-y-auto rounded-md border border-border-subtle bg-surface/95 px-3 py-2 shadow-sm backdrop-blur">

@@ -1,3 +1,4 @@
+import { useTranslations } from "next-intl";
 import { TrafficLevelBadge } from "@/components/ui/TrafficLevelBadge";
 import { congestionToTrafficLevel } from "../../lib/traffic-level";
 import { DetailRow } from "./DetailRow";
@@ -13,55 +14,53 @@ export function IntersectionDetails({
   intersection,
   analysis,
 }: IntersectionDetailsProps) {
+  const t = useTranslations("cityModel.details");
   const metric = analysis.intersectionMetrics.get(intersection.id);
 
   return (
     <div className="text-xs">
       <p className="mb-1.5 text-sm font-semibold text-zinc-900 dark:text-zinc-100">
-        Intersection
+        {t("intersectionHeading")}
       </p>
-      <DetailRow label="ID" value={intersection.id.slice(0, 8)} />
-      <DetailRow label="Control" value={intersection.control_type} />
+      <DetailRow label={t("id")} value={intersection.id.slice(0, 8)} />
+      <DetailRow label={t("control")} value={intersection.control_type} />
       <DetailRow
-        label="Connected roads"
+        label={t("connectedRoads")}
         value={intersection.connected_road_ids.length}
       />
       <DetailRow
-        label="Connected lanes"
+        label={t("connectedLanes")}
         value={intersection.connected_lane_ids.length}
       />
       <DetailRow
-        label="Traffic light"
-        value={intersection.traffic_light_id ? "Yes" : "No"}
+        label={t("trafficLight")}
+        value={intersection.traffic_light_id ? t("yes") : t("no")}
       />
       {metric ? (
         <>
           <DetailRow
-            label="Inbound volume"
+            label={t("inboundVolume")}
             value={`${metric.inbound_volume_vph.toFixed(0)} vph`}
           />
           <DetailRow
-            label="Inbound capacity"
+            label={t("inboundCapacity")}
             value={`${metric.inbound_capacity_vph.toFixed(0)} vph`}
           />
           <DetailRow
-            label="V/C"
+            label={t("vcRatio")}
             value={metric.volume_capacity_ratio.toFixed(2)}
           />
           <DetailRow
-            label="Congestion"
+            label={t("congestion")}
             value={
               <TrafficLevelBadge
                 level={congestionToTrafficLevel(metric.congestion_level)}
-                label={metric.congestion_level}
               />
             }
           />
         </>
       ) : (
-        <p className="mt-1.5 text-zinc-400">
-          Run Traffic Analysis to see volume/congestion.
-        </p>
+        <p className="mt-1.5 text-zinc-400">{t("runAnalysisHint")}</p>
       )}
     </div>
   );

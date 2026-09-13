@@ -1,3 +1,4 @@
+import { useTranslations } from "next-intl";
 import { RoadNetworkIllustration } from "./RoadNetworkIllustration";
 
 export function AuthLayout({
@@ -7,6 +8,7 @@ export function AuthLayout({
   title: string;
   children: React.ReactNode;
 }) {
+  const t = useTranslations("auth.layout");
   return (
     <div className="grid min-h-[calc(100dvh-57px-1px)] grid-cols-1 md:grid-cols-2">
       <div className="hidden flex-col justify-between bg-surface-raised p-10 md:flex">
@@ -23,8 +25,7 @@ export function AuthLayout({
         </div>
         <RoadNetworkIllustration className="w-full max-w-sm text-primary opacity-90" />
         <p className="max-w-sm text-sm text-zinc-600 dark:text-zinc-400">
-          Model road networks, analyze traffic, and prepare for
-          simulation-driven urban mobility improvements.
+          {t("tagline")}
         </p>
       </div>
 

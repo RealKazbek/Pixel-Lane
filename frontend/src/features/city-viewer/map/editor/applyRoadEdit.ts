@@ -17,8 +17,14 @@ import type { Point, Road } from "../../types/city";
 
 const MIN_POINTS = 2;
 
+/** Error *codes*, not display strings -- the UI layer localizes these
+ * (see `cityModel.editor` in `frontend/messages/*`). Raw backend error
+ * text is logged, never shown to the user directly (see AGENTS.md's
+ * error-information-leakage and i18n rules). */
+export type ApplyRoadEditError = "min-points" | "save-failed";
+
 export type ApplyRoadEditResult =
-  { ok: true; road: Road } | { ok: false; error: string };
+  { ok: true; road: Road } | { ok: false; error: ApplyRoadEditError };
 
 export async function applyRoadEdit(
   cityId: string,
@@ -26,17 +32,16 @@ export async function applyRoadEdit(
   points: Point[],
 ): Promise<ApplyRoadEditResult> {
   if (points.length < MIN_POINTS) {
-    return { ok: false, error: `A road needs at least ${MIN_POINTS} points.` };
+    return { ok: false, error: "min-points" };
   }
 
   try {
     const road = await updateRoadGeometry(cityId, roadId, { points });
     return { ok: true, road };
   } catch (error) {
-    const message =
-      error instanceof ApiError
-        ? error.message
-        : "Failed to save the edited road geometry.";
-    return { ok: false, error: message };
+    if (error instanceof ApiError) {
+      console.error(`Failed to save road geometry: ${error.message}`);
+    }
+    return { ok: false, error: "save-failed" };
   }
 }

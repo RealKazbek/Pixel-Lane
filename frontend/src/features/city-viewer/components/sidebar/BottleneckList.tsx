@@ -1,3 +1,4 @@
+import { useTranslations } from "next-intl";
 import { TrafficLevelBadge } from "@/components/ui/TrafficLevelBadge";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { bottleneckSeverityToTrafficLevel } from "../../lib/traffic-level";
@@ -9,8 +10,9 @@ interface BottleneckListProps {
 }
 
 export function BottleneckList({ bottlenecks, onSelect }: BottleneckListProps) {
+  const t = useTranslations("cityModel.sidebar");
   if (bottlenecks.length === 0) {
-    return <EmptyState title="No bottlenecks detected." />;
+    return <EmptyState title={t("noBottlenecks")} />;
   }
 
   return (
@@ -32,7 +34,6 @@ export function BottleneckList({ bottlenecks, onSelect }: BottleneckListProps) {
             </span>
             <TrafficLevelBadge
               level={bottleneckSeverityToTrafficLevel(bottleneck.severity)}
-              label={bottleneck.severity}
             />
           </button>
         </li>

@@ -16,6 +16,7 @@ import {
   useGeometryEditor,
   type EditorStatus,
 } from "./editor/useGeometryEditor";
+import type { ApplyRoadEditError } from "./editor/applyRoadEdit";
 import {
   computeCityBounds,
   computeReferenceLatitude,
@@ -55,7 +56,10 @@ interface PixelLaneMapProps {
   fitSignal: number;
   mode: MapMode;
   editorAction: EditorAction | null;
-  onEditorStatusChange: (status: EditorStatus, error: string | null) => void;
+  onEditorStatusChange: (
+    status: EditorStatus,
+    error: ApplyRoadEditError | null,
+  ) => void;
   onRoadSaved: () => void;
 }
 

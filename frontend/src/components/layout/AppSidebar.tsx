@@ -1,12 +1,13 @@
 "use client";
 
-import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { useTranslations } from "next-intl";
+import { Link, usePathname } from "@/i18n/navigation";
 import { NAV_GROUPS } from "./nav-config";
 import { StatusBadge } from "@/components/ui/StatusBadge";
 
 export function AppSidebar() {
   const pathname = usePathname();
+  const t = useTranslations("common");
 
   return (
     <nav
@@ -14,9 +15,9 @@ export function AppSidebar() {
       className="hidden w-60 shrink-0 flex-col gap-4 overflow-y-auto border-r border-border-subtle bg-surface p-3 md:flex"
     >
       {NAV_GROUPS.map((group) => (
-        <div key={group.label} className="flex flex-col gap-0.5">
+        <div key={group.labelKey} className="flex flex-col gap-0.5">
           <h3 className="px-2.5 pb-1 text-[11px] font-semibold uppercase tracking-wide text-zinc-400 dark:text-zinc-500">
-            {group.label}
+            {t(`nav.${group.labelKey}`)}
           </h3>
           {group.items.map((item) => {
             const isActive =
@@ -34,9 +35,12 @@ export function AppSidebar() {
                     : "border-transparent text-zinc-600 hover:bg-zinc-100 dark:text-zinc-400 dark:hover:bg-zinc-800/60"
                 }`}
               >
-                <span className="truncate">{item.label}</span>
+                <span className="truncate">{t(`nav.${item.labelKey}`)}</span>
                 {item.status === "planned" && (
-                  <StatusBadge label="Planned" tone="planned" />
+                  <StatusBadge
+                    label={t("featureStatus.planned")}
+                    tone="planned"
+                  />
                 )}
               </Link>
             );
@@ -52,9 +56,11 @@ export function AppSidebar() {
           G
         </span>
         <div className="min-w-0">
-          <p className="truncate text-xs font-medium">Guest session</p>
+          <p className="truncate text-xs font-medium">
+            {t("actions.guestSession")}
+          </p>
           <p className="truncate text-[11px] text-zinc-500 dark:text-zinc-400">
-            Sign-in not yet available
+            {t("actions.signInNotAvailable")}
           </p>
         </div>
       </div>

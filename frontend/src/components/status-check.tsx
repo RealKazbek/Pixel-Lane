@@ -5,7 +5,32 @@ import { backendUrl } from "@/lib/config";
 
 type Status = "checking" | "ok" | "error";
 
-export function StatusCheck() {
+export interface StatusCheckMessages {
+  checking: string;
+  reachable: string;
+  unreachable: string;
+}
+
+const DEFAULT_MESSAGES: StatusCheckMessages = {
+  checking: "Backend API: Checking...",
+  reachable: "Backend API: Reachable",
+  unreachable: "Backend API: Unreachable",
+};
+
+/**
+ * Used both inside the localized app shell (`AppHeader`/dashboard, which
+ * pass pre-translated `messages` -- plain strings, not functions, since
+ * this is a Client Component and Server Component callers can't pass a
+ * closure across that boundary) and on the unlocalized `/health` status
+ * page (see `docs/i18n.md` -- `/health` intentionally sits outside the
+ * `[locale]` route segment, so it has no translation context and this
+ * component falls back to English defaults there).
+ */
+export function StatusCheck({
+  messages = DEFAULT_MESSAGES,
+}: {
+  messages?: StatusCheckMessages;
+}) {
   const [status, setStatus] = useState<Status>("checking");
 
   useEffect(() => {
@@ -24,12 +49,12 @@ export function StatusCheck() {
     };
   }, []);
 
-  const label =
+  const text =
     status === "checking"
-      ? "Checking..."
+      ? messages.checking
       : status === "ok"
-        ? "Reachable"
-        : "Unreachable";
+        ? messages.reachable
+        : messages.unreachable;
 
   const color =
     status === "ok"
@@ -41,7 +66,7 @@ export function StatusCheck() {
   return (
     <div className="flex items-center gap-2 text-sm">
       <span className={`h-2 w-2 rounded-full ${color}`} aria-hidden />
-      <span>Backend API: {label}</span>
+      <span>{text}</span>
     </div>
   );
 }

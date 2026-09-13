@@ -1,4 +1,5 @@
 import { EmptyState } from "@/components/ui/EmptyState";
+import { useTranslations } from "next-intl";
 import { IntersectionDetails } from "./IntersectionDetails";
 import { RoadDetails } from "./RoadDetails";
 import type { AnalysisLookup } from "../../lib/analysis-lookup";
@@ -12,13 +13,9 @@ interface DetailsPanelProps {
 }
 
 export function DetailsPanel({ city, analysis, selected }: DetailsPanelProps) {
+  const t = useTranslations("cityModel.details");
   if (!selected) {
-    return (
-      <EmptyState
-        title="No object selected."
-        description="Click a road or intersection on the map to see its details here."
-      />
-    );
+    return <EmptyState title={t("clickToSeeDetails")} />;
   }
 
   if (selected.type === "road") {

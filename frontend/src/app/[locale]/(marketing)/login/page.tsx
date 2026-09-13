@@ -1,24 +1,36 @@
 import type { Metadata } from "next";
-import Link from "next/link";
+import { getTranslations } from "next-intl/server";
+import { Link } from "@/i18n/navigation";
 import { AuthLayout } from "@/components/marketing/AuthLayout";
 
-export const metadata: Metadata = {
-  title: "Sign In",
-  robots: { index: false },
-};
+export async function generateMetadata({
+  params,
+}: {
+  params: Promise<{ locale: string }>;
+}): Promise<Metadata> {
+  const { locale } = await params;
+  const t = await getTranslations({ locale, namespace: "auth.login" });
+  return { title: t("titleMeta"), robots: { index: false } };
+}
 
 /** UI-ready only -- no authentication backend exists yet. The form is
  * intentionally non-functional (no onSubmit) rather than faking a login. */
-export default function LoginPage() {
+export default async function LoginPage({
+  params,
+}: {
+  params: Promise<{ locale: string }>;
+}) {
+  const { locale } = await params;
+  const t = await getTranslations({ locale, namespace: "auth.login" });
+
   return (
-    <AuthLayout title="Sign in">
+    <AuthLayout title={t("title")}>
       <p className="mb-4 rounded-md border border-dashed border-border-subtle p-3 text-xs text-zinc-500 dark:text-zinc-400">
-        Authentication isn&apos;t connected yet — this form is a UI preview
-        only.
+        {t("notice")}
       </p>
       <form className="flex flex-col gap-4">
-        <LabeledInput id="email" label="Email" type="email" />
-        <LabeledInput id="password" label="Password" type="password" />
+        <LabeledInput id="email" label={t("email")} type="email" />
+        <LabeledInput id="password" label={t("password")} type="password" />
         <div className="flex items-center justify-between text-xs">
           <label className="flex items-center gap-2 text-zinc-600 dark:text-zinc-400">
             <input
@@ -26,25 +38,25 @@ export default function LoginPage() {
               className="rounded border-border-subtle"
               disabled
             />
-            Remember me
+            {t("rememberMe")}
           </label>
           <span className="text-zinc-400 dark:text-zinc-500">
-            Forgot password?
+            {t("forgotPassword")}
           </span>
         </div>
         <button
           type="button"
           disabled
-          title="Not yet connected to a backend"
+          title={t("submitDisabledTitle")}
           className="cursor-not-allowed rounded-md bg-primary/50 px-4 py-2 text-sm font-medium text-white"
         >
-          Sign in
+          {t("submit")}
         </button>
       </form>
       <p className="mt-4 text-center text-xs text-zinc-500 dark:text-zinc-400">
-        Don&apos;t have an account?{" "}
+        {t("noAccount")}{" "}
         <Link href="/register" className="text-primary hover:underline">
-          Register
+          {t("registerLink")}
         </Link>
       </p>
     </AuthLayout>

@@ -1,31 +1,34 @@
-import Link from "next/link";
-
-const COLUMNS = [
-  {
-    title: "Product",
-    links: [
-      { href: "/app", label: "Platform" },
-      { href: "/features", label: "Features" },
-      { href: "/app/city-model", label: "City Model" },
-    ],
-  },
-  {
-    title: "Company",
-    links: [
-      { href: "/about", label: "About" },
-      { href: "/contact", label: "Contact" },
-    ],
-  },
-  {
-    title: "Legal",
-    links: [
-      { href: "/privacy", label: "Privacy Policy" },
-      { href: "/terms", label: "Terms of Service" },
-    ],
-  },
-];
+import { useTranslations } from "next-intl";
+import { Link } from "@/i18n/navigation";
 
 export function MarketingFooter() {
+  const t = useTranslations("common.footer");
+
+  const columns = [
+    {
+      titleKey: "productHeading",
+      links: [
+        { href: "/app", labelKey: "platform" },
+        { href: "/features", labelKey: "features" },
+        { href: "/app/city-model", labelKey: "cityModel" },
+      ],
+    },
+    {
+      titleKey: "companyHeading",
+      links: [
+        { href: "/about", labelKey: "about" },
+        { href: "/contact", labelKey: "contact" },
+      ],
+    },
+    {
+      titleKey: "legalHeading",
+      links: [
+        { href: "/privacy", labelKey: "privacy" },
+        { href: "/terms", labelKey: "terms" },
+      ],
+    },
+  ] as const;
+
   return (
     <footer className="border-t border-border-subtle bg-surface">
       <div className="mx-auto grid max-w-6xl grid-cols-2 gap-8 px-4 py-10 sm:px-6 md:grid-cols-4">
@@ -42,16 +45,14 @@ export function MarketingFooter() {
             </span>
           </Link>
           <p className="mt-3 max-w-xs text-xs text-zinc-500 dark:text-zinc-400">
-            A developing smart-city platform for modeling road networks,
-            analyzing traffic, and preparing infrastructure for
-            simulation-driven urban mobility decisions.
+            {t("tagline")}
           </p>
         </div>
 
-        {COLUMNS.map((col) => (
-          <div key={col.title}>
+        {columns.map((col) => (
+          <div key={col.titleKey}>
             <h3 className="text-xs font-semibold uppercase tracking-wide text-zinc-400 dark:text-zinc-500">
-              {col.title}
+              {t(col.titleKey)}
             </h3>
             <ul className="mt-3 flex flex-col gap-2">
               {col.links.map((link) => (
@@ -60,7 +61,7 @@ export function MarketingFooter() {
                     href={link.href}
                     className="text-sm text-zinc-600 hover:text-foreground dark:text-zinc-400"
                   >
-                    {link.label}
+                    {t(link.labelKey)}
                   </Link>
                 </li>
               ))}
@@ -69,8 +70,7 @@ export function MarketingFooter() {
         ))}
       </div>
       <div className="border-t border-border-subtle px-4 py-4 text-center text-xs text-zinc-500 dark:text-zinc-400 sm:px-6">
-        © {new Date().getFullYear()} Pixel Lane. An early-stage smart-city
-        traffic-management project.
+        {t("copyright", { year: new Date().getFullYear() })}
       </div>
     </footer>
   );

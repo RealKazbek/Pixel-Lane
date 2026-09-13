@@ -1,3 +1,4 @@
+import { useTranslations } from "next-intl";
 import { EmptyState } from "@/components/ui/EmptyState";
 import type { CitySummary } from "../../types/city";
 
@@ -12,11 +13,12 @@ export function CityList({
   selectedCityId,
   onSelectCity,
 }: CityListProps) {
+  const t = useTranslations("cityModel.sidebar");
   if (cities.length === 0) {
     return (
       <EmptyState
-        title="No cities yet."
-        description="Create one through the API or load the example fixture."
+        title={t("noCities")}
+        description={t("noCitiesDescription")}
       />
     );
   }

@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { useTranslations } from "next-intl";
 
 /** UI-ready contact form with no backend endpoint yet -- submitting shows
  * an honest "not yet connected" state instead of a fake success message
@@ -8,6 +9,7 @@ import { useState } from "react";
  * endpoint later only requires replacing `handleSubmit`. */
 export function ContactForm() {
   const [submitted, setSubmitted] = useState(false);
+  const t = useTranslations("marketing.contact.form");
 
   function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
@@ -17,9 +19,7 @@ export function ContactForm() {
   if (submitted) {
     return (
       <div className="rounded-lg border border-dashed border-border-subtle p-6 text-sm text-zinc-600 dark:text-zinc-400">
-        Thanks for the interest. Pixel Lane doesn&apos;t have a contact backend
-        connected yet, so this form can&apos;t deliver messages right now — the
-        UI is ready for that integration once it exists.
+        {t("submittedNotice")}
       </div>
     );
   }
@@ -27,7 +27,7 @@ export function ContactForm() {
   return (
     <form onSubmit={handleSubmit} className="flex flex-col gap-4">
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-        <Field label="Name" htmlFor="name">
+        <Field label={t("name")} htmlFor="name">
           <input
             id="name"
             name="name"
@@ -36,7 +36,7 @@ export function ContactForm() {
             className="w-full rounded-md border border-border-subtle bg-surface px-3 py-2 text-sm outline-none focus-visible:ring-2 focus-visible:ring-primary"
           />
         </Field>
-        <Field label="Email" htmlFor="email">
+        <Field label={t("email")} htmlFor="email">
           <input
             id="email"
             name="email"
@@ -46,7 +46,7 @@ export function ContactForm() {
           />
         </Field>
       </div>
-      <Field label="Organization" htmlFor="organization">
+      <Field label={t("organization")} htmlFor="organization">
         <input
           id="organization"
           name="organization"
@@ -54,7 +54,7 @@ export function ContactForm() {
           className="w-full rounded-md border border-border-subtle bg-surface px-3 py-2 text-sm outline-none focus-visible:ring-2 focus-visible:ring-primary"
         />
       </Field>
-      <Field label="Subject" htmlFor="subject">
+      <Field label={t("subject")} htmlFor="subject">
         <input
           id="subject"
           name="subject"
@@ -63,7 +63,7 @@ export function ContactForm() {
           className="w-full rounded-md border border-border-subtle bg-surface px-3 py-2 text-sm outline-none focus-visible:ring-2 focus-visible:ring-primary"
         />
       </Field>
-      <Field label="Message" htmlFor="message">
+      <Field label={t("message")} htmlFor="message">
         <textarea
           id="message"
           name="message"
@@ -76,7 +76,7 @@ export function ContactForm() {
         type="submit"
         className="self-start rounded-md bg-primary px-4 py-2 text-sm font-medium text-white hover:bg-primary-hover"
       >
-        Send message
+        {t("submit")}
       </button>
     </form>
   );

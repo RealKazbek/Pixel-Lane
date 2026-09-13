@@ -1,65 +1,70 @@
 import type { Metadata } from "next";
+import { getTranslations } from "next-intl/server";
 import { Panel } from "@/components/ui/Panel";
 import { StatusBadge } from "@/components/ui/StatusBadge";
+import type { StatusTone } from "@/components/ui/StatusBadge";
 
-export const metadata: Metadata = { title: "Infrastructure" };
+export async function generateMetadata({
+  params,
+}: {
+  params: Promise<{ locale: string }>;
+}): Promise<Metadata> {
+  const { locale } = await params;
+  const t = await getTranslations({ locale, namespace: "common.nav" });
+  return { title: t("infrastructure") };
+}
 
-const ASSETS = [
-  {
-    label: "Roads & intersections",
-    status: "Available",
-    tone: "positive" as const,
-    note: "Modeled today via the City Model editor.",
-  },
-  {
-    label: "Traffic lights",
-    status: "In development",
-    tone: "warning" as const,
-    note: "Signal-state modeling planned alongside simulation.",
-  },
-  {
-    label: "Cameras",
-    status: "Planned",
-    tone: "planned" as const,
-    note: "Requires a computer-vision ingestion pipeline.",
-  },
-  {
-    label: "Sensors",
-    status: "Planned",
-    tone: "planned" as const,
-    note: "Requires hardware/telemetry integration.",
-  },
-];
+const ASSET_IDS = ["roads", "trafficLights", "cameras", "sensors"] as const;
 
-export default function InfrastructurePage() {
+const STATUS_TONE: Record<string, StatusTone> = {
+  available: "positive",
+  inDevelopment: "warning",
+  planned: "planned",
+};
+
+export default async function InfrastructurePage({
+  params,
+}: {
+  params: Promise<{ locale: string }>;
+}) {
+  const { locale } = await params;
+  const t = await getTranslations({ locale, namespace: "infrastructure" });
+  const tStatus = await getTranslations({
+    locale,
+    namespace: "common.featureStatus",
+  });
+
   return (
     <div className="mx-auto flex w-full max-w-3xl flex-1 flex-col gap-5 overflow-y-auto px-6 py-8">
       <div className="flex items-center gap-2">
-        <h1 className="text-xl font-semibold tracking-tight">Infrastructure</h1>
-        <StatusBadge label="Planned" tone="planned" />
+        <h1 className="text-xl font-semibold tracking-tight">{t("heading")}</h1>
+        <StatusBadge label={tStatus("planned")} tone="planned" />
       </div>
       <p className="text-sm text-zinc-600 dark:text-zinc-400">
-        Camera, sensor, and hardware asset management is not implemented yet.
-        Road and intersection assets are already modeled as part of the City
-        Model.
+        {t("description")}
       </p>
 
-      <Panel title="Infrastructure assets">
+      <Panel title={t("assetsHeading")}>
         <ul className="flex flex-col divide-y divide-border-subtle">
-          {ASSETS.map((a) => (
-            <li
-              key={a.label}
-              className="flex items-center justify-between py-2.5"
-            >
-              <div>
-                <p className="text-sm font-medium">{a.label}</p>
-                <p className="text-xs text-zinc-500 dark:text-zinc-400">
-                  {a.note}
-                </p>
-              </div>
-              <StatusBadge label={a.status} tone={a.tone} />
-            </li>
-          ))}
+          {ASSET_IDS.map((id) => {
+            const status = t(`assets.${id}.status`);
+            return (
+              <li key={id} className="flex items-center justify-between py-2.5">
+                <div>
+                  <p className="text-sm font-medium">
+                    {t(`assets.${id}.label`)}
+                  </p>
+                  <p className="text-xs text-zinc-500 dark:text-zinc-400">
+                    {t(`assets.${id}.note`)}
+                  </p>
+                </div>
+                <StatusBadge
+                  label={tStatus(status)}
+                  tone={STATUS_TONE[status]}
+                />
+              </li>
+            );
+          })}
         </ul>
       </Panel>
     </div>

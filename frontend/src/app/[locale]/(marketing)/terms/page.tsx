@@ -1,76 +1,65 @@
 import type { Metadata } from "next";
+import { getTranslations } from "next-intl/server";
+import { Link } from "@/i18n/navigation";
 
-export const metadata: Metadata = {
-  title: "Terms of Service",
-  description: "Terms for using the Pixel Lane website and platform.",
+export async function generateMetadata({
+  params,
+}: {
+  params: Promise<{ locale: string }>;
+}): Promise<Metadata> {
+  const { locale } = await params;
+  const t = await getTranslations({ locale, namespace: "marketing.terms" });
+  return { title: t("heading") };
+}
+
+const SECTION_LINKS: Record<string, string | undefined> = {
+  status: "/features",
+  acceptableUse: undefined,
+  availability: undefined,
+  changes: undefined,
+  contact: "/contact",
 };
 
-export default function TermsPage() {
+export default async function TermsPage({
+  params,
+}: {
+  params: Promise<{ locale: string }>;
+}) {
+  const { locale } = await params;
+  const t = await getTranslations({ locale, namespace: "marketing.terms" });
+
   return (
     <div className="mx-auto max-w-3xl px-4 py-16 sm:px-6">
-      <h1 className="text-3xl font-semibold tracking-tight">
-        Terms of Service
-      </h1>
+      <h1 className="text-3xl font-semibold tracking-tight">{t("heading")}</h1>
       <p className="mt-2 text-xs text-zinc-500 dark:text-zinc-400">
-        Last updated: {new Date().toISOString().slice(0, 10)}
+        {t("lastUpdated", { date: new Date().toISOString().slice(0, 10) })}
       </p>
 
       <div className="mt-10 flex flex-col gap-8 text-sm leading-relaxed text-zinc-700 dark:text-zinc-300">
-        <section>
-          <h2 className="text-lg font-semibold text-foreground">
-            Project status
-          </h2>
-          <p className="mt-2">
-            Pixel Lane is an early-stage, developing smart-city project. It is
-            provided &quot;as is&quot; without warranty, and functionality —
-            including anything marked &quot;Planned&quot; or &quot;In
-            development&quot; on the{" "}
-            <a href="/features" className="text-primary hover:underline">
-              Features page
-            </a>{" "}
-            — may change or be unavailable at any time.
-          </p>
-        </section>
-
-        <section>
-          <h2 className="text-lg font-semibold text-foreground">
-            Acceptable use
-          </h2>
-          <p className="mt-2">
-            You agree not to misuse the website or application, attempt to
-            disrupt its operation, or use it to store or transmit unlawful
-            content.
-          </p>
-        </section>
-
-        <section>
-          <h2 className="text-lg font-semibold text-foreground">
-            No guarantee of availability
-          </h2>
-          <p className="mt-2">
-            As a developing project, Pixel Lane does not currently commit to
-            uptime, data-retention, or support-level guarantees.
-          </p>
-        </section>
-
-        <section>
-          <h2 className="text-lg font-semibold text-foreground">Changes</h2>
-          <p className="mt-2">
-            These terms may be updated as the platform matures. Continued use
-            after a change constitutes acceptance of the updated terms.
-          </p>
-        </section>
-
-        <section>
-          <h2 className="text-lg font-semibold text-foreground">Contact</h2>
-          <p className="mt-2">
-            Questions about these terms can be sent through the{" "}
-            <a href="/contact" className="text-primary hover:underline">
-              contact page
-            </a>
-            .
-          </p>
-        </section>
+        {Object.keys(SECTION_LINKS).map((id) => {
+          const href = SECTION_LINKS[id];
+          return (
+            <section key={id}>
+              <h2 className="text-lg font-semibold text-foreground">
+                {t(`${id}.heading`)}
+              </h2>
+              <p className="mt-2">
+                {href
+                  ? t.rich(`${id}.body`, {
+                      l: (chunks) => (
+                        <Link
+                          href={href}
+                          className="text-primary hover:underline"
+                        >
+                          {chunks}
+                        </Link>
+                      ),
+                    })
+                  : t(`${id}.body`)}
+              </p>
+            </section>
+          );
+        })}
       </div>
     </div>
   );

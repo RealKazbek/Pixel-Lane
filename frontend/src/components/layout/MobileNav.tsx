@@ -1,8 +1,8 @@
 "use client";
 
-import Link from "next/link";
-import { usePathname } from "next/navigation";
 import { useState } from "react";
+import { useTranslations } from "next-intl";
+import { Link, usePathname } from "@/i18n/navigation";
 import { NAV_ITEMS } from "./nav-config";
 import { StatusBadge } from "@/components/ui/StatusBadge";
 
@@ -12,6 +12,7 @@ import { StatusBadge } from "@/components/ui/StatusBadge";
 export function MobileNav() {
   const [open, setOpen] = useState(false);
   const pathname = usePathname();
+  const t = useTranslations("common");
 
   return (
     <div className="md:hidden">
@@ -20,10 +21,14 @@ export function MobileNav() {
         onClick={() => setOpen((v) => !v)}
         aria-expanded={open}
         aria-controls="mobile-nav-drawer"
-        aria-label={open ? "Close navigation menu" : "Open navigation menu"}
+        aria-label={
+          open
+            ? t("actions.closeNavigationMenu")
+            : t("actions.openNavigationMenu")
+        }
         className="rounded-md border border-border-subtle px-2.5 py-1.5 text-sm text-zinc-600 dark:text-zinc-300"
       >
-        Menu
+        {t("actions.openMenu")}
       </button>
 
       {open && (
@@ -48,9 +53,12 @@ export function MobileNav() {
                     : "text-zinc-600 dark:text-zinc-300"
                 }`}
               >
-                <span>{item.label}</span>
+                <span>{t(`nav.${item.labelKey}`)}</span>
                 {item.status === "planned" && (
-                  <StatusBadge label="Planned" tone="planned" />
+                  <StatusBadge
+                    label={t("featureStatus.planned")}
+                    tone="planned"
+                  />
                 )}
               </Link>
             );

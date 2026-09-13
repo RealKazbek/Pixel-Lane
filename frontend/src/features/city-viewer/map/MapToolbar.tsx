@@ -1,3 +1,4 @@
+import { useTranslations } from "next-intl";
 import type { MapMode } from "./types";
 import type { EditorStatus } from "./editor/useGeometryEditor";
 
@@ -38,6 +39,7 @@ export function MapToolbar({
   onCancel,
   onFitToView,
 }: MapToolbarProps) {
+  const t = useTranslations("cityModel.toolbar");
   const isEditing = mode === "edit-geometry";
 
   return (
@@ -48,20 +50,20 @@ export function MapToolbar({
         disabled={!basemapConfigured}
         title={
           basemapConfigured
-            ? "Toggle reference basemap"
-            : "No basemap style configured"
+            ? t("basemapTooltip")
+            : t("basemapUnconfiguredTooltip")
         }
         className={`${buttonBase} ${basemapEnabled ? buttonActive : buttonNeutral}`}
       >
-        Basemap {basemapEnabled ? "on" : "off"}
+        {basemapEnabled ? t("basemapOn") : t("basemapOff")}
       </button>
       <button
         type="button"
         onClick={onToggleOverlay}
-        title="Toggle the Pixel Lane road-network overlay (debugging aid)"
+        title={t("overlayTooltip")}
         className={`${buttonBase} ${overlayVisible ? buttonActive : buttonNeutral}`}
       >
-        Overlay {overlayVisible ? "on" : "off"}
+        {overlayVisible ? t("overlayOn") : t("overlayOff")}
       </button>
 
       <div className="mx-1 h-4 w-px bg-border-subtle" />
@@ -71,7 +73,7 @@ export function MapToolbar({
         onClick={() => onSetMode("view")}
         className={`${buttonBase} ${!isEditing ? buttonActive : buttonNeutral}`}
       >
-        Select
+        {t("select")}
       </button>
       <button
         type="button"
@@ -79,12 +81,12 @@ export function MapToolbar({
         disabled={!canEditSelection && !isEditing}
         title={
           canEditSelection
-            ? "Edit the selected road's geometry"
-            : "Select a road first"
+            ? t("editGeometryTooltip")
+            : t("editGeometryDisabledTooltip")
         }
         className={`${buttonBase} ${isEditing ? buttonActive : buttonNeutral}`}
       >
-        Edit geometry
+        {t("editGeometry")}
       </button>
 
       {isEditing && (
@@ -95,14 +97,14 @@ export function MapToolbar({
             disabled={editorStatus === "saving"}
             className={`${buttonBase} ${buttonNeutral}`}
           >
-            {editorStatus === "saving" ? "Saving…" : "Apply"}
+            {editorStatus === "saving" ? t("applying") : t("apply")}
           </button>
           <button
             type="button"
             onClick={onCancel}
             className={`${buttonBase} ${buttonNeutral}`}
           >
-            Cancel
+            {t("cancel")}
           </button>
         </>
       )}
@@ -114,7 +116,7 @@ export function MapToolbar({
         onClick={onFitToView}
         className={`${buttonBase} ${buttonNeutral}`}
       >
-        Fit to view
+        {t("fitToView")}
       </button>
     </div>
   );

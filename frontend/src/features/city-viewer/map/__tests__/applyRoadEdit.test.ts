@@ -9,7 +9,12 @@ const road: Road = {
   city_id: "city-1",
   name: "Main St",
   road_type: "ARTERIAL",
-  geometry: { points: [{ x: 0, y: 0 }, { x: 1, y: 1 }] },
+  geometry: {
+    points: [
+      { x: 0, y: 0 },
+      { x: 1, y: 1 },
+    ],
+  },
   default_speed_limit_kmh: 50,
   lanes: [],
 };
@@ -24,36 +29,45 @@ describe("applyRoadEdit", () => {
     const result = await applyRoadEdit("city-1", "road-1", [{ x: 0, y: 0 }]);
     expect(result).toEqual({
       ok: false,
-      error: "A road needs at least 2 points.",
+      error: "min-points",
     });
     expect(spy).not.toHaveBeenCalled();
   });
 
   it("returns the updated road on success", async () => {
     vi.spyOn(citiesApi, "updateRoadGeometry").mockResolvedValue(road);
-    const points = [{ x: 0, y: 0 }, { x: 1, y: 1 }];
+    const points = [
+      { x: 0, y: 0 },
+      { x: 1, y: 1 },
+    ];
     const result = await applyRoadEdit("city-1", "road-1", points);
     expect(result).toEqual({ ok: true, road });
   });
 
-  it("surfaces an ApiError's message", async () => {
+  it("returns a save-failed code for an ApiError, without leaking its raw message", async () => {
     vi.spyOn(citiesApi, "updateRoadGeometry").mockRejectedValue(
       new ApiError(404, "Road not found"),
     );
-    const points = [{ x: 0, y: 0 }, { x: 1, y: 1 }];
+    const points = [
+      { x: 0, y: 0 },
+      { x: 1, y: 1 },
+    ];
     const result = await applyRoadEdit("city-1", "road-1", points);
-    expect(result).toEqual({ ok: false, error: "Road not found" });
+    expect(result).toEqual({ ok: false, error: "save-failed" });
   });
 
-  it("falls back to a generic message for a non-ApiError failure", async () => {
+  it("returns a save-failed code for a non-ApiError failure", async () => {
     vi.spyOn(citiesApi, "updateRoadGeometry").mockRejectedValue(
       new Error("network exploded"),
     );
-    const points = [{ x: 0, y: 0 }, { x: 1, y: 1 }];
+    const points = [
+      { x: 0, y: 0 },
+      { x: 1, y: 1 },
+    ];
     const result = await applyRoadEdit("city-1", "road-1", points);
     expect(result).toEqual({
       ok: false,
-      error: "Failed to save the edited road geometry.",
+      error: "save-failed",
     });
   });
 });

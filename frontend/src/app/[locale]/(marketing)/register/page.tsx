@@ -1,42 +1,54 @@
 import type { Metadata } from "next";
-import Link from "next/link";
+import { getTranslations } from "next-intl/server";
+import { Link } from "@/i18n/navigation";
 import { AuthLayout } from "@/components/marketing/AuthLayout";
 
-export const metadata: Metadata = {
-  title: "Register",
-  robots: { index: false },
-};
+export async function generateMetadata({
+  params,
+}: {
+  params: Promise<{ locale: string }>;
+}): Promise<Metadata> {
+  const { locale } = await params;
+  const t = await getTranslations({ locale, namespace: "auth.register" });
+  return { title: t("titleMeta"), robots: { index: false } };
+}
 
 /** UI-ready only -- no registration backend exists yet. */
-export default function RegisterPage() {
+export default async function RegisterPage({
+  params,
+}: {
+  params: Promise<{ locale: string }>;
+}) {
+  const { locale } = await params;
+  const t = await getTranslations({ locale, namespace: "auth.register" });
+
   return (
-    <AuthLayout title="Create an account">
+    <AuthLayout title={t("title")}>
       <p className="mb-4 rounded-md border border-dashed border-border-subtle p-3 text-xs text-zinc-500 dark:text-zinc-400">
-        Account creation isn&apos;t connected yet — this form is a UI preview
-        only.
+        {t("notice")}
       </p>
       <form className="flex flex-col gap-4">
-        <LabeledInput id="name" label="Name" type="text" />
-        <LabeledInput id="email" label="Email" type="email" />
-        <LabeledInput id="password" label="Password" type="password" />
+        <LabeledInput id="name" label={t("name")} type="text" />
+        <LabeledInput id="email" label={t("email")} type="email" />
+        <LabeledInput id="password" label={t("password")} type="password" />
         <LabeledInput
           id="confirm-password"
-          label="Confirm password"
+          label={t("confirmPassword")}
           type="password"
         />
         <button
           type="button"
           disabled
-          title="Not yet connected to a backend"
+          title={t("submitDisabledTitle")}
           className="cursor-not-allowed rounded-md bg-primary/50 px-4 py-2 text-sm font-medium text-white"
         >
-          Create account
+          {t("submit")}
         </button>
       </form>
       <p className="mt-4 text-center text-xs text-zinc-500 dark:text-zinc-400">
-        Already have an account?{" "}
+        {t("haveAccount")}{" "}
         <Link href="/login" className="text-primary hover:underline">
-          Sign in
+          {t("signInLink")}
         </Link>
       </p>
     </AuthLayout>
