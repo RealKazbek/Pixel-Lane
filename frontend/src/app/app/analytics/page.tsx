@@ -1,6 +1,9 @@
+import type { Metadata } from "next";
 import Link from "next/link";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { StatusBadge } from "@/components/ui/StatusBadge";
+
+export const metadata: Metadata = { title: "Analytics" };
 
 export default function AnalyticsPage() {
   return (
@@ -14,7 +17,7 @@ export default function AnalyticsPage() {
         description="Historical metrics (average speed, congestion trend, travel time, throughput) require running traffic analysis on a City Model first. Open City Model, select a city, and run traffic analysis to see current-run metrics there."
         action={
           <Link
-            href="/city-model"
+            href="/app/city-model"
             className="rounded-md bg-blue-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-blue-500"
           >
             Open City Model

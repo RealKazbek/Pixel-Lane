@@ -1,5 +1,8 @@
+import type { Metadata } from "next";
 import { Panel } from "@/components/ui/Panel";
 import { StatusBadge } from "@/components/ui/StatusBadge";
+
+export const metadata: Metadata = { title: "Simulation" };
 
 export default function SimulationPage() {
   return (
