@@ -23,7 +23,8 @@
   "map": {
     "loadingCity": "Loading city…",
     "cityFailedToLoad": "City failed to load.",
-    "selectCityPrompt": "Select a city from the sidebar to view its road network."
+    "selectCityPrompt": "Select a city from the sidebar to view its road network.",
+    "cityHasNoRoadData": "This city has no road network data yet. Import the demo dataset to populate it."
   },
   "details": {
     "clickToSeeDetails": "Click a road or intersection on the map to see its details here.",

@@ -186,6 +186,12 @@ export function CityViewerApp() {
           <EmptyState title={tMap("selectCityPrompt")} />
         )}
 
+        {city && city.roads.length === 0 && (
+          <div className="pointer-events-none absolute inset-0 z-10 flex items-center justify-center bg-background/80">
+            <EmptyState title={tMap("cityHasNoRoadData")} />
+          </div>
+        )}
+
         {city && (
           <>
             <PixelLaneMap
