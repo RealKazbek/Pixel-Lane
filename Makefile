@@ -1,6 +1,7 @@
 .PHONY: help check-env start stop restart status ps logs build rebuild clean reset \
 	start-db stop-db start-backend resources \
 	frontend-dev frontend-lint frontend-typecheck frontend-build frontend-test \
+	frontend-check-i18n check-agents \
 	backend-dev backend-lint backend-typecheck backend-test migrate migration \
 	simulation-test import-almaty
 
@@ -136,6 +137,12 @@ frontend-build:
 
 frontend-test:
 	cd frontend && npm run test
+
+frontend-check-i18n:
+	cd frontend && npm run check:i18n
+
+check-agents:
+	node scripts/check-agents.mjs
 
 backend-dev:
 	cd backend && . .venv/bin/activate && uvicorn app.main:app --reload
