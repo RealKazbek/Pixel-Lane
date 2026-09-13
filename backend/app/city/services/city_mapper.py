@@ -63,7 +63,7 @@ def to_road_read(road: Road) -> RoadRead:
     )
 
 
-def _to_intersection_read(
+def to_intersection_read(
     intersection: Intersection, traffic_light_by_intersection: dict[UUID, UUID]
 ) -> IntersectionRead:
     return IntersectionRead(
@@ -156,7 +156,7 @@ def to_city_read(city: City) -> CityRead:
         updated_at=city.updated_at,
         roads=[to_road_read(road) for road in city.roads],
         intersections=[
-            _to_intersection_read(i, traffic_light_by_intersection) for i in city.intersections
+            to_intersection_read(i, traffic_light_by_intersection) for i in city.intersections
         ],
         traffic_lights=[_to_traffic_light_read(light) for light in city.traffic_lights],
         traffic_rules=[_to_traffic_rule_read(rule) for rule in city.traffic_rules],
