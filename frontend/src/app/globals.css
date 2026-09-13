@@ -1,26 +1,65 @@
 @import "tailwindcss";
 
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  --background: #f7f8fa;
+  --foreground: #14181f;
+
+  --surface: #ffffff;
+  --surface-raised: #ffffff;
+  --border-subtle: #e2e5ea;
+
+  --severity-low: #1c7a4d;
+  --severity-low-bg: #e3f5ec;
+  --severity-moderate: #a3620b;
+  --severity-moderate-bg: #fbf0dc;
+  --severity-high: #b3410d;
+  --severity-high-bg: #fce7dc;
+  --severity-critical: #c0102b;
+  --severity-critical-bg: #fbdde1;
 }
 
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
+  --color-surface: var(--surface);
+  --color-surface-raised: var(--surface-raised);
+  --color-border-subtle: var(--border-subtle);
+
+  --color-severity-low: var(--severity-low);
+  --color-severity-low-bg: var(--severity-low-bg);
+  --color-severity-moderate: var(--severity-moderate);
+  --color-severity-moderate-bg: var(--severity-moderate-bg);
+  --color-severity-high: var(--severity-high);
+  --color-severity-high-bg: var(--severity-high-bg);
+  --color-severity-critical: var(--severity-critical);
+  --color-severity-critical-bg: var(--severity-critical-bg);
+
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
 }
 
 @media (prefers-color-scheme: dark) {
   :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
+    --background: #0b0d11;
+    --foreground: #e7eaef;
+
+    --surface: #14171d;
+    --surface-raised: #191d24;
+    --border-subtle: #262b33;
+
+    --severity-low: #4ade80;
+    --severity-low-bg: rgba(74, 222, 128, 0.12);
+    --severity-moderate: #facc79;
+    --severity-moderate-bg: rgba(250, 204, 121, 0.12);
+    --severity-high: #fb923c;
+    --severity-high-bg: rgba(251, 146, 60, 0.14);
+    --severity-critical: #f87171;
+    --severity-critical-bg: rgba(248, 113, 113, 0.14);
   }
 }
 
 body {
   background: var(--background);
   color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  font-family: var(--font-sans), Arial, Helvetica, sans-serif;
 }
