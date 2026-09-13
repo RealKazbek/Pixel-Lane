@@ -4,6 +4,7 @@ import { hasLocale, NextIntlClientProvider } from "next-intl";
 import { getTranslations, setRequestLocale } from "next-intl/server";
 import { notFound } from "next/navigation";
 import { routing } from "@/i18n/routing";
+import { ThemeProvider } from "@/components/theme/ThemeProvider";
 import "../globals.css";
 
 const geistSans = Geist({
@@ -59,10 +60,16 @@ export default async function LocaleLayout({
   return (
     <html
       lang={locale}
+      // next-themes sets `data-theme` on this element before first paint
+      // via its own inline script; suppressHydrationWarning only covers
+      // that one attribute (see docs/theming.md), not the rest of the DOM.
+      suppressHydrationWarning
       className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
     >
       <body className="h-dvh bg-background text-foreground">
-        <NextIntlClientProvider>{children}</NextIntlClientProvider>
+        <ThemeProvider>
+          <NextIntlClientProvider>{children}</NextIntlClientProvider>
+        </ThemeProvider>
       </body>
     </html>
   );

@@ -3,6 +3,7 @@ import { Link } from "@/i18n/navigation";
 import { MobileNav } from "./MobileNav";
 import { StatusCheck } from "@/components/status-check";
 import { LanguageSwitcher } from "@/components/ui/LanguageSwitcher";
+import { ThemeSwitcher } from "@/components/ui/ThemeSwitcher";
 
 /** Header for the internal application shell only. Visually distinct from
  * `marketing/MarketingHeader` (no product nav links, no auth CTAs) --
@@ -41,6 +42,7 @@ export function AppHeader() {
               }),
             }}
           />
+          <ThemeSwitcher />
           <LanguageSwitcher />
           <Link
             href="/"

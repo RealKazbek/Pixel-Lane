@@ -4,6 +4,7 @@ import { useState } from "react";
 import { useTranslations } from "next-intl";
 import { Link, usePathname } from "@/i18n/navigation";
 import { LanguageSwitcher } from "@/components/ui/LanguageSwitcher";
+import { ThemeSwitcher } from "@/components/ui/ThemeSwitcher";
 
 const LINK_HREFS = ["/features", "/features", "/about", "/contact"] as const;
 const LINK_KEYS = ["product", "features", "about", "contact"] as const;
@@ -49,6 +50,7 @@ export function MarketingHeader() {
         </nav>
 
         <div className="hidden items-center gap-3 md:flex">
+          <ThemeSwitcher />
           <LanguageSwitcher />
           <Link
             href="/login"
@@ -94,6 +96,7 @@ export function MarketingHeader() {
             </Link>
           ))}
           <div className="mt-2 flex flex-col gap-3 border-t border-border-subtle pt-3">
+            <ThemeSwitcher variant="full" />
             <LanguageSwitcher variant="full" />
             <Link
               href="/login"

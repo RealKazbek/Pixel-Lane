@@ -2,6 +2,12 @@
   "siteTitle": "Pixel Lane — Intelligent Urban Traffic Management",
   "siteDescription": "Pixel Lane models city road networks, analyzes traffic, and prepares infrastructure for simulation-driven urban mobility decisions.",
   "languageSwitcherLabel": "Choose language",
+  "themeSwitcher": {
+    "label": "Choose appearance",
+    "light": "Light",
+    "dark": "Dark",
+    "system": "System"
+  },
   "nav": {
     "dashboard": "Dashboard",
     "cityModel": "City Model",
