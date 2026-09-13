@@ -14,8 +14,8 @@ document quotes a rule, it is a summary for prompt-writing convenience —
 
 Untargeted prompts ("add a feature", "make it multilingual", "clean up the
 map") force the agent to guess scope, invent architecture, or silently
-skip project rules (PostgreSQL-only, kk/ru/en, no fake backend behavior,
-etc.). This standard exists so that any human, writing a prompt for any
+skip project rules (PostgreSQL-only, kk/ru/en, Light/Dark theming, no fake
+backend behavior, etc.). This standard exists so that any human, writing a prompt for any
 agent, produces instructions that are complete enough to get a
 project-consistent result without re-typing the whole policy every time.
 
@@ -81,6 +81,11 @@ violate these, even implicitly:
 - Every user-facing change must ship complete `kk`/`ru`/`en` translations
   in the same change (`AGENTS.md` § 20) and pass `npm run check:i18n`
   (`frontend/`) — a missing locale is treated like a failing test.
+- Every user-facing frontend change must work correctly in Light, Dark,
+  and System appearance modes using the existing semantic tokens/theme
+  system (`AGENTS.md` § 21, `docs/theming.md`) — a change that's only
+  checked in one theme is treated like a failing test, the same as a
+  missing locale.
 - No unnecessary dependencies (library-first evaluation, `AGENTS.md` § 18).
 - Update documentation when architecture, data flow, or workflow changes
   (`docs/architecture.md` must stay current, not aspirational).
@@ -142,6 +147,7 @@ Not every section is needed for every task — use judgment, but always keep
 | 9 | Database Requirements | Schema/query-touching tasks |
 | 10 | Security Requirements | When handling input, auth, secrets, external data |
 | 11 | Internationalization Requirements | Any user-facing UI change |
+| 11b | Light/Dark Theme Requirements | Any user-facing UI change |
 | 12 | Performance and Scalability | Hot paths, large data, rendering loops |
 | 13 | Testing / Validation | Always |
 | 14 | Documentation | When architecture/workflow/data-flow changes |
@@ -358,6 +364,10 @@ global state management library.
 # Internationalization Requirements
 All new labels need kk/ru/en entries in the appropriate messages namespace.
 
+# Light/Dark Theme Requirements
+Use existing semantic tokens (AGENTS.md § 21) — no hardcoded single-theme
+colors. Verify readable in both Light and Dark before calling this done.
+
 # Validation
 npm run format / lint / typecheck / test / check:i18n / build (frontend/).
 
@@ -487,6 +497,8 @@ results, commit hash(es), push status.
 - [ ] Current Context states only what you actually know, not assumptions.
 - [ ] Non-goals are explicit if scope creep is a real risk.
 - [ ] i18n requirement is included for any user-facing change.
+- [ ] Light/Dark theme requirement is included for any user-facing
+      frontend change.
 - [ ] Validation section names the actual commands relevant to what's
       being touched.
 - [ ] Git section requires commit + push + remote verification (unless you

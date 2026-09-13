@@ -639,3 +639,62 @@ repository — Claude Code, Codex, Gemini, or otherwise. `AGENTS.md` is the
 canonical instruction set for Codex and any other agent that reads it
 directly; `CLAUDE.md` and `GEMINI.md` are short entry points that point
 back here rather than duplicating this section.
+
+## 21. Appearance / Theming — Mandatory
+
+Pixel Lane supports **Light**, **Dark**, and **System** appearance modes.
+This is a permanent architectural requirement, not a one-off feature —
+see `docs/theming.md` for the full workflow (token list, where the
+switcher lives, how to add a theme-aware component). The theme system is
+`next-themes`, writing `data-theme="light"|"dark"` on `<html>`; both that
+attribute and Tailwind's `dark:` variant read from the same semantic CSS
+custom properties defined once in `frontend/src/app/globals.css`.
+
+**Agents MUST NOT:**
+
+- hardcode a color that only looks correct in one theme (e.g. a literal
+  hex/RGB value, or a Tailwind color like `bg-white`/`text-black`)
+  instead of a semantic token or an existing `dark:` pair;
+- ship a new or modified user-facing component that was only checked
+  against one theme;
+- introduce a second, competing theme/token system alongside the
+  existing one;
+- assume "dark mode" means inverting every color — status/severity colors
+  must stay semantically meaningful in both themes, not just inverted;
+- wire theme preference to the backend/a user-accounts system that
+  doesn't exist yet — it is a local (`localStorage`) UI preference only.
+
+**Agents MUST:**
+
+- use the existing semantic tokens (`background`, `foreground`,
+  `surface`, `surface-elevated`, `border-subtle`, `text-muted`,
+  `primary`, `success`, `warning`, `danger`, the `severity-*` scale) or
+  paired `dark:`/`data-theme` Tailwind utilities — never a new one-off
+  color;
+- verify (by code inspection, and visually when a browser is available)
+  that a UI change reads correctly in both Light and Dark before calling
+  it done;
+- keep the map/City Model workspace's own canvas styling (which is a
+  self-contained engineering-map palette, not app chrome) and the
+  surrounding overlay/toolbar/panel chrome (which *does* use the shared
+  tokens) conceptually distinct — see `docs/theming.md`;
+- localize any new theme-switcher-adjacent labels through the existing
+  i18n system for `kk`/`ru`/`en`, per § 20 — a theme feature is still a
+  user-facing feature.
+
+**Definition of Done** for any user-facing frontend change includes
+verified correctness in both Light and Dark appearance — not "looks fine
+in whichever theme I happened to test."
+
+**Code review rule.** A user-facing frontend change is incomplete if any
+of the following is true:
+
+- it is visibly broken, low-contrast, or unreadable in either Light or
+  Dark mode;
+- it introduces a hardcoded single-theme color where a semantic token
+  already covers that case;
+- a new component skips the existing token system entirely.
+
+This section is canonical policy for **every** agent working on this
+repository, exactly as § 20 is — `CLAUDE.md` and `GEMINI.md` point back
+here rather than duplicating it.

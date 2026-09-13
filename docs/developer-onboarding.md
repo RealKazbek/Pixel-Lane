@@ -42,6 +42,7 @@ Key boundaries, already enforced in the current code:
 | Change the DB schema | `backend/app/city/models/` + `make migration msg="..."` |
 | Change traffic analysis logic | `simulation/pixel_lane_simulation/traffic/` |
 | Add/change a translation | `frontend/messages/{kk,ru,en}/*.json` (see [i18n](#5-internationalization)) |
+| Add a theme-aware style | `frontend/src/app/globals.css`'s semantic tokens (see [theming](#5b-theming)) |
 | Change AI-agent policy | `AGENTS.md` (canonical — see [docs/ai-development.md](ai-development.md)) |
 | Add an AI task checklist | `.agents/skills/` |
 | Change the Almaty import | `backend/app/city/importers/osm/` (see [docs/osm-import.md](osm-import.md)) |
@@ -81,6 +82,17 @@ conventions, and how to add a key. `npm run check:i18n`
 two locales. It does **not** catch a string hardcoded directly in JSX
 instead of going through the translation system — that's caught only by
 review, so check it yourself before opening a PR.
+
+## 5b. Theming
+
+Every user-facing frontend change must work in Light, Dark, and System
+appearance modes using the existing semantic tokens — see
+[docs/theming.md](theming.md) for the token list, the theme-system
+architecture (`next-themes`, `data-theme` attribute), and how to add a
+theme-aware component. Unlike i18n, there is no automated key-parity
+check for themes — verify by code review and, where a browser is
+available, by actually toggling Light/Dark before considering a UI change
+done.
 
 ## 6. Testing and validation
 

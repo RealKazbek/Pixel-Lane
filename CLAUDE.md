@@ -21,6 +21,11 @@ This is the shared development policy for Pixel Lane.
   § 20 and `docs/i18n.md`). Any user-facing change must add/keep
   translations for all three locales in the same change and pass
   `npm run check:i18n` — treat a missing locale like a failing test.
+- **Mandatory:** Pixel Lane supports Light/Dark/System appearance (see
+  AGENTS.md § 21 and `docs/theming.md`). Any new/modified user-facing
+  frontend UI must use the existing semantic tokens and be verified
+  correct in both Light and Dark — treat a theme-breaking hardcoded color
+  like a failing test.
 - Do not repeatedly re-read unchanged files during the same task.
 - Inspect `git status` before editing; respect other agents' in-progress or
   uncommitted work.

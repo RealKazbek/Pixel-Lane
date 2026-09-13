@@ -15,6 +15,7 @@ through everything below.
 - [OSM import](osm-import.md) — Almaty demo normalization.
 - [API](api.md) — API groups and OpenAPI source of truth.
 - [Internationalization](i18n.md) — kk/ru/en workflow and requirements.
+- [Theming](theming.md) — Light/Dark/System appearance system and token workflow.
 - [Testing](testing.md) — checks and database safety.
 - [Troubleshooting](troubleshooting.md) — common local issues.
 - [Roadmap](roadmap.md) — implemented, next, and future work.

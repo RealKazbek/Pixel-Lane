@@ -15,3 +15,8 @@ this repository. It does not duplicate policy — read the real source:
   component, form, or message must ship with complete translations for
   all three locales in the same change, and `npm run check:i18n` (in
   `frontend/`) must pass.
+- **Mandatory:** Pixel Lane supports Light, Dark, and System appearance
+  modes via a semantic-token theme system. See AGENTS.md § 21 "Appearance
+  / Theming — Mandatory" and `docs/theming.md`. Every new/modified
+  user-facing frontend component must use the existing tokens and be
+  verified correct in both Light and Dark before it's considered done.
