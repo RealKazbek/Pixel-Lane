@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import { useTranslations } from "next-intl";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { PixelLaneMap, type EditorAction } from "../map/PixelLaneMap";
+import type { ViewportDataStatus } from "../map/hooks/useViewportCityData";
 import { MapToolbar } from "../map/MapToolbar";
 import { BottleneckList } from "./sidebar/BottleneckList";
 import { CityList } from "./sidebar/CityList";
@@ -52,6 +53,8 @@ export function CityViewerApp() {
   );
   const [mode, setMode] = useState<MapMode>("view");
   const [editorAction, setEditorAction] = useState<EditorAction | null>(null);
+  const [viewportStatus, setViewportStatus] =
+    useState<ViewportDataStatus>("idle");
   const [editorStatus, setEditorStatus] = useState<EditorStatus>("idle");
   const [editorError, setEditorError] = useState<ApplyRoadEditError | null>(
     null,
@@ -207,7 +210,24 @@ export function CityViewerApp() {
               editorAction={editorAction}
               onEditorStatusChange={handleEditorStatusChange}
               onRoadSaved={refreshCity}
+              onViewportStatusChange={setViewportStatus}
             />
+
+            {(viewportStatus === "loading" || viewportStatus === "error") && (
+              <div className="pointer-events-none absolute bottom-3 left-3 z-10">
+                <span
+                  className={`rounded-md border px-2.5 py-1 text-xs shadow-sm backdrop-blur ${
+                    viewportStatus === "error"
+                      ? "border-danger/40 bg-danger/10 text-danger"
+                      : "border-border-subtle bg-surface-elevated/90 text-text-muted"
+                  }`}
+                >
+                  {viewportStatus === "error"
+                    ? tMap("viewportDataFailed")
+                    : tMap("loadingViewportData")}
+                </span>
+              </div>
+            )}
 
             <div className="pointer-events-none absolute inset-x-3 top-3 flex justify-center">
               <MapToolbar

@@ -13,6 +13,10 @@ import { useCallback, useEffect, useMemo, useRef } from "react";
 import type { Map as MapLibreMap, MapLayerMouseEvent } from "maplibre-gl";
 import { useMapLibreMap } from "./hooks/useMapLibreMap";
 import {
+  useViewportCityData,
+  type ViewportDataStatus,
+} from "./hooks/useViewportCityData";
+import {
   useGeometryEditor,
   type EditorStatus,
 } from "./editor/useGeometryEditor";
@@ -62,6 +66,10 @@ interface PixelLaneMapProps {
     error: ApplyRoadEditError | null,
   ) => void;
   onRoadSaved: () => void;
+  /** Surfaces the viewport data-loading status to the parent so it can
+   * show a subtle loading/error indicator (see CityViewerApp.tsx) --
+   * this component itself never renders any chrome. */
+  onViewportStatusChange?: (status: ViewportDataStatus) => void;
 }
 
 export function PixelLaneMap({
@@ -77,6 +85,7 @@ export function PixelLaneMap({
   editorAction,
   onEditorStatusChange,
   onRoadSaved,
+  onViewportStatusChange,
 }: PixelLaneMapProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const bounds = useMemo(() => computeCityBounds(city), [city]);
@@ -101,15 +110,51 @@ export function PixelLaneMap({
     zoom: 13,
   });
 
-  const geoJson = useMemo<PixelLaneGeoJson>(
-    () => ({
-      roads: buildRoadFeatureCollection(city),
-      intersections: buildIntersectionFeatureCollection(city),
-      trafficLights: buildTrafficLightFeatureCollection(city),
-      labels: buildRoadLabelFeatureCollection(city),
-    }),
-    [city],
-  );
+  // Rendered map data is viewport-scoped (see map/README.md), not the
+  // whole `city` -- `city` itself stays the full City Model, still used
+  // for selection/details/editor lookups below, which must keep working
+  // for a currently-selected feature even if it scrolls out of the
+  // freshly-fetched viewport (see the selection effects further down).
+  const viewport = useViewportCityData(mapRef, isLoaded, city.id);
+
+  useEffect(() => {
+    onViewportStatusChange?.(viewport.status);
+  }, [viewport.status, onViewportStatusChange]);
+
+  const geoJson = useMemo<PixelLaneGeoJson>(() => {
+    // Traffic lights aren't separately bbox-queried (see
+    // docs/city-model.md): a light is a 1:1 attachment to an
+    // intersection with no geometry of its own, so its position is
+    // exactly its parent intersection's -- derived here from whichever
+    // viewport intersections carry a `traffic_light_id`, rather than a
+    // fourth endpoint.
+    const trafficLights = viewport.intersections
+      .filter((i) => i.traffic_light_id !== null)
+      .map((i) => ({
+        id: i.traffic_light_id as string,
+        intersection_id: i.id,
+      }));
+
+    return {
+      roads: buildRoadFeatureCollection({
+        roads: viewport.roads,
+        coordinate_system: city.coordinate_system,
+      }),
+      intersections: buildIntersectionFeatureCollection({
+        intersections: viewport.intersections,
+        coordinate_system: city.coordinate_system,
+      }),
+      trafficLights: buildTrafficLightFeatureCollection({
+        traffic_lights: trafficLights,
+        intersections: viewport.intersections,
+        coordinate_system: city.coordinate_system,
+      }),
+      labels: buildRoadLabelFeatureCollection({
+        roads: viewport.roads,
+        coordinate_system: city.coordinate_system,
+      }),
+    };
+  }, [viewport.roads, viewport.intersections, city.coordinate_system]);
   const styleKey =
     basemapEnabled && mapStyleUrl ? mapStyleUrl : "pixel-lane-empty";
 

@@ -150,9 +150,16 @@ export function isJunction(
   );
 }
 
-export function buildTrafficLightFeatureCollection(
-  city: Pick<City, "traffic_lights" | "intersections" | "coordinate_system">,
-): TrafficLightFeatureCollection {
+export function buildTrafficLightFeatureCollection(city: {
+  // Widened to the minimum shape traffic-light rendering actually needs
+  // (not the full `TrafficLight`) so viewport-scoped data -- which only
+  // carries `intersection.traffic_light_id`, not full signal/phase
+  // detail -- can build the same feature collection (see
+  // adapters/viewportTrafficLights.ts).
+  traffic_lights: Pick<TrafficLight, "id" | "intersection_id">[];
+  intersections: Pick<Intersection, "id" | "position">[];
+  coordinate_system: CoordinateSystem;
+}): TrafficLightFeatureCollection {
   const positionByIntersection = new Map(
     city.intersections.map((i) => [
       i.id,
@@ -160,7 +167,7 @@ export function buildTrafficLightFeatureCollection(
     ]),
   );
   const features: TrafficLightFeatureCollection["features"] = [];
-  for (const light of city.traffic_lights as TrafficLight[]) {
+  for (const light of city.traffic_lights) {
     const coordinates = positionByIntersection.get(light.intersection_id);
     if (!coordinates) continue;
     features.push({
