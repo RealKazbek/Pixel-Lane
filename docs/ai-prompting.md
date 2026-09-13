@@ -303,6 +303,16 @@ Every Pixel Lane task's final report should include, at minimum:
 7. Push status, including remote-HEAD verification (or the specific reason
    push was skipped).
 
+Normal development tasks (feature, bugfix, refactor, documentation, UI,
+backend, database, infrastructure) end with this Final Report only. Do not
+append a standalone "durable rules" / memory-export block (e.g. a
+"PIXEL LANE ... FOR CHATGPT MEMORY" section) by default — that output is
+for a distinct, narrow request: the user explicitly asking to create,
+update, or export durable project rules for external memory. If a task
+happens to change a durable policy (e.g. a new AGENTS.md rule), report that
+change as item 2 above like any other change; do not also emit a separate
+memory block unless asked.
+
 ## Anti-patterns (do not write prompts like this)
 
 - "Make the whole app better." — no scope, no acceptance criteria.
