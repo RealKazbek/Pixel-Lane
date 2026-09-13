@@ -1,0 +1,5 @@
+# Vendored MapLibre worker bundle (see scripts/sync-maplibre-worker.mjs),
+# copied verbatim from node_modules and served as a static runtime asset --
+# not source we own or want reformatted.
+public/maplibre-gl-worker.mjs
+public/maplibre-gl-shared.mjs
