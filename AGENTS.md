@@ -391,6 +391,12 @@ Load the relevant skill from `.agents/skills/` for the task type:
 
 Skills contain only specialized instructions — they do not repeat this file.
 
+When *writing* a prompt for an AI agent to work in this repository (rather
+than acting as the agent), see `docs/ai-prompting.md` for the canonical
+prompt template, required sections, and examples — it is a downstream
+guide for prompt authors, not a policy source; this file remains
+canonical.
+
 ## 17. Completion checklist
 
 Before declaring a task complete:

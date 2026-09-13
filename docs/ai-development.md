@@ -9,6 +9,10 @@ For a verified (not assumed) account of what each agent actually discovers,
 what's confirmed vs. inferred, and where the setup is weak, see
 `docs/ai-agent-audit.md`.
 
+For how *humans* should write prompts for these agents (a reusable
+template, required sections, examples, anti-patterns), see
+`docs/ai-prompting.md`.
+
 ## Agent entry points
 
 - **Claude Code** reads `CLAUDE.md` first (repo root and `frontend/`), which
