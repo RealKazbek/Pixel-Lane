@@ -1,3 +1,4 @@
+import { EmptyState } from "@/components/ui/EmptyState";
 import { IntersectionDetails } from "./IntersectionDetails";
 import { RoadDetails } from "./RoadDetails";
 import type { AnalysisLookup } from "../../lib/analysis-lookup";
@@ -13,9 +14,10 @@ interface DetailsPanelProps {
 export function DetailsPanel({ city, analysis, selected }: DetailsPanelProps) {
   if (!selected) {
     return (
-      <p className="text-xs text-zinc-500 dark:text-zinc-400">
-        Click a road or intersection on the map to see its details here.
-      </p>
+      <EmptyState
+        title="No object selected."
+        description="Click a road or intersection on the map to see its details here."
+      />
     );
   }
 

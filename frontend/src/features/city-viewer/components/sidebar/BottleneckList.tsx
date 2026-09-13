@@ -1,3 +1,6 @@
+import { TrafficLevelBadge } from "@/components/ui/TrafficLevelBadge";
+import { EmptyState } from "@/components/ui/EmptyState";
+import { bottleneckSeverityToTrafficLevel } from "../../lib/traffic-level";
 import type { Bottleneck } from "../../types/traffic-analysis";
 
 interface BottleneckListProps {
@@ -5,19 +8,9 @@ interface BottleneckListProps {
   onSelect: (bottleneck: Bottleneck) => void;
 }
 
-const SEVERITY_STYLES: Record<Bottleneck["severity"], string> = {
-  high: "bg-red-100 text-red-700 dark:bg-red-500/15 dark:text-red-400",
-  medium:
-    "bg-orange-100 text-orange-700 dark:bg-orange-500/15 dark:text-orange-400",
-};
-
 export function BottleneckList({ bottlenecks, onSelect }: BottleneckListProps) {
   if (bottlenecks.length === 0) {
-    return (
-      <p className="text-xs text-zinc-500 dark:text-zinc-400">
-        No bottlenecks detected.
-      </p>
-    );
+    return <EmptyState title="No bottlenecks detected." />;
   }
 
   return (
@@ -37,11 +30,10 @@ export function BottleneckList({ bottlenecks, onSelect }: BottleneckListProps) {
                 v/c {bottleneck.volume_capacity_ratio.toFixed(2)}
               </span>
             </span>
-            <span
-              className={`shrink-0 rounded px-1.5 py-0.5 font-medium ${SEVERITY_STYLES[bottleneck.severity]}`}
-            >
-              {bottleneck.severity}
-            </span>
+            <TrafficLevelBadge
+              level={bottleneckSeverityToTrafficLevel(bottleneck.severity)}
+              label={bottleneck.severity}
+            />
           </button>
         </li>
       ))}

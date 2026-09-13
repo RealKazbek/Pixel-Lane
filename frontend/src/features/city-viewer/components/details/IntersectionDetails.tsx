@@ -1,3 +1,5 @@
+import { TrafficLevelBadge } from "@/components/ui/TrafficLevelBadge";
+import { congestionToTrafficLevel } from "../../lib/traffic-level";
 import { DetailRow } from "./DetailRow";
 import type { AnalysisLookup } from "../../lib/analysis-lookup";
 import type { Intersection } from "../../types/city";
@@ -46,7 +48,15 @@ export function IntersectionDetails({
             label="V/C"
             value={metric.volume_capacity_ratio.toFixed(2)}
           />
-          <DetailRow label="Congestion" value={metric.congestion_level} />
+          <DetailRow
+            label="Congestion"
+            value={
+              <TrafficLevelBadge
+                level={congestionToTrafficLevel(metric.congestion_level)}
+                label={metric.congestion_level}
+              />
+            }
+          />
         </>
       ) : (
         <p className="mt-1.5 text-zinc-400">

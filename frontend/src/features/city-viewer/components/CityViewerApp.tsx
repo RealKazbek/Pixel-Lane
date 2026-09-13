@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import { EmptyState } from "@/components/ui/EmptyState";
 import { PixelLaneMap, type EditorAction } from "../map/PixelLaneMap";
 import { MapToolbar } from "../map/MapToolbar";
 import { BottleneckList } from "./sidebar/BottleneckList";
@@ -69,7 +70,7 @@ export function CityViewerApp() {
 
   return (
     <div className="flex flex-1 overflow-hidden">
-      <aside className="flex w-72 shrink-0 flex-col gap-5 overflow-y-auto border-r border-zinc-200 p-4 dark:border-zinc-800">
+      <aside className="flex w-72 shrink-0 flex-col gap-5 overflow-y-auto border-r border-border-subtle bg-surface p-4">
         <section>
           <h2 className="mb-2 text-xs font-semibold uppercase tracking-wide text-zinc-400">
             Cities
@@ -144,12 +145,15 @@ export function CityViewerApp() {
       </aside>
 
       <div className="relative flex-1 overflow-hidden">
-        {cityStatus === "loading" && <CenteredMessage text="Loading city…" />}
+        {cityStatus === "loading" && <EmptyState title="Loading city model…" />}
         {cityStatus === "error" && (
-          <CenteredMessage text="City failed to load." isError />
+          <EmptyState title="City failed to load." tone="error" />
         )}
         {!selectedCityId && cityStatus !== "loading" && (
-          <CenteredMessage text="Select a city from the sidebar to view its road network." />
+          <EmptyState
+            title="No city model loaded."
+            description="Select a city from the sidebar to view its road network."
+          />
         )}
 
         {city && (
@@ -195,7 +199,7 @@ export function CityViewerApp() {
                   {editorError}
                 </p>
               )}
-              <div className="pointer-events-auto max-h-32 w-full max-w-xl overflow-y-auto rounded-md border border-zinc-200 bg-white/95 px-3 py-2 shadow-sm backdrop-blur dark:border-zinc-700 dark:bg-zinc-900/95">
+              <div className="pointer-events-auto max-h-32 w-full max-w-xl overflow-y-auto rounded-md border border-border-subtle bg-surface/95 px-3 py-2 shadow-sm backdrop-blur">
                 <DetailsPanel
                   city={city}
                   analysis={analysisLookup}
@@ -206,24 +210,6 @@ export function CityViewerApp() {
           </>
         )}
       </div>
-    </div>
-  );
-}
-
-function CenteredMessage({
-  text,
-  isError = false,
-}: {
-  text: string;
-  isError?: boolean;
-}) {
-  return (
-    <div className="flex h-full w-full items-center justify-center px-6 text-center">
-      <p
-        className={`text-sm ${isError ? "text-red-600 dark:text-red-400" : "text-zinc-500 dark:text-zinc-400"}`}
-      >
-        {text}
-      </p>
     </div>
   );
 }

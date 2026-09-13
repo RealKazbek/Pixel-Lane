@@ -19,7 +19,7 @@ interface MapToolbarProps {
 const buttonBase =
   "rounded-md border px-2.5 py-1.5 text-xs font-medium shadow-sm backdrop-blur transition-colors disabled:cursor-not-allowed disabled:opacity-40";
 const buttonNeutral =
-  "border-zinc-200 bg-white/90 text-zinc-700 hover:bg-white dark:border-zinc-700 dark:bg-zinc-900/90 dark:text-zinc-300";
+  "border-border-subtle bg-surface/90 text-zinc-700 hover:bg-surface dark:text-zinc-300";
 const buttonActive = "border-blue-600 bg-blue-600 text-white hover:bg-blue-500";
 
 /** A small, focused toolbar -- not a full GIS UI (see map/README.md's
@@ -41,7 +41,7 @@ export function MapToolbar({
   const isEditing = mode === "edit-geometry";
 
   return (
-    <div className="pointer-events-auto flex flex-wrap items-center gap-1.5 rounded-md border border-zinc-200 bg-white/90 p-1.5 shadow-sm backdrop-blur dark:border-zinc-700 dark:bg-zinc-900/90">
+    <div className="pointer-events-auto flex flex-wrap items-center gap-1.5 rounded-md border border-border-subtle bg-surface/90 p-1.5 shadow-sm backdrop-blur">
       <button
         type="button"
         onClick={onToggleBasemap}
@@ -64,7 +64,7 @@ export function MapToolbar({
         Overlay {overlayVisible ? "on" : "off"}
       </button>
 
-      <div className="mx-1 h-4 w-px bg-zinc-200 dark:bg-zinc-700" />
+      <div className="mx-1 h-4 w-px bg-border-subtle" />
 
       <button
         type="button"
@@ -107,7 +107,7 @@ export function MapToolbar({
         </>
       )}
 
-      <div className="mx-1 h-4 w-px bg-zinc-200 dark:bg-zinc-700" />
+      <div className="mx-1 h-4 w-px bg-border-subtle" />
 
       <button
         type="button"

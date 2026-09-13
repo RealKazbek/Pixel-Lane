@@ -1,4 +1,6 @@
+import { TrafficLevelBadge } from "@/components/ui/TrafficLevelBadge";
 import { roadLengthMeters } from "../../map/adapters/geometryLength";
+import { congestionToTrafficLevel } from "../../lib/traffic-level";
 import { DetailRow } from "./DetailRow";
 import type { AnalysisLookup } from "../../lib/analysis-lookup";
 import type { CoordinateSystem, Road } from "../../types/city";
@@ -44,7 +46,15 @@ export function RoadDetails({
             label="V/C"
             value={metric.volume_capacity_ratio.toFixed(2)}
           />
-          <DetailRow label="Congestion" value={metric.congestion_level} />
+          <DetailRow
+            label="Congestion"
+            value={
+              <TrafficLevelBadge
+                level={congestionToTrafficLevel(metric.congestion_level)}
+                label={metric.congestion_level}
+              />
+            }
+          />
         </>
       ) : (
         <p className="mt-1.5 text-zinc-400">

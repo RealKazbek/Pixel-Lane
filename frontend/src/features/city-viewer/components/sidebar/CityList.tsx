@@ -1,3 +1,4 @@
+import { EmptyState } from "@/components/ui/EmptyState";
 import type { CitySummary } from "../../types/city";
 
 interface CityListProps {
@@ -13,14 +14,10 @@ export function CityList({
 }: CityListProps) {
   if (cities.length === 0) {
     return (
-      <div className="rounded-md border border-dashed border-zinc-300 p-3 text-sm text-zinc-500 dark:border-zinc-700 dark:text-zinc-400">
-        <p className="font-medium text-zinc-700 dark:text-zinc-300">
-          No cities yet.
-        </p>
-        <p className="mt-1">
-          Create one through the API or load the example fixture.
-        </p>
-      </div>
+      <EmptyState
+        title="No cities yet."
+        description="Create one through the API or load the example fixture."
+      />
     );
   }
 
