@@ -145,11 +145,21 @@ city, lanes per road, phases per light, etc. -- see
 `app/city/domain/limits.py`), and a small middleware rejects oversized
 request bodies outright. This is a bound, not a quota system.
 
-**Planned: PostGIS.** Not added in v1. `Point`/`Polyline` and the
-`LOCAL_CARTESIAN`/`WGS84` coordinate-system concept are deliberately
-generic (not pixel-bound) so a later migration to PostGIS geometry columns
-(for spatial queries -- "roads near this region") is additive rather than a
-rewrite. Add it only when a real spatial-query need appears.
+**PostGIS (implemented, additive).** The trigger condition ("a real
+spatial-query need appears") was met once a bbox-scoped viewport API
+became necessary to scale past a small demo area (see
+docs/city-model.md's spatial schema section). PostGIS was added exactly
+as planned above -- additively, not as a rewrite: `roads.geometry`
+(JSONB) and `intersections.position_x/position_y` remain the source of
+truth for ordered points and non-WGS84 (`LOCAL_CARTESIAN`) cities;
+`roads.geom`/`intersections.geom` are a WGS84 (SRID 4326) spatial mirror,
+populated only for WGS84 cities, used only by the bbox query endpoints
+(`GET /cities/{id}/roads?bbox=...`, `GET /cities/{id}/intersections?bbox=...`).
+Dropping the JSONB/position columns in favor of the spatial ones is a
+separate future cleanup, not done yet. Still not introduced: vector
+tiles, and the OSM importer still only imports the original ~850m demo
+radius (see docs/osm-import.md) -- full-city import is a distinct,
+not-yet-started task.
 
 **Planned: SUMO boundary.** City Model v1 has no simulation code. When the
 simulation adapter is built (see `simulation/`), it will read the City

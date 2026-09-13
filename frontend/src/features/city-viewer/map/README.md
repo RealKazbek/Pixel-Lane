@@ -18,10 +18,47 @@ interaction engine here — it does not own any Pixel Lane data.
 
 MapLibre's internal GeoJSON sources, and Terra Draw's internal feature
 store used during geometry editing, are **transient UI state only**. Both
-are rebuilt from the City Model on every relevant change and are never read
-back except at the single, explicit moment a user clicks "Apply" during
-editing (see "Editing data flow" below). Nothing in this directory persists
-state independently of the backend.
+are rebuilt from City Model data on every relevant change and are never
+read back except at the single, explicit moment a user clicks "Apply"
+during editing (see "Editing data flow" below). Nothing in this directory
+persists state independently of the backend.
+
+## Viewport-driven loading
+
+`hooks/useViewportCityData.ts` — not `city.roads`/`city.intersections` —
+is what actually feeds the rendered roads/intersections/traffic-light/
+label GeoJSON (see `PixelLaneMap.tsx`'s `geoJson` memo). It fetches only
+what's in the current map bounds via the backend's bbox-scoped endpoints
+(`GET /cities/{id}/roads?bbox=...`, `.../intersections?bbox=...` — see
+docs/city-model.md's spatial schema section) instead of the whole city:
+
+- fetches once on initial map `load`, then again on `moveend`/`zoomend`
+  (never on every drag/zoom frame) with a 300ms debounce, so a fast pan
+  or a burst of zoom clicks produces one coalesced request, not a storm;
+- expands the requested bbox by 25% on every side
+  (`adapters/viewport.ts`'s `boundsToBufferedBBox`) so a small pan
+  doesn't immediately pop roads out at the previous edge;
+- skips the refetch entirely when the new buffered bbox is already fully
+  contained in the last one actually fetched (`isBBoxContained`) — a
+  small pan/zoom-in inside the existing buffer costs nothing;
+- cancels the in-flight request (`AbortController`) whenever a newer
+  viewport request starts, so a stale response from an old viewport can
+  never overwrite a newer one that resolves first.
+
+The full `City` object (from `useCity`, unchanged) is still passed down
+and still used for everything that isn't the rendered map layer:
+selection/details lookups (so a selected road/intersection keeps showing
+its details even if it scrolls out of the current viewport's fetched
+data), the geometry editor (edits the full City Model's road, not a
+viewport-limited copy), and the sidebar's bottleneck list/traffic
+analysis. `GET /cities/{id}` (the full-city endpoint) is unchanged and
+still exists for exactly these consumers.
+
+Traffic-light point features are derived from the viewport
+intersections' `traffic_light_id` field rather than a separate
+`traffic_lights` bbox endpoint — a light has no geometry of its own, only
+its parent intersection's position, so a fourth endpoint would add
+nothing.
 
 Concretely:
 
@@ -136,6 +173,9 @@ there is no optimistic local mutation of the road's geometry.
 
 No 3D buildings, no satellite imagery, no turn-by-turn navigation UI, no
 heatmaps/emergency routing, no full lane/turn editor, no general-purpose
-GIS suite, no PostGIS, no vector-tile backend. These may become worth
-revisiting later, but weren't required to satisfy the current map/editor
-requirements.
+GIS suite, no vector-tile backend. PostGIS/bbox-scoped queries are now
+implemented on the backend (see docs/city-model.md) specifically to
+support this viewport-driven loading; the OSM importer itself still only
+covers the original ~850m demo area, not full Almaty -- these may become
+worth revisiting later, but weren't required to satisfy the current
+map/editor requirements.
