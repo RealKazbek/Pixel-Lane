@@ -10,12 +10,13 @@ uuid5 -- mirrors `app.city.importers.osm.mapper._id_for`'s scheme).
 Purpose: a compact, controlled synthetic district that exercises the
 same City Model domain concepts and rendering pipeline as a real OSM
 import (`Road`, `Lane`, `Intersection`, `TrafficLight`, `ParkingZone`,
-`TrafficDemand`) -- never a separate rendering path. See
-docs/city-model.md's "Demo City" section for the full design rationale
-and what is intentionally out of scope (buildings, trees, crosswalks,
-stop lines, bus stops, signage: none of these have a City Model domain
-representation yet, and this task does not invent one just to decorate
-a demo).
+`TrafficDemand`, `BusStop`, `Crosswalk`) -- never a separate rendering
+path. See docs/city-model.md's "Demo City" section for the full design
+rationale, the geometry-test-bench fixture list this district
+deliberately covers, and what remains intentionally out of scope
+(buildings, trees, stop lines, yellow-box markings, signage: none of
+these have a City Model domain representation yet, and this task does
+not invent one just to decorate a demo).
 
 Coordinates are `LOCAL_CARTESIAN` meters -- not a real place. This is
 also, not incidentally, the same coordinate system the existing example
@@ -41,7 +42,9 @@ from app.city.domain.enums import (
     TurnLaneType,
 )
 from app.city.domain.geometry import Point, Polyline
+from app.city.schemas.bus_stop import BusStopCreate
 from app.city.schemas.city import CityCreate
+from app.city.schemas.crosswalk import CrosswalkCreate
 from app.city.schemas.intersection import IntersectionCreate
 from app.city.schemas.lane import LaneCreate
 from app.city.schemas.parking import ParkingZoneCreate
@@ -333,6 +336,58 @@ def build_demo_district() -> CityCreate:
         lanes=[{"index": 0}],
     )
 
+    # --- Zharyq Approach / Zharyq Alley: acute/Y junction ------------------
+    # A stem road feeding into a shallow (~35 degree) fork alongside Bereke
+    # Lane's own start point -- a genuine 3-way acute junction, isolated
+    # north of everything else so it can be inspected on its own.
+    zharyq_approach = b.add_road(
+        "Zharyq Approach",
+        road_type=RoadType.RESIDENTIAL,
+        points=[(80.0, 10.0), (80.0, 50.0)],
+        one_way=True,
+        speed_limit_kmh=30.0,
+        lanes=[{"index": 0}],
+    )
+    zharyq_alley = b.add_road(
+        "Zharyq Alley",
+        road_type=RoadType.RESIDENTIAL,
+        points=[(80.0, 50.0), (115.0, 15.0)],
+        one_way=True,
+        speed_limit_kmh=30.0,
+        lanes=[{"index": 0}],
+    )
+
+    # --- Yeraly Street: single-lane approach forking into two single-lane
+    # branches -- the diverge/split counterpart to Zhastar Street's lane
+    # drop above, isolated south of the main district. -----------------
+    yeraly_approach = b.add_road(
+        "Yeraly Street",
+        key="yeraly-approach",
+        road_type=RoadType.RESIDENTIAL,
+        points=[(260.0, 380.0), (260.0, 340.0)],
+        one_way=True,
+        speed_limit_kmh=30.0,
+        lanes=[{"index": 0}],
+    )
+    yeraly_branch_west = b.add_road(
+        "Yeraly Street West",
+        key="yeraly-branch-west",
+        road_type=RoadType.RESIDENTIAL,
+        points=[(260.0, 340.0), (230.0, 305.0)],
+        one_way=True,
+        speed_limit_kmh=30.0,
+        lanes=[{"index": 0}],
+    )
+    yeraly_branch_east = b.add_road(
+        "Yeraly Street East",
+        key="yeraly-branch-east",
+        road_type=RoadType.RESIDENTIAL,
+        points=[(260.0, 340.0), (290.0, 305.0)],
+        one_way=True,
+        speed_limit_kmh=30.0,
+        lanes=[{"index": 0}],
+    )
+
     # --- Intersections -----------------------------------------------------
     main_intersection_id = _id("intersection", "turan-x-zhastar")
     main_connected_roads = [eastbound, westbound, zhastar_north_near, zhastar_south]
@@ -414,6 +469,21 @@ def build_demo_district() -> CityCreate:
             connected_road_ids=[zhastar_north_far, zhastar_south],
             control_type=IntersectionControlType.UNCONTROLLED,
         ),
+        # Acute/Y junction: a shallow-angle 3-way fork.
+        IntersectionCreate(
+            id=_id("intersection", "zharyq-fork"),
+            position=_pt(80.0, 50.0),
+            connected_road_ids=[zharyq_approach, bereke, zharyq_alley],
+            control_type=IntersectionControlType.UNCONTROLLED,
+        ),
+        # Diverge/split: one single-lane approach forking into two
+        # single-lane branches.
+        IntersectionCreate(
+            id=_id("intersection", "yeraly-fork"),
+            position=_pt(260.0, 340.0),
+            connected_road_ids=[yeraly_approach, yeraly_branch_west, yeraly_branch_east],
+            control_type=IntersectionControlType.UNCONTROLLED,
+        ),
     ]
 
     traffic_lights = [
@@ -472,6 +542,40 @@ def build_demo_district() -> CityCreate:
         ),
     ]
 
+    bus_stops = [
+        BusStopCreate(
+            id=_id("bus-stop", "turan-eastbound-near-samal"),
+            road_id=eastbound,
+            position_x=90.0,
+            position_y=152.0,
+            name="Turan Avenue / Samal Street",
+        ),
+        BusStopCreate(
+            id=_id("bus-stop", "samal-street"),
+            road_id=samal,
+            position_x=320.0,
+            position_y=100.0,
+            name="Samal Street",
+        ),
+    ]
+
+    crosswalks = [
+        # Pedestrian crossing on Zhastar Street's southbound approach, just
+        # before the signalized main intersection.
+        CrosswalkCreate(
+            id=_id("crosswalk", "zhastar-south-at-main"),
+            road_id=zhastar_south,
+            position_ratio=0.95,
+        ),
+        # Pedestrian crossing at the Samal Street / Turan Avenue stop-sign
+        # junction.
+        CrosswalkCreate(
+            id=_id("crosswalk", "samal-at-turan"),
+            road_id=samal,
+            position_ratio=0.5,
+        ),
+    ]
+
     # Routable demand (source != destination) so Traffic Analysis produces
     # real (not fabricated) congestion coloring on this district -- see
     # docs/city-model.md: a synthetic hardcoded "demo congestion" overlay
@@ -505,4 +609,6 @@ def build_demo_district() -> CityCreate:
         traffic_rules=[],
         parking_zones=parking_zones,
         traffic_demands=traffic_demands,
+        bus_stops=bus_stops,
+        crosswalks=crosswalks,
     )

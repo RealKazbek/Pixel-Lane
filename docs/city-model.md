@@ -348,10 +348,19 @@ only existing domain concepts:
 - Slip road (Zevit Slip Road, bypassing the main signalized junction),
   curved road (Round Park Drive), short one-way service/access road
   (Kokzhiek Access Road).
+- Acute/Y junction (Zharyq Approach forking into Bereke Lane and Zharyq
+  Alley at a shallow angle) and a lane-split/diverge (Yeraly Street's
+  single-lane approach forking into two single-lane branches -- the
+  mirror image of Zhastar Street's lane drop).
 - One signalized four-approach intersection (Turan Ave × Zhastar St,
   reusing the exact `TrafficLight`/`SignalGroup`/`Phase` shape the
-  four-way example already established) and two smaller intersections
-  (a `STOP_SIGN` junction and an `UNCONTROLLED` one).
+  four-way example already established) and several smaller
+  intersections (a `STOP_SIGN` junction, and multiple `UNCONTROLLED`
+  ones covering a T-junction, the acute/Y fork, and the diverge).
+- Two `BusStop`s (Turan Avenue's bus lane, Samal Street) and two
+  `Crosswalk`s (Zhastar Street's approach to the signalized junction,
+  Samal Street at its stop-sign junction with Turan Avenue) -- see the
+  "renderer-quality pass" note below for what these are.
 - A routable `TrafficDemand` (source != destination), so **real**
   Traffic Analysis produces genuine congestion coloring on this
   district on request -- deliberately not a separate hardcoded "demo
@@ -362,11 +371,26 @@ only existing domain concepts:
 representation exists for any of these yet, and inventing one just to
 decorate a demo would contradict "reusable pipeline, not a special
 case"): buildings/building archetypes, trees/greenery, stop lines,
-crosswalks, yellow-box/waffle junction markings, bus stops, traffic
-signage, sidewalks, roundabout topology, paid/disabled parking as a
-distinct type, a standalone fabricated congestion overlay. These would
-each need new domain entities and are reasonable candidates for a
-dedicated future task, not a rushed addition here.
+yellow-box/waffle junction markings, traffic signage, sidewalks,
+roundabout topology, paid/disabled parking as a distinct type, a
+standalone fabricated congestion overlay. These would each need new
+domain entities and are reasonable candidates for a dedicated future
+task, not a rushed addition here.
+
+**Bus stops and pedestrian crossings (renderer-quality pass).** Added as
+the minimal versions of exactly this deferred-entity pattern: `BusStop`
+(`city_id`, `road_id`, `position_x`/`position_y`, optional `name`) and
+`Crosswalk` (`city_id`, `road_id`, `position_ratio` along the road's
+centerline, 0-1). Both follow every existing entity's shape -- FK to the
+city with `ON DELETE CASCADE`, a `models`/`schemas` slice, validated
+cross-references in `city_validator.py` (`UNKNOWN_ROAD_REFERENCE`), wired
+into `CityCreate`/`CityRead`/`city_builder.py`/`city_mapper.py` exactly
+like `ParkingZone` -- migration `2c6f8a1d4e73`. No bus-bay geometry, no
+crosswalk polygon, no viewport/bbox endpoint (Demo City's `LOCAL_CARTESIAN`
+cities already use the full-city `CityRead` path, same as
+`parking_zones`/`traffic_demands`); wiring these into the WGS84
+bbox-scoped viewport payload for Real Almaty is a reasonable, separately
+scoped follow-up once real source data for either exists.
 
 ## Continuous road-network surfaces (topology-aware rendering)
 

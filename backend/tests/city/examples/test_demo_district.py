@@ -176,6 +176,41 @@ def test_road_names_deduplicate_for_clean_map_labels() -> None:
         assert "(" not in road.name, f"{road.name!r} looks like a debug label"
 
 
+def test_demo_district_includes_an_acute_y_junction() -> None:
+    city = build_demo_district()
+    fork = next(i for i in city.intersections if (i.position.x, i.position.y) == (80.0, 50.0))
+    assert len(fork.connected_road_ids) == 3
+    road_names = {r.name for r in city.roads if r.id in fork.connected_road_ids}
+    assert road_names == {"Zharyq Approach", "Bereke Lane", "Zharyq Alley"}
+
+
+def test_demo_district_includes_a_lane_split_diverge() -> None:
+    """The reverse of the Zhastar lane-drop: one single-lane approach
+    forking into two single-lane branches at a shared node."""
+    city = build_demo_district()
+    fork = next(i for i in city.intersections if (i.position.x, i.position.y) == (260.0, 340.0))
+    assert len(fork.connected_road_ids) == 3
+    branch_roads = [r for r in city.roads if r.id in fork.connected_road_ids]
+    assert all(len(r.lanes) == 1 for r in branch_roads)
+
+
+def test_demo_district_has_bus_stops_referencing_real_roads() -> None:
+    city = build_demo_district()
+    road_ids = {r.id for r in city.roads}
+    assert len(city.bus_stops) >= 1
+    for stop in city.bus_stops:
+        assert stop.road_id in road_ids
+
+
+def test_demo_district_has_crosswalks_referencing_real_roads() -> None:
+    city = build_demo_district()
+    road_ids = {r.id for r in city.roads}
+    assert len(city.crosswalks) >= 1
+    for crossing in city.crosswalks:
+        assert crossing.road_id in road_ids
+        assert 0.0 <= crossing.position_ratio <= 1.0
+
+
 def test_every_shared_road_endpoint_is_backed_by_a_real_intersection() -> None:
     """General (not per-road) topology invariant: whenever two roads in
     this district visually touch (share an exact endpoint coordinate),
