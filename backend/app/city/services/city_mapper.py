@@ -10,6 +10,7 @@ from uuid import UUID
 
 from app.city.domain.enums import (
     CoordinateSystem,
+    CyclewayType,
     IntersectionControlType,
     LaneChangePermission,
     LaneCountQuality,
@@ -17,6 +18,7 @@ from app.city.domain.enums import (
     LaneType,
     MedianType,
     MovementType,
+    ParkingLaneOrientation,
     ParkingSide,
     RoadType,
     TrafficRuleTargetType,
@@ -84,6 +86,10 @@ def to_road_read(road: Road) -> RoadRead:
         backward_lane_count=road.backward_lane_count,
         both_ways_lane_count=road.both_ways_lane_count,
         lane_count_quality=LaneCountQuality(road.lane_count_quality),
+        parking_left=ParkingLaneOrientation(road.parking_left),
+        parking_right=ParkingLaneOrientation(road.parking_right),
+        cycleway_left=CyclewayType(road.cycleway_left),
+        cycleway_right=CyclewayType(road.cycleway_right),
         lanes=[_to_lane_read(lane) for lane in road.lanes],
     )
 
@@ -179,6 +185,9 @@ def to_city_read(city: City) -> CityRead:
         coordinate_system=CoordinateSystem(city.coordinate_system),
         created_at=city.created_at,
         updated_at=city.updated_at,
+        import_source=city.import_source,
+        imported_at=city.imported_at,
+        import_query=city.import_query,
         roads=[to_road_read(road) for road in city.roads],
         intersections=[
             to_intersection_read(i, traffic_light_by_intersection) for i in city.intersections

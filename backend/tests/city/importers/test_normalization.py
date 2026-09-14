@@ -10,12 +10,15 @@ installed.
 from app.city.importers.osm.normalization import (
     extract_network,
     parse_bridge,
+    parse_bus_lanes,
     parse_change_lanes,
+    parse_cycleways,
     parse_lane_count,
     parse_level,
     parse_maxspeed_kmh,
     parse_node_control,
     parse_oneway,
+    parse_parking_lanes,
     parse_tunnel,
     parse_turn_lanes,
     parse_width_m,
@@ -376,3 +379,56 @@ def test_parse_level_falls_back_to_bridge_or_tunnel_when_no_layer_tag() -> None:
 def test_parse_level_clamps_extreme_values() -> None:
     assert parse_level({"layer": "99"}) == 4
     assert parse_level({"layer": "-99"}) == -4
+
+
+def test_parse_bus_lanes_from_bus_lanes_tag() -> None:
+    warnings: list[str] = []
+    result = parse_bus_lanes(
+        {"bus:lanes": "designated|no|no"},
+        oneway=True,
+        lane_count=3,
+        warnings=warnings,
+        edge_label="x",
+    )
+    assert result == (True, False, False)
+    assert warnings == []
+
+
+def test_parse_bus_lanes_falls_back_to_psv_lanes() -> None:
+    result = parse_bus_lanes(
+        {"psv:lanes": "yes|no"}, oneway=True, lane_count=2, warnings=[], edge_label="x"
+    )
+    assert result == (True, False)
+
+
+def test_parse_bus_lanes_missing_tag_is_none() -> None:
+    assert parse_bus_lanes({}, oneway=True, lane_count=1, warnings=[], edge_label="x") is None
+
+
+def test_parse_bus_lanes_mismatched_count_discards_data_safely() -> None:
+    warnings: list[str] = []
+    result = parse_bus_lanes(
+        {"bus:lanes": "designated|no|no"},
+        oneway=True,
+        lane_count=2,
+        warnings=warnings,
+        edge_label="way 3",
+    )
+    assert result is None
+    assert any("way 3" in w for w in warnings)
+
+
+def test_parse_parking_lanes_left_right_and_both() -> None:
+    assert parse_parking_lanes({"parking:lane:left": "parallel", "parking:lane:right": "no"}) == (
+        "PARALLEL",
+        "NONE",
+    )
+    assert parse_parking_lanes({"parking:lane:both": "diagonal"}) == ("DIAGONAL", "DIAGONAL")
+    assert parse_parking_lanes({}) == (None, None)
+    assert parse_parking_lanes({"parking:lane:right": "yes"}) == (None, "MARKED")
+
+
+def test_parse_cycleways_left_right_and_shared() -> None:
+    assert parse_cycleways({"cycleway": "lane"}) == ("LANE", "LANE")
+    assert parse_cycleways({"cycleway:left": "track", "cycleway:right": "no"}) == ("TRACK", "NONE")
+    assert parse_cycleways({}) == (None, None)

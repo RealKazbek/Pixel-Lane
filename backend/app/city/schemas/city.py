@@ -35,6 +35,14 @@ class CityCreate(BaseModel):
     name: str = Field(min_length=1, max_length=NAME_MAX_LENGTH)
     description: str | None = Field(default=None, max_length=DESCRIPTION_MAX_LENGTH)
     coordinate_system: CoordinateSystem
+    # Data-freshness/provenance metadata -- `None` for ordinary (non-import)
+    # city creation, set only by the OSM importer (see
+    # app.city.importers.osm.cli/full_cli). Never fabricated: if the
+    # importer can't determine a real value it leaves the field `None`
+    # rather than guessing (see docs/city-model.md's data-freshness note).
+    import_source: str | None = Field(default=None, max_length=200)
+    imported_at: datetime | None = None
+    import_query: dict | None = None
 
     roads: list[RoadCreate] = Field(default_factory=list, max_length=MAX_ROADS_PER_CITY)
     intersections: list[IntersectionCreate] = Field(
@@ -61,6 +69,9 @@ class CityRead(BaseModel):
     coordinate_system: CoordinateSystem
     created_at: datetime
     updated_at: datetime
+    import_source: str | None = None
+    imported_at: datetime | None = None
+    import_query: dict | None = None
 
     roads: list[RoadRead]
     intersections: list[IntersectionRead]

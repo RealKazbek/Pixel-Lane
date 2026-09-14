@@ -31,6 +31,18 @@ _LANE_DETAIL_TAGS = (
     "change:lanes",
     "change:lanes:forward",
     "change:lanes:backward",
+    "bus:lanes",
+    "bus:lanes:forward",
+    "bus:lanes:backward",
+    "psv:lanes",
+    "psv:lanes:forward",
+    "psv:lanes:backward",
+    "parking:lane:left",
+    "parking:lane:right",
+    "parking:lane:both",
+    "cycleway",
+    "cycleway:left",
+    "cycleway:right",
 )
 
 # Local-only HTTP response cache (never committed, never a source of

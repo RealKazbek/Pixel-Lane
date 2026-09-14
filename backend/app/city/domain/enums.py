@@ -85,6 +85,30 @@ class LaneChangePermission(StrEnum):
     ONLY_RIGHT = "ONLY_RIGHT"
 
 
+class ParkingLaneOrientation(StrEnum):
+    """Normalized OSM `parking:lane:left`/`:right`/`:both` value -- SOURCE
+    only, never guessed (see docs/city-model.md's Road+Lane V1 audit).
+    `MARKED` covers the plain `parking:lane:*=yes`/`marked` case where OSM
+    asserts a parking lane exists but not its orientation."""
+
+    NONE = "NONE"
+    PARALLEL = "PARALLEL"
+    DIAGONAL = "DIAGONAL"
+    PERPENDICULAR = "PERPENDICULAR"
+    MARKED = "MARKED"
+    UNKNOWN = "UNKNOWN"
+
+
+class CyclewayType(StrEnum):
+    """Normalized OSM `cycleway=*`/`cycleway:left`/`:right` value."""
+
+    NONE = "NONE"
+    LANE = "LANE"
+    TRACK = "TRACK"
+    SHARED_LANE = "SHARED_LANE"
+    UNKNOWN = "UNKNOWN"
+
+
 class LaneDirection(StrEnum):
     """Travel direction relative to the road's polyline point order."""
 

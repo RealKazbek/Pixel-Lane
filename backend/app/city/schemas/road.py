@@ -2,7 +2,13 @@ from uuid import UUID
 
 from pydantic import BaseModel, Field
 
-from app.city.domain.enums import LaneCountQuality, MedianType, RoadType
+from app.city.domain.enums import (
+    CyclewayType,
+    LaneCountQuality,
+    MedianType,
+    ParkingLaneOrientation,
+    RoadType,
+)
 from app.city.domain.geometry import Polyline
 from app.city.domain.limits import (
     MAX_LANES_PER_ROAD,
@@ -34,6 +40,10 @@ class RoadCreate(BaseModel):
     backward_lane_count: int | None = Field(default=None, gt=0)
     both_ways_lane_count: int | None = Field(default=None, gt=0)
     lane_count_quality: LaneCountQuality = LaneCountQuality.FALLBACK
+    parking_left: ParkingLaneOrientation = ParkingLaneOrientation.UNKNOWN
+    parking_right: ParkingLaneOrientation = ParkingLaneOrientation.UNKNOWN
+    cycleway_left: CyclewayType = CyclewayType.UNKNOWN
+    cycleway_right: CyclewayType = CyclewayType.UNKNOWN
 
 
 class RoadRead(BaseModel):
@@ -58,6 +68,10 @@ class RoadRead(BaseModel):
     backward_lane_count: int | None = None
     both_ways_lane_count: int | None = None
     lane_count_quality: LaneCountQuality = LaneCountQuality.FALLBACK
+    parking_left: ParkingLaneOrientation = ParkingLaneOrientation.UNKNOWN
+    parking_right: ParkingLaneOrientation = ParkingLaneOrientation.UNKNOWN
+    cycleway_left: CyclewayType = CyclewayType.UNKNOWN
+    cycleway_right: CyclewayType = CyclewayType.UNKNOWN
     lanes: list[LaneRead]
 
     model_config = {"from_attributes": True}

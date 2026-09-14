@@ -24,9 +24,32 @@ from app.city.schemas.spatial import BBox
 
 
 def find_map_roads(db: Session, city_id: UUID, bbox: BBox, zoom: float):
-    # Aggregate lane counts once; no ORM graph, no lane IDs/movement metadata.
+    # Aggregate lane counts and per-lane use/turn detail once; no ORM
+    # graph, no lane ids -- just enough for lane-level rendering (Road +
+    # Lane Representation V1) without a second round-trip per road.
+    # `json_agg` here does not guarantee row order by itself (Postgres:
+    # unspecified without an aggregate-local ORDER BY, which plain
+    # `func.json_agg` doesn't support cleanly through SQLAlchemy) -- the
+    # embedded `"index"` field lets the caller re-sort left-to-right (see
+    # `_parse_lane_details` in city_service.py and docs/city-model.md's
+    # lane-ordering convention) instead of relying on aggregation order.
     lanes = (
-        select(Lane.road_id, func.count().label("count"))
+        select(
+            Lane.road_id,
+            func.count().label("count"),
+            func.json_agg(
+                func.json_build_object(
+                    "index",
+                    Lane.index,
+                    "lane_type",
+                    Lane.lane_type,
+                    "allowed_turns",
+                    Lane.allowed_turns,
+                    "lane_change",
+                    Lane.lane_change,
+                )
+            ).label("details"),
+        )
         .join(Road)
         .where(Road.city_id == city_id)
         .group_by(Lane.road_id)
@@ -47,6 +70,15 @@ def find_map_roads(db: Session, city_id: UUID, bbox: BBox, zoom: float):
             Road.level,
             Road.is_bridge,
             Road.is_tunnel,
+            Road.forward_lane_count,
+            Road.backward_lane_count,
+            Road.both_ways_lane_count,
+            Road.lane_count_quality,
+            Road.parking_left,
+            Road.parking_right,
+            Road.cycleway_left,
+            Road.cycleway_right,
+            lanes.c.details.label("lane_details"),
         )
         .outerjoin(lanes, lanes.c.road_id == Road.id)
         .where(Road.city_id == city_id, ST_Intersects(Road.geom, _envelope(bbox)))

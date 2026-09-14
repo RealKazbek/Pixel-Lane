@@ -235,6 +235,105 @@ def parse_change_lanes(
     return tuple(result)
 
 
+#: OSM `bus:lanes=*`/`psv:lanes=*` per-lane token -> is this lane bus/PSV
+#: designated. Anything else ("no", unrecognized) is treated as "not a
+#: bus lane" for that slot rather than skipped, since these tags are
+#: binary in practice (designated vs not).
+_BUS_LANE_DESIGNATED_TOKENS = {"designated", "yes"}
+
+
+def parse_bus_lanes(
+    tags: dict[str, Any],
+    *,
+    oneway: bool,
+    lane_count: int,
+    warnings: list[str],
+    edge_label: str,
+) -> tuple[bool, ...] | None:
+    """Parses `bus:lanes=*` (preferred) or `psv:lanes=*` (fallback, same
+    per-lane pipe/direction convention) into one bool per lane -- `True`
+    only for lanes explicitly tagged `designated`/`yes`. `None` when
+    neither tag is usable for this edge's direction, same
+    absent-or-mismatched-count discard rule as `parse_turn_lanes`."""
+    raw = _split_pipe_tag(_select_directional_tag(tags, "bus:lanes", oneway=oneway))
+    source_tag = "bus:lanes"
+    if raw is None:
+        raw = _split_pipe_tag(_select_directional_tag(tags, "psv:lanes", oneway=oneway))
+        source_tag = "psv:lanes"
+    if raw is None:
+        return None
+    if len(raw) != lane_count:
+        warnings.append(
+            f"{edge_label}: {source_tag} has {len(raw)} lane group(s) but {lane_count} "
+            "lane(s) were resolved for this road; bus-lane data discarded as unreliable."
+        )
+        return None
+    return tuple(token in _BUS_LANE_DESIGNATED_TOKENS for token in raw)
+
+
+#: OSM `parking:lane:left`/`:right`/`:both` value -> ParkingLaneOrientation
+#: value. Covers the common direct-orientation convention
+#: (`parking:lane:right=parallel`); the separate `:orientation` suffix
+#: convention is not parsed (see docs/city-model.md's deferred-tags note).
+_PARKING_LANE_TOKEN_MAP: dict[str, str] = {
+    "no": "NONE",
+    "none": "NONE",
+    "parallel": "PARALLEL",
+    "diagonal": "DIAGONAL",
+    "perpendicular": "PERPENDICULAR",
+    "yes": "MARKED",
+    "marked": "MARKED",
+}
+
+
+def _parse_parking_lane_value(raw: Any) -> str | None:
+    if raw is None:
+        return None
+    token = str(first(raw)).strip().lower()
+    return _PARKING_LANE_TOKEN_MAP.get(token)
+
+
+def parse_parking_lanes(tags: dict[str, Any]) -> tuple[str | None, str | None]:
+    """Parses `parking:lane:left` / `:right` / `:both` into
+    `(left, right)` `ParkingLaneOrientation` values. `None` = tag absent
+    or unparseable -- never guessed. `parking:lane:both` fills whichever
+    side has no more specific `:left`/`:right` tag."""
+    both = _parse_parking_lane_value(tags.get("parking:lane:both"))
+    left = _parse_parking_lane_value(tags.get("parking:lane:left")) or both
+    right = _parse_parking_lane_value(tags.get("parking:lane:right")) or both
+    return left, right
+
+
+#: OSM `cycleway=*`/`cycleway:left`/`:right` value -> CyclewayType value.
+_CYCLEWAY_TOKEN_MAP: dict[str, str] = {
+    "no": "NONE",
+    "none": "NONE",
+    "lane": "LANE",
+    "opposite_lane": "LANE",
+    "track": "TRACK",
+    "opposite_track": "TRACK",
+    "shared_lane": "SHARED_LANE",
+    "share_busway": "SHARED_LANE",
+}
+
+
+def _parse_cycleway_value(raw: Any) -> str | None:
+    if raw is None:
+        return None
+    token = str(first(raw)).strip().lower()
+    return _CYCLEWAY_TOKEN_MAP.get(token)
+
+
+def parse_cycleways(tags: dict[str, Any]) -> tuple[str | None, str | None]:
+    """Parses `cycleway=*` (applies to both sides when no more specific
+    per-side tag exists) and `cycleway:left`/`:right` into
+    `(left, right)` `CyclewayType` values. `None` = not provided."""
+    both = _parse_cycleway_value(tags.get("cycleway"))
+    left = _parse_cycleway_value(tags.get("cycleway:left")) or both
+    right = _parse_cycleway_value(tags.get("cycleway:right")) or both
+    return left, right
+
+
 def parse_width_m(tags: dict[str, Any]) -> float | None:
     """Parses OSM `width=*` (meters, per OSM convention -- a bare number
     or a number with a `m`/`meters`/`meter` suffix). Anything else
@@ -379,6 +478,19 @@ class NormalizedEdge:
     # One normalized `LaneChangePermission` value (or `None`) per lane,
     # same ordering as `turn_lanes` -- see `parse_change_lanes`.
     change_lanes: tuple[str | None, ...] | None = None
+    # One bool per lane (True = bus/PSV-designated), or `None` when
+    # unknown -- see `parse_bus_lanes`.
+    bus_lanes: tuple[bool, ...] | None = None
+    # --- Road + Lane Representation V1: road-level lane-use fields ------
+    # `ParkingLaneOrientation` values for the road's left/right edge
+    # (independent of this edge's own travel direction -- see
+    # `parse_parking_lanes`), `None` when not provided.
+    parking_left: str | None = None
+    parking_right: str | None = None
+    # `CyclewayType` values for the road's left/right edge, `None` when
+    # not provided -- see `parse_cycleways`.
+    cycleway_left: str | None = None
+    cycleway_right: str | None = None
 
 
 @dataclass(frozen=True)
@@ -444,6 +556,15 @@ def extract_network(graph: Any, *, observed_only: bool = False) -> NormalizedNet
             warnings=warnings,
             edge_label=edge_label,
         )
+        bus_lanes = parse_bus_lanes(
+            tags,
+            oneway=oneway,
+            lane_count=lane_result.count,
+            warnings=warnings,
+            edge_label=edge_label,
+        )
+        parking_left, parking_right = parse_parking_lanes(tags)
+        cycleway_left, cycleway_right = parse_cycleways(tags)
         edges.append(
             NormalizedEdge(
                 u=u,
@@ -467,6 +588,11 @@ def extract_network(graph: Any, *, observed_only: bool = False) -> NormalizedNet
                 lanes_both_ways_raw=lane_result.both_ways_raw,
                 turn_lanes=turn_lanes,
                 change_lanes=change_lanes,
+                bus_lanes=bus_lanes,
+                parking_left=parking_left,
+                parking_right=parking_right,
+                cycleway_left=cycleway_left,
+                cycleway_right=cycleway_right,
             )
         )
 

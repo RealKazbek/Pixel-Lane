@@ -6,7 +6,7 @@ osmnx/networkx dependency at all.
 
 from uuid import uuid4
 
-from app.city.domain.enums import IntersectionControlType, LaneDirection, MedianType
+from app.city.domain.enums import IntersectionControlType, LaneDirection, LaneType, MedianType
 from app.city.importers.osm.mapper import map_network_to_city
 from app.city.importers.osm.normalization import NormalizedEdge, NormalizedNetwork, NormalizedNode
 
@@ -451,3 +451,83 @@ def test_both_ways_lane_count_is_preserved() -> None:
     road = _map(network).city.roads[0]
 
     assert road.both_ways_lane_count == 1
+
+
+def test_bus_lane_data_sets_lane_type_source_only() -> None:
+    network = NormalizedNetwork(
+        nodes=(_node(1, 0.0, 0.0), _node(2, 0.001, 0.0)),
+        edges=(_edge(1, 2, lane_count=2),),
+    )
+    # Patch the edge with bus_lanes via replace (NormalizedEdge is frozen).
+    from dataclasses import replace
+
+    edge = replace(network.edges[0], bus_lanes=(True, False))
+    network = NormalizedNetwork(nodes=network.nodes, edges=(edge,))
+
+    road = _map(network).city.roads[0]
+
+    assert [lane.lane_type for lane in road.lanes] == [LaneType.BUS, LaneType.GENERAL]
+
+
+def test_no_bus_lane_data_leaves_lanes_general() -> None:
+    network = NormalizedNetwork(
+        nodes=(_node(1, 0.0, 0.0), _node(2, 0.001, 0.0)),
+        edges=(_edge(1, 2, lane_count=2),),
+    )
+
+    road = _map(network).city.roads[0]
+
+    assert all(lane.lane_type == LaneType.GENERAL for lane in road.lanes)
+
+
+def test_parking_and_cycleway_are_source_only_and_unknown_by_default() -> None:
+    network = NormalizedNetwork(
+        nodes=(_node(1, 0.0, 0.0), _node(2, 0.001, 0.0)),
+        edges=(_edge(1, 2),),
+    )
+
+    road = _map(network).city.roads[0]
+
+    assert road.parking_left == "UNKNOWN"
+    assert road.parking_right == "UNKNOWN"
+    assert road.cycleway_left == "UNKNOWN"
+    assert road.cycleway_right == "UNKNOWN"
+
+
+def test_parking_and_cycleway_are_carried_through_when_present() -> None:
+    from dataclasses import replace
+
+    network = NormalizedNetwork(
+        nodes=(_node(1, 0.0, 0.0), _node(2, 0.001, 0.0)),
+        edges=(_edge(1, 2),),
+    )
+    edge = replace(
+        network.edges[0],
+        parking_left="PARALLEL",
+        parking_right="NONE",
+        cycleway_left="TRACK",
+        cycleway_right="NONE",
+    )
+    network = NormalizedNetwork(nodes=network.nodes, edges=(edge,))
+
+    road = _map(network).city.roads[0]
+
+    assert road.parking_left == "PARALLEL"
+    assert road.parking_right == "NONE"
+    assert road.cycleway_left == "TRACK"
+    assert road.cycleway_right == "NONE"
+
+
+def test_regression_one_way_road_still_has_single_carriageway_with_lane_data() -> None:
+    """Regression for the Part 1 carriageway bug: adding bus/parking/
+    cycleway data must never resurrect the old oneway->carriageway_count=2
+    heuristic (see commit 22ba1ae)."""
+    network = NormalizedNetwork(
+        nodes=(_node(1, 0.0, 0.0), _node(2, 0.001, 0.0)),
+        edges=(_edge(1, 2, oneway=True, lane_count=3),),
+    )
+
+    road = _map(network).city.roads[0]
+
+    assert road.carriageway_count == 1
+    assert road.median == MedianType.UNKNOWN

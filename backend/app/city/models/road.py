@@ -39,6 +39,24 @@ class Road(Base):
             "lane_count_quality IN ('SOURCE', 'INFERRED', 'FALLBACK', 'UNKNOWN')",
             name="ck_roads_lane_count_quality",
         ),
+        CheckConstraint(
+            "parking_left IN "
+            "('NONE', 'PARALLEL', 'DIAGONAL', 'PERPENDICULAR', 'MARKED', 'UNKNOWN')",
+            name="ck_roads_parking_left",
+        ),
+        CheckConstraint(
+            "parking_right IN "
+            "('NONE', 'PARALLEL', 'DIAGONAL', 'PERPENDICULAR', 'MARKED', 'UNKNOWN')",
+            name="ck_roads_parking_right",
+        ),
+        CheckConstraint(
+            "cycleway_left IN ('NONE', 'LANE', 'TRACK', 'SHARED_LANE', 'UNKNOWN')",
+            name="ck_roads_cycleway_left",
+        ),
+        CheckConstraint(
+            "cycleway_right IN ('NONE', 'LANE', 'TRACK', 'SHARED_LANE', 'UNKNOWN')",
+            name="ck_roads_cycleway_right",
+        ),
         Index("ix_roads_geom", "geom", postgresql_using="gist"),
     )
 
@@ -116,6 +134,16 @@ class Road(Base):
     # SOURCE / INFERRED / FALLBACK / UNKNOWN -- confidence of this Road's
     # own generated lane count (`len(lanes)`). See LaneCountQuality.
     lane_count_quality: Mapped[str] = mapped_column(String(20), nullable=False, default="FALLBACK")
+
+    # --- Road + Lane Representation V1: road-level lane-use fields -------
+    # `ParkingLaneOrientation` / `CyclewayType` for the road's left/right
+    # edge, from OSM `parking:lane:*` / `cycleway*` -- SOURCE only, never
+    # guessed. `UNKNOWN` (not `NONE`) is the default: absence of the tag
+    # does not mean absence of parking/a cycle lane in reality.
+    parking_left: Mapped[str] = mapped_column(String(20), nullable=False, default="UNKNOWN")
+    parking_right: Mapped[str] = mapped_column(String(20), nullable=False, default="UNKNOWN")
+    cycleway_left: Mapped[str] = mapped_column(String(20), nullable=False, default="UNKNOWN")
+    cycleway_right: Mapped[str] = mapped_column(String(20), nullable=False, default="UNKNOWN")
 
     city: Mapped["City"] = relationship(back_populates="roads")
     lanes: Mapped[list["Lane"]] = relationship(

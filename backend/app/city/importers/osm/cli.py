@@ -15,6 +15,7 @@ other callers (e.g. tests, a future non-CLI caller).
 """
 
 import sys
+from datetime import UTC, datetime
 
 from sqlalchemy.exc import OperationalError
 
@@ -83,6 +84,12 @@ def main() -> int:
             city_id=ALMATY_DEMO_CITY_ID,
             city_name=ALMATY_DEMO_CITY_NAME,
             description=ALMATY_DEMO_DESCRIPTION,
+            imported_at=datetime.now(UTC),
+            import_query={
+                "center_lat": ALMATY_DEMO_CENTER_LAT,
+                "center_lon": ALMATY_DEMO_CENTER_LON,
+                "radius_m": ALMATY_DEMO_RADIUS_M,
+            },
         )
 
         print("Validating Pixel Lane City Model...")

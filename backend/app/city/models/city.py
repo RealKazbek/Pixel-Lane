@@ -3,6 +3,7 @@ from datetime import datetime
 from typing import TYPE_CHECKING
 
 from sqlalchemy import DateTime, String, func
+from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.dialects.postgresql import UUID as PGUUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
@@ -33,6 +34,14 @@ class City(Base):
         onupdate=func.now(),
         nullable=False,
     )
+
+    # --- Data-freshness/provenance metadata -------------------------------
+    # `None` for a city that was never (re-)imported from an external
+    # source (e.g. a hand-built example city). Set only by the OSM
+    # importer -- never fabricated, see docs/city-model.md.
+    import_source: Mapped[str | None] = mapped_column(String(200))
+    imported_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    import_query: Mapped[dict | None] = mapped_column(JSONB)
 
     roads: Mapped[list["Road"]] = relationship(back_populates="city", cascade="all, delete-orphan")
     intersections: Mapped[list["Intersection"]] = relationship(

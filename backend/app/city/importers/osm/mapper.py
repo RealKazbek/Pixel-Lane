@@ -21,16 +21,20 @@ and means an imported one-way OSM road trivially has no reverse lane.
 from __future__ import annotations
 
 from dataclasses import dataclass, field
+from datetime import datetime
 from uuid import NAMESPACE_DNS, UUID, uuid5
 
 from app.city.domain.enums import (
     CoordinateSystem,
+    CyclewayType,
     IntersectionControlType,
     LaneChangePermission,
     LaneCountQuality,
     LaneDirection,
+    LaneType,
     MedianType,
     MovementType,
+    ParkingLaneOrientation,
     RoadType,
     TrafficRuleTargetType,
     TrafficRuleType,
@@ -112,6 +116,15 @@ def _lane_change_for_index(edge: NormalizedEdge, index: int) -> LaneChangePermis
     return LaneChangePermission(raw) if raw is not None else None
 
 
+def _lane_type_for_index(edge: NormalizedEdge, index: int) -> LaneType:
+    """`bus:lanes`/`psv:lanes` is the only source-backed way this
+    importer classifies a lane as BUS -- never guessed from lane position
+    or road class (see docs/city-model.md's Road+Lane V1 audit)."""
+    if edge.bus_lanes is not None and edge.bus_lanes[index]:
+        return LaneType.BUS
+    return LaneType.GENERAL
+
+
 def _map_edge(
     edge: NormalizedEdge, warnings: list[str], *, observed_only: bool = False
 ) -> tuple[RoadCreate, list[UUID]]:
@@ -144,6 +157,7 @@ def _map_edge(
                     else None
                 ),
                 lane_change=_lane_change_for_index(edge, index),
+                lane_type=_lane_type_for_index(edge, index),
             )
         )
 
@@ -178,6 +192,26 @@ def _map_edge(
         backward_lane_count=edge.lanes_backward_raw,
         both_ways_lane_count=edge.lanes_both_ways_raw,
         lane_count_quality=LaneCountQuality(edge.lane_count_quality),
+        parking_left=(
+            ParkingLaneOrientation(edge.parking_left)
+            if edge.parking_left is not None
+            else ParkingLaneOrientation.UNKNOWN
+        ),
+        parking_right=(
+            ParkingLaneOrientation(edge.parking_right)
+            if edge.parking_right is not None
+            else ParkingLaneOrientation.UNKNOWN
+        ),
+        cycleway_left=(
+            CyclewayType(edge.cycleway_left)
+            if edge.cycleway_left is not None
+            else CyclewayType.UNKNOWN
+        ),
+        cycleway_right=(
+            CyclewayType(edge.cycleway_right)
+            if edge.cycleway_right is not None
+            else CyclewayType.UNKNOWN
+        ),
         lanes=lanes,
     )
     return road, lane_ids
@@ -243,6 +277,8 @@ def map_network_to_city(
     city_name: str,
     description: str | None,
     full_import: bool = False,
+    imported_at: datetime | None = None,
+    import_query: dict | None = None,
 ) -> MappingResult:
     warnings = list(network.warnings)
 
@@ -312,6 +348,9 @@ def map_network_to_city(
         name=city_name,
         description=description,
         coordinate_system=CoordinateSystem.WGS84,
+        import_source="OpenStreetMap (via Overpass API / OSMnx)",
+        imported_at=imported_at,
+        import_query=import_query,
         roads=roads,
         intersections=intersections,
         traffic_lights=traffic_lights,

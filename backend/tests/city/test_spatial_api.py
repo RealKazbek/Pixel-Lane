@@ -25,25 +25,43 @@ from tests.conftest import requires_postgres
 _BBOX = "10,10,11,11"
 
 
-def _lane(lane_id: str) -> dict:
+def _lane(
+    lane_id: str, *, lane_type: str = "GENERAL", allowed_turns=None, lane_change=None
+) -> dict:
     return {
         "id": lane_id,
         "index": 0,
         "direction": "FORWARD",
         "allowed_movements": ["STRAIGHT"],
-        "lane_type": "GENERAL",
+        "lane_type": lane_type,
         "speed_limit_kmh": None,
+        "allowed_turns": allowed_turns,
+        "lane_change": lane_change,
     }
 
 
-def _road(road_id: str, lane_id: str, points: list[tuple[float, float]]) -> dict:
+def _road(
+    road_id: str,
+    lane_id: str,
+    points: list[tuple[float, float]],
+    *,
+    lane_type: str = "GENERAL",
+    allowed_turns=None,
+    lane_change=None,
+    parking_left: str = "UNKNOWN",
+) -> dict:
     return {
         "id": road_id,
         "name": f"Road {road_id[:8]}",
         "road_type": "RESIDENTIAL",
         "geometry": {"points": [{"x": x, "y": y} for x, y in points]},
         "default_speed_limit_kmh": 50.0,
-        "lanes": [_lane(lane_id)],
+        "parking_left": parking_left,
+        "lanes": [
+            _lane(
+                lane_id, lane_type=lane_type, allowed_turns=allowed_turns, lane_change=lane_change
+            )
+        ],
     }
 
 
@@ -88,6 +106,7 @@ def _wgs84_city_payload() -> dict:
         "traffic_demands": [],
     }, {
         "inside_road_id": inside_road_id,
+        "inside_lane_id": inside_lane_id,
         "outside_road_id": outside_road_id,
         "crossing_road_id": crossing_road_id,
         "inside_intersection_id": inside_intersection_id,
@@ -172,3 +191,53 @@ def test_malformed_bbox_returns_422(client, bbox: str) -> None:
 def test_missing_bbox_param_returns_422(client) -> None:
     response = client.get(f"/api/v1/cities/{uuid.uuid4()}/roads")
     assert response.status_code == 422
+
+
+@requires_postgres
+def test_map_roads_bbox_includes_lane_details(client, db_session) -> None:
+    """Regression for Road + Lane Representation V1: the lightweight
+    viewport endpoint must carry per-lane type/turn/change data, not just
+    an aggregate lane count -- lane-level map rendering depends on it."""
+    if not _postgis_available(db_session):
+        pytest.skip("PostGIS not installed on the reachable database")
+    payload, ids = _wgs84_city_payload()
+    payload["roads"][0] = _road(
+        ids["inside_road_id"],
+        ids["inside_lane_id"],
+        [(10.2, 10.2), (10.8, 10.8)],
+        lane_type="BUS",
+        allowed_turns=["LEFT", "THROUGH"],
+        lane_change="NO",
+        parking_left="PARALLEL",
+    )
+    create_response = client.post("/api/v1/cities", json=payload)
+    assert create_response.status_code == 201
+
+    response = client.get(f"/api/v1/cities/{payload['id']}/map-roads?bbox={_BBOX}")
+    assert response.status_code == 200
+    roads_by_id = {road["id"]: road for road in response.json()}
+    inside_road = roads_by_id[ids["inside_road_id"]]
+
+    assert inside_road["parking_left"] == "PARALLEL"
+    assert len(inside_road["lanes"]) == 1
+    lane = inside_road["lanes"][0]
+    assert lane["lane_type"] == "BUS"
+    assert lane["allowed_turns"] == ["LEFT", "THROUGH"]
+    assert lane["lane_change"] == "NO"
+
+
+@requires_postgres
+def test_map_roads_bbox_road_with_no_turn_data_has_null_fields(client, db_session) -> None:
+    if not _postgis_available(db_session):
+        pytest.skip("PostGIS not installed on the reachable database")
+    payload, ids = _wgs84_city_payload()
+    create_response = client.post("/api/v1/cities", json=payload)
+    assert create_response.status_code == 201
+
+    response = client.get(f"/api/v1/cities/{payload['id']}/map-roads?bbox={_BBOX}")
+    inside_road = next(r for r in response.json() if r["id"] == ids["inside_road_id"])
+
+    assert len(inside_road["lanes"]) == 1
+    assert inside_road["lanes"][0]["allowed_turns"] is None
+    assert inside_road["lanes"][0]["lane_change"] is None
+    assert inside_road["parking_left"] == "UNKNOWN"

@@ -4,6 +4,7 @@ import argparse
 import json
 import signal
 import time
+from datetime import UTC, datetime
 from pathlib import Path
 
 from app.city.importers.osm import ALMATY_DEMO_CITY_ID
@@ -55,6 +56,12 @@ def main() -> int:
         description="OpenStreetMap administrative relation 2465058; full drivable network. "
         "Unknown lanes/speeds/timings are not inferred. " + json.dumps(boundary),
         full_import=True,
+        # OSMnx/Overpass do not expose a reliable per-query OSM data
+        # snapshot timestamp -- only this import run's own wall-clock time
+        # is recorded (never fabricated as if it were the source's
+        # timestamp). See docs/city-model.md's data-freshness note.
+        imported_at=datetime.now(UTC),
+        import_query={"provider": args.provider, **boundary},
     )
     del network
     assert isinstance(mapping.city, CityImport)

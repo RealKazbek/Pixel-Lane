@@ -4,6 +4,7 @@ repository/validator directly -- see backend/app/city/README.md).
 """
 
 from dataclasses import dataclass
+from datetime import UTC, datetime
 from uuid import UUID
 
 from sqlalchemy.orm import Session
@@ -48,6 +49,12 @@ def import_city_from_osm(db: Session, request: ImportRequest) -> ImportOutcome:
         city_id=request.city_id,
         city_name=request.city_name,
         description=request.description,
+        imported_at=datetime.now(UTC),
+        import_query={
+            "center_lat": request.center_lat,
+            "center_lon": request.center_lon,
+            "radius_m": request.radius_m,
+        },
     )
 
     try:

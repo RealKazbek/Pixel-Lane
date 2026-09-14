@@ -10,7 +10,7 @@ from uuid import UUID
 
 from sqlalchemy.orm import Session
 
-from app.city.domain.enums import MedianType
+from app.city.domain.enums import CyclewayType, LaneCountQuality, MedianType, ParkingLaneOrientation
 from app.city.domain.geometry import Point, Polyline
 from app.city.errors import CityValidationError
 from app.city.repositories import city_repository, spatial_repository
@@ -24,7 +24,7 @@ from app.city.schemas.city import (
 from app.city.schemas.import_city import CityImport
 from app.city.schemas.intersection import IntersectionRead
 from app.city.schemas.road import RoadRead
-from app.city.schemas.spatial import BBox, MapRoad
+from app.city.schemas.spatial import BBox, MapLaneSummary, MapRoad
 from app.city.services.city_mapper import to_city_read, to_intersection_read, to_road_read
 from app.city.validators.city_validator import validate_city
 
@@ -53,9 +53,35 @@ def find_map_roads(db: Session, city_id: UUID, bbox: BBox, zoom: float) -> list[
             level=row["level"],
             is_bridge=row["is_bridge"],
             is_tunnel=row["is_tunnel"],
+            forward_lane_count=row["forward_lane_count"],
+            backward_lane_count=row["backward_lane_count"],
+            both_ways_lane_count=row["both_ways_lane_count"],
+            lane_count_quality=LaneCountQuality(row["lane_count_quality"]),
+            parking_left=ParkingLaneOrientation(row["parking_left"]),
+            parking_right=ParkingLaneOrientation(row["parking_right"]),
+            cycleway_left=CyclewayType(row["cycleway_left"]),
+            cycleway_right=CyclewayType(row["cycleway_right"]),
+            lanes=[
+                MapLaneSummary.model_validate(lane)
+                for lane in _parse_lane_details(row["lane_details"])
+            ],
         )
         for row in rows
     ]
+
+
+def _parse_lane_details(raw: object) -> list[dict]:
+    """`lane_details` comes back from `json_agg` as either an already-
+    decoded list (typical psycopg JSON handling) or a JSON string,
+    depending on driver/column typing -- normalize both. `NULL` (a road
+    with no lanes at all) becomes an empty list, never fabricated data.
+    Re-sorted by the embedded `index` field: `json_agg` itself does not
+    guarantee row order (see spatial_repository.find_map_roads)."""
+    if raw is None:
+        return []
+    details = json.loads(raw) if isinstance(raw, str) else raw
+    assert isinstance(details, list)
+    return sorted(details, key=lambda lane: lane["index"])
 
 
 def replace_imported_city(db: Session, payload: CityImport) -> None:

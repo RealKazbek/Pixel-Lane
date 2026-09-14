@@ -7,10 +7,31 @@ module that knows about "bbox" as a concept -- `domain/` and the rest of
 
 from uuid import UUID
 
-from pydantic import BaseModel, model_validator
+from pydantic import BaseModel, Field, model_validator
 
-from app.city.domain.enums import MedianType, RoadType
+from app.city.domain.enums import (
+    CyclewayType,
+    LaneChangePermission,
+    LaneCountQuality,
+    LaneType,
+    MedianType,
+    ParkingLaneOrientation,
+    RoadType,
+    TurnLaneType,
+)
 from app.city.domain.geometry import Polyline
+
+
+class MapLaneSummary(BaseModel):
+    """Lane-level detail for viewport rendering only (Road + Lane
+    Representation V1) -- deliberately smaller than the full `LaneRead`
+    (no id/road_id/speed_limit/direction): the map only needs enough to
+    draw per-lane geometry, turn arrows, and bus-lane styling."""
+
+    index: int
+    lane_type: LaneType
+    allowed_turns: list[TurnLaneType] | None = None
+    lane_change: LaneChangePermission | None = None
 
 
 class MapRoad(BaseModel):
@@ -28,6 +49,15 @@ class MapRoad(BaseModel):
     level: int = 0
     is_bridge: bool = False
     is_tunnel: bool = False
+    forward_lane_count: int | None = None
+    backward_lane_count: int | None = None
+    both_ways_lane_count: int | None = None
+    lane_count_quality: LaneCountQuality = LaneCountQuality.FALLBACK
+    parking_left: ParkingLaneOrientation = ParkingLaneOrientation.UNKNOWN
+    parking_right: ParkingLaneOrientation = ParkingLaneOrientation.UNKNOWN
+    cycleway_left: CyclewayType = CyclewayType.UNKNOWN
+    cycleway_right: CyclewayType = CyclewayType.UNKNOWN
+    lanes: list[MapLaneSummary] = Field(default_factory=list)
 
 
 # WGS84 ranges. A bbox outside these isn't a real place on Earth, so it's

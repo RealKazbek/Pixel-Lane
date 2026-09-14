@@ -78,6 +78,10 @@ def build_city(payload: CityCreate) -> City:
             backward_lane_count=road_data.backward_lane_count,
             both_ways_lane_count=road_data.both_ways_lane_count,
             lane_count_quality=road_data.lane_count_quality.value,
+            parking_left=road_data.parking_left.value,
+            parking_right=road_data.parking_right.value,
+            cycleway_left=road_data.cycleway_left.value,
+            cycleway_right=road_data.cycleway_right.value,
             lanes=lanes,
         )
         roads.append(road)
@@ -189,6 +193,9 @@ def build_city(payload: CityCreate) -> City:
         name=payload.name,
         description=payload.description,
         coordinate_system=payload.coordinate_system.value,
+        import_source=payload.import_source,
+        imported_at=payload.imported_at,
+        import_query=payload.import_query,
         roads=roads,
         intersections=intersections,
         traffic_lights=traffic_lights,
