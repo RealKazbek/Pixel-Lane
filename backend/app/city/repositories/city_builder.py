@@ -57,6 +57,10 @@ def build_city(payload: CityCreate) -> City:
                 else None
             ),
             default_speed_limit_kmh=road_data.default_speed_limit_kmh,
+            source_id=road_data.source_id,
+            source_road_type=road_data.source_road_type,
+            one_way=road_data.one_way,
+            source_lane_count=road_data.source_lane_count,
             lanes=lanes,
         )
         roads.append(road)

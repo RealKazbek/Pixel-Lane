@@ -2,7 +2,7 @@ import uuid
 from typing import TYPE_CHECKING, Any
 
 from geoalchemy2 import Geometry, WKBElement
-from sqlalchemy import Float, ForeignKey, String
+from sqlalchemy import Boolean, CheckConstraint, Float, ForeignKey, Index, Integer, String
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.dialects.postgresql import UUID as PGUUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
@@ -16,6 +16,10 @@ if TYPE_CHECKING:
 
 class Road(Base):
     __tablename__ = "roads"
+    __table_args__ = (
+        CheckConstraint("source_lane_count > 0", name="ck_roads_source_lane_count"),
+        Index("ix_roads_geom", "geom", postgresql_using="gist"),
+    )
 
     id: Mapped[uuid.UUID] = mapped_column(PGUUID(as_uuid=True), primary_key=True)
     city_id: Mapped[uuid.UUID] = mapped_column(
@@ -43,7 +47,11 @@ class Road(Base):
     geom: Mapped[WKBElement | None] = mapped_column(
         Geometry("LINESTRING", srid=4326, spatial_index=False), nullable=True
     )
-    default_speed_limit_kmh: Mapped[float] = mapped_column(Float, nullable=False)
+    default_speed_limit_kmh: Mapped[float | None] = mapped_column(Float, nullable=True)
+    source_id: Mapped[str | None] = mapped_column(String(2000))
+    source_road_type: Mapped[str | None] = mapped_column(String(200))
+    one_way: Mapped[bool | None] = mapped_column(Boolean)
+    source_lane_count: Mapped[int | None] = mapped_column(Integer)
 
     city: Mapped["City"] = relationship(back_populates="roads")
     lanes: Mapped[list["Lane"]] = relationship(

@@ -15,17 +15,25 @@ from sqlalchemy import create_engine, text
 from sqlalchemy.orm import Session, sessionmaker
 
 from app.city import models as _city_models  # noqa: F401  (registers ORM models)
-from app.db.base import Base
 from app.db.session import get_db
 from app.main import app
 
-TEST_DATABASE_URL = os.environ.get(
-    "TEST_DATABASE_URL",
-    "postgresql+psycopg://pixel_lane:change-me@localhost:5432/pixel_lane",
-)
+TEST_DATABASE_URL = os.environ.get("TEST_DATABASE_URL", "")
+if TEST_DATABASE_URL:
+    from sqlalchemy.engine import make_url
+
+    test_url = make_url(TEST_DATABASE_URL)
+    if test_url.get_backend_name() != "postgresql" or not (test_url.database or "").endswith(
+        "_test"
+    ):
+        raise pytest.UsageError(
+            "TEST_DATABASE_URL must name an isolated PostgreSQL database ending _test"
+        )
 
 
 def _postgres_available() -> bool:
+    if not TEST_DATABASE_URL:
+        return False
     try:
         engine = create_engine(TEST_DATABASE_URL)
         with engine.connect():
@@ -54,9 +62,7 @@ def engine():
     if not POSTGRES_AVAILABLE:
         pytest.skip("PostgreSQL not available")
     eng = create_engine(TEST_DATABASE_URL)
-    # Convenience net for a developer who hasn't run migrations yet;
-    # create_all is a no-op for tables that already exist.
-    Base.metadata.create_all(eng)
+    # Apply Alembic to this isolated database before running integration tests.
     yield eng
     eng.dispose()
 

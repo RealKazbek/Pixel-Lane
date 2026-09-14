@@ -5,19 +5,60 @@ module, never the repository or validator directly, so transaction and
 validation behavior stays in one place.
 """
 
+import json
 from uuid import UUID
 
 from sqlalchemy.orm import Session
 
-from app.city.domain.geometry import Polyline
+from app.city.domain.geometry import Point, Polyline
 from app.city.errors import CityValidationError
 from app.city.repositories import city_repository, spatial_repository
-from app.city.schemas.city import CityCreate, CityRead, CitySummary, CityValidationResult
+from app.city.schemas.city import (
+    CityCreate,
+    CityMetadata,
+    CityRead,
+    CitySummary,
+    CityValidationResult,
+)
+from app.city.schemas.import_city import CityImport
 from app.city.schemas.intersection import IntersectionRead
 from app.city.schemas.road import RoadRead
-from app.city.schemas.spatial import BBox
+from app.city.schemas.spatial import BBox, MapRoad
 from app.city.services.city_mapper import to_city_read, to_intersection_read, to_road_read
 from app.city.validators.city_validator import validate_city
+
+
+def find_map_roads(db: Session, city_id: UUID, bbox: BBox, zoom: float) -> list[MapRoad] | None:
+    if not city_repository.city_exists(db, city_id):
+        return None
+    rows = spatial_repository.find_map_roads(db, city_id, bbox, zoom)
+    if len(rows) > 25000:
+        raise ValueError("VIEWPORT_TOO_LARGE")
+    return [
+        MapRoad(
+            id=row["id"],
+            name=row["name"],
+            road_type=row["road_type"],
+            lane_count=row["lane_count"],
+            geometry=Polyline(
+                points=[
+                    Point(x=lon, y=lat) for lon, lat in json.loads(row["geometry"])["coordinates"]
+                ]
+            ),
+        )
+        for row in rows
+    ]
+
+
+def replace_imported_city(db: Session, payload: CityImport) -> None:
+    from app.city.repositories.import_repository import replace_city
+
+    if not payload.roads or not payload.intersections:
+        raise ValueError("Refusing to replace a city with an empty network")
+    issues = validate_city(payload)
+    if issues:
+        raise CityValidationError(issues)
+    replace_city(db, payload)
 
 
 def validate_city_payload(payload: CityCreate) -> CityValidationResult:
@@ -53,15 +94,15 @@ def update_road_geometry(
     to imported OSM geometry). Structural validation (point count/bounds)
     is Pydantic's job via `Polyline`; returns None if the road doesn't
     exist under that city."""
-    city = city_repository.update_road_geometry(db, city_id, road_id, geometry)
-    if city is None:
+    road = city_repository.update_road_geometry(db, city_id, road_id, geometry)
+    if road is None:
         return None
-    road = next((r for r in city.roads if r.id == road_id), None)
-    assert road is not None  # just updated in this same transaction
     return to_road_read(road)
 
 
-def find_roads_in_bbox(db: Session, city_id: UUID, bbox: BBox) -> list[RoadRead] | None:
+def find_roads_in_bbox(
+    db: Session, city_id: UUID, bbox: BBox, zoom: float = 20
+) -> list[RoadRead] | None:
     """Roads intersecting the viewport `bbox` -- the bbox-scoped
     counterpart to `get_city`'s full-city road list (see
     docs/city-model.md's viewport-loading architecture). `None` if the
@@ -69,7 +110,9 @@ def find_roads_in_bbox(db: Session, city_id: UUID, bbox: BBox) -> list[RoadRead]
     the city exists but has nothing in that bbox)."""
     if not city_repository.city_exists(db, city_id):
         return None
-    roads = spatial_repository.find_roads_in_bbox(db, city_id, bbox)
+    roads = spatial_repository.find_roads_in_bbox(db, city_id, bbox, zoom)
+    if len(roads) > 10000:
+        raise ValueError("VIEWPORT_TOO_LARGE")
     return [to_road_read(road) for road in roads]
 
 
@@ -81,6 +124,8 @@ def find_intersections_in_bbox(
     if not city_repository.city_exists(db, city_id):
         return None
     intersections = spatial_repository.find_intersections_in_bbox(db, city_id, bbox)
+    if len(intersections) > 10000:
+        raise ValueError("VIEWPORT_TOO_LARGE")
     traffic_light_by_intersection = spatial_repository.find_traffic_lights_by_intersection_ids(
         db, [i.id for i in intersections]
     )
@@ -88,3 +133,29 @@ def find_intersections_in_bbox(
         to_intersection_read(intersection, traffic_light_by_intersection)
         for intersection in intersections
     ]
+
+
+def get_city_metadata(db: Session, city_id: UUID) -> CityMetadata | None:
+    result = spatial_repository.get_metadata(db, city_id)
+    if result is None:
+        return None
+    city, bounds, count = result
+    return CityMetadata(
+        **CitySummary.model_validate(city).model_dump(),
+        description=city.description,
+        bounds=bounds,
+        road_count=count,
+    )
+
+
+def get_road(db: Session, city_id: UUID, road_id: UUID) -> RoadRead | None:
+    road = spatial_repository.get_road(db, city_id, road_id)
+    return to_road_read(road) if road is not None else None
+
+
+def get_intersection(db: Session, city_id: UUID, intersection_id: UUID) -> IntersectionRead | None:
+    intersection = spatial_repository.get_intersection(db, city_id, intersection_id)
+    if intersection is None:
+        return None
+    lights = spatial_repository.find_traffic_lights_by_intersection_ids(db, [intersection_id])
+    return to_intersection_read(intersection, lights)

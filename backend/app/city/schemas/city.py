@@ -84,6 +84,12 @@ class CitySummary(BaseModel):
     model_config = {"from_attributes": True}
 
 
+class CityMetadata(CitySummary):
+    description: str | None
+    bounds: tuple[float, float, float, float] | None
+    road_count: int
+
+
 class ValidationIssue(BaseModel):
     """A single, machine-readable validation problem."""
 

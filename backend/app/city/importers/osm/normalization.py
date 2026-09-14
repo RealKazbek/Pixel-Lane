@@ -12,6 +12,7 @@ graph/networkx/osmnx dependency at all.
 from __future__ import annotations
 
 from dataclasses import dataclass, field
+from math import isfinite
 from typing import Any, Protocol
 
 from app.city.importers.osm.defaults import DEFAULT_LANE_COUNT
@@ -35,7 +36,7 @@ def parse_oneway(tags: dict[str, Any]) -> bool:
     return str(value).strip().lower() in {"yes", "true", "1", "-1"}
 
 
-def parse_lane_count(tags: dict[str, Any], *, oneway: bool) -> int:
+def parse_lane_count(tags: dict[str, Any], *, oneway: bool, observed_only: bool = False) -> int:
     """Lane count for ONE directed edge (this edge's own direction only --
     see mapper.py for why each directed edge is one Pixel Lane Road).
 
@@ -44,7 +45,9 @@ def parse_lane_count(tags: dict[str, Any], *, oneway: bool) -> int:
     """
     forward = tags.get("lanes:forward")
     backward = tags.get("lanes:backward")
-    directional = forward if forward is not None else backward
+    directional = backward if tags.get("reversed") is True else forward
+    if not observed_only and directional is None:
+        directional = backward
     if directional is not None:
         parsed = _parse_int(first(directional))
         if parsed is not None and parsed > 0:
@@ -54,15 +57,19 @@ def parse_lane_count(tags: dict[str, Any], *, oneway: bool) -> int:
     if lanes is not None:
         parsed = _parse_int(first(lanes))
         if parsed is not None and parsed > 0:
-            return parsed if oneway else max(1, round(parsed / 2))
+            if oneway:
+                return parsed
+            # A total count does not tell us directional allocation.
+            if not observed_only:
+                return max(1, round(parsed / 2))
 
-    return DEFAULT_LANE_COUNT
+    return 0 if observed_only else DEFAULT_LANE_COUNT
 
 
 def _parse_int(value: Any) -> int | None:
     try:
         return int(float(str(value).strip()))
-    except (TypeError, ValueError):
+    except (TypeError, ValueError, OverflowError):
         return None
 
 
@@ -81,13 +88,13 @@ def parse_maxspeed_kmh(
 
     if text.endswith("mph"):
         number = _parse_float(text.removesuffix("mph").strip())
-        if number is not None:
+        if number is not None and 0 < number * 1.60934 <= 200:
             return round(number * 1.60934, 1)
         warnings.append(f"{edge_label}: could not parse maxspeed '{raw}' (mph); skipped.")
         return None
 
     number = _parse_float(text)
-    if number is not None and number > 0:
+    if number is not None and 0 < number <= 200:
         return number
 
     warnings.append(f"{edge_label}: unsupported maxspeed value '{raw}'; skipped.")
@@ -96,7 +103,8 @@ def parse_maxspeed_kmh(
 
 def _parse_float(value: str) -> float | None:
     try:
-        return float(value)
+        number = float(value)
+        return number if isfinite(number) else None
     except ValueError:
         return None
 
@@ -135,6 +143,7 @@ class NormalizedEdge:
     oneway: bool
     lane_count: int
     maxspeed_kmh: float | None
+    source_lane_count: int | None = None
 
 
 @dataclass(frozen=True)
@@ -159,7 +168,7 @@ def _edge_points(
     return (u_point, v_point)
 
 
-def extract_network(graph: Any) -> NormalizedNetwork:
+def extract_network(graph: Any, *, observed_only: bool = False) -> NormalizedNetwork:
     """Converts a fetched graph (networkx.MultiDiGraph, or anything with
     the same `.nodes()`/`.edges()` shape) into a NormalizedNetwork."""
     warnings: list[str] = []
@@ -181,18 +190,23 @@ def extract_network(graph: Any) -> NormalizedNetwork:
         osm_ids = tags.get("osmid")
         osm_ids_tuple = tuple(osm_ids) if isinstance(osm_ids, list) else (osm_ids,)
         edge_label = f"way {osm_ids_tuple[0]} ({u}->{v})"
+        points = _edge_points(tags, node_points[u], node_points[v])
+        if len(set(points)) < 2:
+            warnings.append(f"{edge_label}: zero-length geometry; skipped.")
+            continue
         edges.append(
             NormalizedEdge(
                 u=u,
                 v=v,
                 key=key,
                 osm_ids=osm_ids_tuple,
-                points=_edge_points(tags, node_points[u], node_points[v]),
+                points=points,
                 name=first(tags.get("name")),
                 highway=first(tags.get("highway")),
                 oneway=oneway,
-                lane_count=parse_lane_count(tags, oneway=oneway),
+                lane_count=parse_lane_count(tags, oneway=oneway, observed_only=observed_only),
                 maxspeed_kmh=parse_maxspeed_kmh(tags, warnings, edge_label=edge_label),
+                source_lane_count=_parse_int(first(tags.get("lanes"))),
             )
         )
 

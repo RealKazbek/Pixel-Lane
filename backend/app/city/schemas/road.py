@@ -17,8 +17,12 @@ class RoadCreate(BaseModel):
     name: str = Field(min_length=1, max_length=NAME_MAX_LENGTH)
     road_type: RoadType
     geometry: Polyline
-    default_speed_limit_kmh: float = Field(gt=0, le=MAX_SPEED_LIMIT_KMH)
-    lanes: list[LaneCreate] = Field(min_length=1, max_length=MAX_LANES_PER_ROAD)
+    default_speed_limit_kmh: float | None = Field(default=None, gt=0, le=MAX_SPEED_LIMIT_KMH)
+    lanes: list[LaneCreate] = Field(default_factory=list, max_length=MAX_LANES_PER_ROAD)
+    source_id: str | None = Field(default=None, max_length=2000)
+    source_road_type: str | None = Field(default=None, max_length=200)
+    one_way: bool | None = None
+    source_lane_count: int | None = Field(default=None, gt=0)
 
 
 class RoadRead(BaseModel):
@@ -27,7 +31,11 @@ class RoadRead(BaseModel):
     name: str
     road_type: RoadType
     geometry: Polyline
-    default_speed_limit_kmh: float
+    default_speed_limit_kmh: float | None
+    source_id: str | None = None
+    source_road_type: str | None = None
+    one_way: bool | None = None
+    source_lane_count: int | None = None
     lanes: list[LaneRead]
 
     model_config = {"from_attributes": True}

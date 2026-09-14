@@ -34,7 +34,9 @@ def _to_road_input(road: RoadRead) -> RoadInput:
         id=road.id,
         name=road.name,
         geometry_points=tuple(PointInput(x=p.x, y=p.y) for p in road.geometry.points),
-        default_speed_limit_kmh=road.default_speed_limit_kmh,
+        # The engine already treats nonpositive speed as unknown and uses
+        # its explicit analysis configuration; never persist that assumption.
+        default_speed_limit_kmh=road.default_speed_limit_kmh or 0,
         lanes=tuple(_to_lane_input(lane) for lane in road.lanes),
     )
 

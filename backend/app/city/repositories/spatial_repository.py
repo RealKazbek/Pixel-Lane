@@ -11,21 +11,51 @@ Pydantic schemas out -- see `city_service.py`'s `find_roads_in_bbox`/
 from uuid import UUID
 
 from geoalchemy2.functions import ST_Intersects, ST_MakeEnvelope
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.orm import Session, selectinload
 
 from app.city.domain.geometry import WGS84_SRID
+from app.city.models.city import City
 from app.city.models.intersection import Intersection
+from app.city.models.lane import Lane
 from app.city.models.road import Road
 from app.city.models.traffic_light import TrafficLight
 from app.city.schemas.spatial import BBox
+
+
+def find_map_roads(db: Session, city_id: UUID, bbox: BBox, zoom: float):
+    # Aggregate lane counts once; no ORM graph, no lane IDs/movement metadata.
+    lanes = (
+        select(Lane.road_id, func.count().label("count"))
+        .join(Road)
+        .where(Road.city_id == city_id)
+        .group_by(Lane.road_id)
+        .subquery()
+    )
+    geometry = func.ST_SimplifyPreserveTopology(Road.geom, 0.00005) if zoom < 14 else Road.geom
+    stmt = (
+        select(
+            Road.id,
+            Road.name,
+            Road.road_type,
+            func.ST_AsGeoJSON(geometry).label("geometry"),
+            func.coalesce(lanes.c.count, 0).label("lane_count"),
+        )
+        .outerjoin(lanes, lanes.c.road_id == Road.id)
+        .where(Road.city_id == city_id, ST_Intersects(Road.geom, _envelope(bbox)))
+    )
+    if zoom < 12:
+        stmt = stmt.where(Road.road_type.in_(["HIGHWAY", "ARTERIAL"]))
+    elif zoom < 14:
+        stmt = stmt.where(Road.road_type.in_(["HIGHWAY", "ARTERIAL", "COLLECTOR"]))
+    return db.execute(stmt.limit(25001)).mappings().all()
 
 
 def _envelope(bbox: BBox):  # noqa: ANN202 -- returns a PostGIS function expression, not a plain type
     return ST_MakeEnvelope(bbox.min_lon, bbox.min_lat, bbox.max_lon, bbox.max_lat, WGS84_SRID)
 
 
-def find_roads_in_bbox(db: Session, city_id: UUID, bbox: BBox) -> list[Road]:
+def find_roads_in_bbox(db: Session, city_id: UUID, bbox: BBox, zoom: float = 20) -> list[Road]:
     """Roads whose geometry intersects `bbox` at all (including roads that
     merely cross the boundary) -- an "intersects", not "fully contained",
     query, since a viewport edge case that misses a road crossing into
@@ -42,7 +72,11 @@ def find_roads_in_bbox(db: Session, city_id: UUID, bbox: BBox) -> list[Road]:
         )
         .options(selectinload(Road.lanes))
     )
-    return list(db.execute(stmt).scalars().all())
+    if zoom < 12:
+        stmt = stmt.where(Road.road_type.in_(["HIGHWAY", "ARTERIAL"]))
+    elif zoom < 14:
+        stmt = stmt.where(Road.road_type.in_(["HIGHWAY", "ARTERIAL", "COLLECTOR"]))
+    return list(db.execute(stmt.limit(10001)).scalars().all())
 
 
 def find_intersections_in_bbox(db: Session, city_id: UUID, bbox: BBox) -> list[Intersection]:
@@ -65,7 +99,47 @@ def find_intersections_in_bbox(db: Session, city_id: UUID, bbox: BBox) -> list[I
             selectinload(Intersection.connected_lanes),
         )
     )
-    return list(db.execute(stmt).scalars().all())
+    return list(db.execute(stmt.limit(10001)).scalars().all())
+
+
+def get_metadata(db: Session, city_id: UUID):
+    city = db.get(City, city_id)
+    if city is None:
+        return None
+    aggregate = (
+        select(func.ST_Extent(Road.geom).label("extent"), func.count().label("count"))
+        .where(Road.city_id == city_id)
+        .subquery()
+    )
+    extent = aggregate.c.extent
+    bounds = db.execute(
+        select(
+            func.ST_XMin(extent),
+            func.ST_YMin(extent),
+            func.ST_XMax(extent),
+            func.ST_YMax(extent),
+            aggregate.c.count,
+        )
+    ).one()
+    return city, tuple(bounds[:4]) if bounds[0] is not None else None, bounds[4]
+
+
+def get_road(db: Session, city_id: UUID, road_id: UUID) -> Road | None:
+    return db.scalar(
+        select(Road)
+        .where(Road.city_id == city_id, Road.id == road_id)
+        .options(selectinload(Road.lanes))
+    )
+
+
+def get_intersection(db: Session, city_id: UUID, intersection_id: UUID) -> Intersection | None:
+    return db.scalar(
+        select(Intersection)
+        .where(Intersection.city_id == city_id, Intersection.id == intersection_id)
+        .options(
+            selectinload(Intersection.connected_roads), selectinload(Intersection.connected_lanes)
+        )
+    )
 
 
 def find_traffic_lights_by_intersection_ids(

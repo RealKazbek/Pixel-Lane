@@ -17,7 +17,7 @@ class LaneCreate(BaseModel):
     id: UUID
     index: int = Field(ge=0, le=100)
     direction: LaneDirection
-    allowed_movements: list[MovementType] = Field(min_length=1, max_length=4)
+    allowed_movements: list[MovementType] = Field(default_factory=list, max_length=4)
     lane_type: LaneType = LaneType.GENERAL
     speed_limit_kmh: float | None = Field(default=None, gt=0, le=MAX_SPEED_LIMIT_KMH)
 

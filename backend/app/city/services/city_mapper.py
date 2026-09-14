@@ -59,6 +59,10 @@ def to_road_read(road: Road) -> RoadRead:
         road_type=RoadType(road.road_type),
         geometry=Polyline(points=[Point(**point) for point in road.geometry]),
         default_speed_limit_kmh=road.default_speed_limit_kmh,
+        source_id=road.source_id,
+        source_road_type=road.source_road_type,
+        one_way=road.one_way,
+        source_lane_count=road.source_lane_count,
         lanes=[_to_lane_read(lane) for lane in road.lanes],
     )
 

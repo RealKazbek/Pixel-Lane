@@ -3,8 +3,9 @@
 ## Purpose
 
 Imports a real road network from OpenStreetMap into the City Model. Ships
-one demo workflow today: `make import-almaty` (a bounded, central-Almaty
-demo area — see `docs/architecture.md` § "Almaty OpenStreetMap demo").
+two explicit workflows: the legacy 850 m demo (`make import-almaty`) and
+the administrative-polygon full import (`make import-almaty-full`). See
+`docs/osm-import.md` for acquisition, replacement and verified status.
 
 ## Public API
 
@@ -14,6 +15,9 @@ demo area — see `docs/architecture.md` § "Almaty OpenStreetMap demo").
   re-fetching/re-inserting.
 - CLI: `python -m app.city.importers.osm.cli` (wired to `make
   import-almaty`) — same pipeline with step-by-step progress output.
+- Full CLI: `python -m app.city.importers.osm.full_cli --replace` — bounded
+  cached polygon queries, observed-data mapping and atomic canonical-city
+  replacement through `city_service.replace_imported_city`.
 
 ## Main modules
 
@@ -45,9 +49,9 @@ standard library — never on osmnx or networkx.
   directed edge becomes one Road with lanes only in that edge's own
   direction (see `mapper.py`'s module docstring for why this avoids
   pairing up bidirectional edges without losing information).
-- **No real traffic data is invented.** No `TrafficDemand` is imported.
-  Signal phases are an explicit, documented synthetic single-phase
-  placeholder — OSM does not provide real signal timing.
+- **No real traffic data is invented by full import.** Unknown speeds,
+  directional lanes, movements and phases stay null/empty. The legacy demo
+  alone retains its previously documented synthetic phase/fallbacks.
 - Unit tests (`tests/city/importers/`) never hit the network; only
   `client.py`'s actual OSM fetch is untested by automation (manual test
   only).

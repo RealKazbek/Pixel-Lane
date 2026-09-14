@@ -8,7 +8,7 @@ strategy.
 from uuid import UUID
 
 from geoalchemy2 import WKTElement
-from sqlalchemy import exists, select
+from sqlalchemy import exists, func, select, update
 from sqlalchemy.orm import Session, selectinload
 
 from app.city.domain.geometry import WGS84_SRID, Polyline, polyline_to_wkt
@@ -75,7 +75,7 @@ def list_cities(db: Session, *, limit: int = 50, offset: int = 0) -> list[City]:
 
 def update_road_geometry(
     db: Session, city_id: UUID, road_id: UUID, geometry: Polyline
-) -> City | None:
+) -> Road | None:
     """Replaces one road's polyline in place (e.g. a manual map-editor
     correction). Returns the reloaded City, or None if the road doesn't
     exist under that city."""
@@ -86,6 +86,7 @@ def update_road_geometry(
         return None
 
     road.geometry = [point.model_dump() for point in geometry.points]
+    db.execute(update(City).where(City.id == city_id).values(updated_at=func.now()))
     # Keep the spatial mirror in sync -- see Road.geom's docstring. Only
     # WGS84 roads have one to begin with (None for LOCAL_CARTESIAN roads,
     # which have no `geom` to update).
@@ -100,4 +101,4 @@ def update_road_geometry(
         db.rollback()
         raise
 
-    return get_city(db, city_id)
+    return road

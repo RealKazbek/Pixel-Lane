@@ -46,6 +46,7 @@ from app.city.importers.osm.defaults import (
 )
 from app.city.importers.osm.normalization import NormalizedEdge, NormalizedNetwork, NormalizedNode
 from app.city.schemas.city import CityCreate
+from app.city.schemas.import_city import CityImport
 from app.city.schemas.intersection import IntersectionCreate
 from app.city.schemas.lane import LaneCreate
 from app.city.schemas.road import RoadCreate
@@ -75,7 +76,9 @@ def _road_name(edge: NormalizedEdge) -> str:
     return edge.name or f"{FALLBACK_ROAD_NAME} {edge.osm_ids[0]}"
 
 
-def _map_edge(edge: NormalizedEdge, warnings: list[str]) -> tuple[RoadCreate, list[UUID]]:
+def _map_edge(
+    edge: NormalizedEdge, warnings: list[str], *, observed_only: bool = False
+) -> tuple[RoadCreate, list[UUID]]:
     road_id = _id_for("way", edge.u, edge.v, edge.key)
     edge_label = f"way {edge.osm_ids[0]} ({edge.u}->{edge.v})"
 
@@ -97,7 +100,7 @@ def _map_edge(edge: NormalizedEdge, warnings: list[str]) -> tuple[RoadCreate, li
                 id=lane_id,
                 index=index,
                 direction=LaneDirection.FORWARD,
-                allowed_movements=[MovementType.STRAIGHT],
+                allowed_movements=[] if observed_only else [MovementType.STRAIGHT],
                 speed_limit_kmh=None,
             )
         )
@@ -107,7 +110,15 @@ def _map_edge(edge: NormalizedEdge, warnings: list[str]) -> tuple[RoadCreate, li
         name=_road_name(edge),
         road_type=_road_type(edge.highway),
         geometry=Polyline(points=[Point(x=lon, y=lat) for lon, lat in edge.points]),
-        default_speed_limit_kmh=edge.maxspeed_kmh or DEFAULT_SPEED_LIMIT_KMH,
+        default_speed_limit_kmh=(
+            edge.maxspeed_kmh if observed_only else edge.maxspeed_kmh or DEFAULT_SPEED_LIMIT_KMH
+        ),
+        source_id="osm:way:" + ",".join(str(i) for i in sorted(edge.osm_ids)),
+        source_road_type=edge.highway,
+        one_way=edge.oneway,
+        source_lane_count=edge.source_lane_count
+        if edge.source_lane_count and edge.source_lane_count > 0
+        else None,
         lanes=lanes,
     )
     return road, lane_ids
@@ -167,7 +178,12 @@ def _map_traffic_light(
 
 
 def map_network_to_city(
-    network: NormalizedNetwork, *, city_id: UUID, city_name: str, description: str | None
+    network: NormalizedNetwork,
+    *,
+    city_id: UUID,
+    city_name: str,
+    description: str | None,
+    full_import: bool = False,
 ) -> MappingResult:
     warnings = list(network.warnings)
 
@@ -177,13 +193,13 @@ def map_network_to_city(
     lanes_by_node: dict[int, list[UUID]] = {}
 
     for edge in network.edges:
-        road, lane_ids = _map_edge(edge, warnings)
+        road, lane_ids = _map_edge(edge, warnings, observed_only=full_import)
         roads.append(road)
         speed_rule = _speed_rule(edge, road.id)
         if speed_rule is not None:
             traffic_rules.append(speed_rule)
 
-        for node_id in (edge.u, edge.v):
+        for node_id in dict.fromkeys((edge.u, edge.v)):
             roads_by_node.setdefault(node_id, []).append(road.id)
             lanes_by_node.setdefault(node_id, []).extend(lane_ids)
 
@@ -200,7 +216,13 @@ def map_network_to_city(
 
         traffic_light = None
         if node.control_type == "TRAFFIC_LIGHT":
-            traffic_light = _map_traffic_light(node, intersection_id, connected_lane_ids, warnings)
+            traffic_light = (
+                TrafficLightCreate(
+                    id=_id_for("signal", node.osm_id), intersection_id=intersection_id
+                )
+                if full_import
+                else _map_traffic_light(node, intersection_id, connected_lane_ids, warnings)
+            )
             if traffic_light is None:
                 warnings.append(
                     f"node {node.osm_id}: tagged as a traffic signal but has no "
@@ -226,7 +248,7 @@ def map_network_to_city(
         if traffic_light is not None:
             traffic_lights.append(traffic_light)
 
-    city = CityCreate(
+    city = (CityImport if full_import else CityCreate)(
         id=city_id,
         name=city_name,
         description=description,

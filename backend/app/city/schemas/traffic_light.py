@@ -39,9 +39,9 @@ class TrafficLightCreate(BaseModel):
     id: UUID
     intersection_id: UUID
     signal_groups: list[SignalGroupCreate] = Field(
-        min_length=1, max_length=MAX_SIGNAL_GROUPS_PER_TRAFFIC_LIGHT
+        default_factory=list, max_length=MAX_SIGNAL_GROUPS_PER_TRAFFIC_LIGHT
     )
-    phases: list[PhaseCreate] = Field(min_length=1, max_length=MAX_PHASES_PER_TRAFFIC_LIGHT)
+    phases: list[PhaseCreate] = Field(default_factory=list, max_length=MAX_PHASES_PER_TRAFFIC_LIGHT)
 
 
 class SignalGroupRead(BaseModel):

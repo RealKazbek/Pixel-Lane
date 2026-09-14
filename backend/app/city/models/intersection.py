@@ -2,7 +2,7 @@ import uuid
 from typing import TYPE_CHECKING
 
 from geoalchemy2 import Geometry, WKBElement
-from sqlalchemy import Float, ForeignKey, String
+from sqlalchemy import Float, ForeignKey, Index, String
 from sqlalchemy.dialects.postgresql import UUID as PGUUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
@@ -18,6 +18,7 @@ if TYPE_CHECKING:
 
 class Intersection(Base):
     __tablename__ = "intersections"
+    __table_args__ = (Index("ix_intersections_geom", "geom", postgresql_using="gist"),)
 
     id: Mapped[uuid.UUID] = mapped_column(PGUUID(as_uuid=True), primary_key=True)
     city_id: Mapped[uuid.UUID] = mapped_column(

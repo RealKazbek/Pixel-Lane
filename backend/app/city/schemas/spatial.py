@@ -5,7 +5,23 @@ module that knows about "bbox" as a concept -- `domain/` and the rest of
 `schemas/` stay geometry-agnostic beyond the generic `Point`/`Polyline`.
 """
 
+from uuid import UUID
+
 from pydantic import BaseModel, model_validator
+
+from app.city.domain.enums import RoadType
+from app.city.domain.geometry import Polyline
+
+
+class MapRoad(BaseModel):
+    """Viewport projection, intentionally excluding editing/analysis details."""
+
+    id: UUID
+    name: str
+    road_type: RoadType
+    geometry: Polyline
+    lane_count: int
+
 
 # WGS84 ranges. A bbox outside these isn't a real place on Earth, so it's
 # rejected at the API boundary rather than silently producing an empty
