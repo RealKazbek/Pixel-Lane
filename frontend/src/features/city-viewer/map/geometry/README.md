@@ -1,18 +1,23 @@
 # Road/junction geometry
 
 Pure computational geometry for turning a City Model `Road`/`Intersection`
-graph into rendering-ready polygons. No MapLibre or React import belongs
-in this directory -- `map/adapters/roadSurfaceGeometry.ts` and
-`map/adapters/laneGeometry.ts` are the only consumers, and they own
-translating the City Model into this module's inputs and its output back
-into GeoJSON `FeatureCollection`s.
+graph into rendering-ready polygons/curves. No MapLibre or React import
+belongs in this directory. `map/adapters/roadSurfaceGeometry.ts` and
+`map/adapters/laneGeometry.ts` are the production rendering consumers,
+and they own translating the City Model into this module's inputs and
+its output back into GeoJSON `FeatureCollection`s. The Road Geometry Lab
+(`dev/roadLab/`, see docs/road-geometry.md) and this directory's own
+tests are also legitimate direct consumers -- the Lab exists specifically
+to verify this geometry in isolation, before it's applied through the
+production adapters.
 
 ## Public API
 
 Import only from `index.ts` (`buildRoadEnvelope`, `solveJunction`,
-`buildMergeTaperEnvelope`/`isMergeCandidate`, `smoothCenterline`, and the
-shared sizing helpers in `nodeGeometry.ts`). Everything else here is a
-private implementation detail of one of those.
+`buildMergeTaperEnvelope`/`isMergeCandidate`, `smoothCenterline`,
+`buildLaneConnectorCurve`, and the shared sizing helpers in
+`nodeGeometry.ts`). Everything else here is a private implementation
+detail of one of those.
 
 ## Main modules
 
@@ -33,6 +38,12 @@ private implementation detail of one of those.
 - `curveSmoothing.ts` -- Catmull-Rom centerline resampling. Never applied
   to a source polyline with fewer than 3 vertices, so a straight road
   never gets curved.
+- `laneConnection.ts` -- explicit lane-to-lane connector curve through a
+  junction (a tangent-continuous cubic Bezier), distinct from decorative
+  lane-separator markings -- see docs/road-geometry.md 6 for why this
+  matters for future simulation/routing. Not yet wired into a production
+  map layer; currently exercised by its own tests and the Lab's fixture
+  tests.
 
 ## Important invariants
 
@@ -65,6 +76,7 @@ clipping) belongs here, not in `adapters/`. A new *rendering* concern
 
 ## What must not depend on this module
 
-Nothing outside `map/adapters/` should import from here directly --
-`map/layers/` and `map/styles/` consume the GeoJSON `adapters/` produces,
-never this module's polygon types.
+`map/layers/` and `map/styles/` (production rendering) must never import
+this module's polygon/curve types directly -- they consume the GeoJSON
+`map/adapters/` produces. `dev/roadLab/` and this directory's tests are
+the deliberate exception (see the top note).

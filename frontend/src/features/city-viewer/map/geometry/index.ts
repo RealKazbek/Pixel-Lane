@@ -14,6 +14,10 @@ export {
   type SmoothingOptions,
 } from "./curveSmoothing";
 export {
+  buildLaneConnectorCurve,
+  type LaneConnectorEndpoint,
+} from "./laneConnection";
+export {
   computeNodeRadius,
   cornerRadiusForPair,
   pointsMatch,
