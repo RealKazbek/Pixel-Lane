@@ -26,7 +26,10 @@ describe("fromLngLat", () => {
 
   it("round-trips LOCAL_CARTESIAN points within a small tolerance", () => {
     const point = { x: 1234.5, y: -678.9 };
-    const roundTripped = fromLngLat("LOCAL_CARTESIAN", toLngLat("LOCAL_CARTESIAN", point));
+    const roundTripped = fromLngLat(
+      "LOCAL_CARTESIAN",
+      toLngLat("LOCAL_CARTESIAN", point),
+    );
     expect(roundTripped.x).toBeCloseTo(point.x, 3);
     expect(roundTripped.y).toBeCloseTo(point.y, 3);
   });

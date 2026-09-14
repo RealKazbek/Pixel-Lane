@@ -13,7 +13,12 @@ function makeRoad(overrides: Partial<Road> = {}): Road {
     city_id: "city-1",
     name: "Main St",
     road_type: "ARTERIAL",
-    geometry: { points: [{ x: 0, y: 0 }, { x: 10, y: 10 }] },
+    geometry: {
+      points: [
+        { x: 0, y: 0 },
+        { x: 10, y: 10 },
+      ],
+    },
     default_speed_limit_kmh: 50,
     lanes: [
       {
@@ -46,10 +51,16 @@ function makeIntersection(overrides: Partial<Intersection> = {}): Intersection {
 describe("buildRoadFeatureCollection", () => {
   it("converts each road into a LineString feature with derived properties", () => {
     const road = makeRoad();
-    const fc = buildRoadFeatureCollection({ roads: [road], coordinate_system: "WGS84" });
+    const fc = buildRoadFeatureCollection({
+      roads: [road],
+      coordinate_system: "WGS84",
+    });
     expect(fc.features).toHaveLength(1);
     const feature = fc.features[0];
-    expect(feature.geometry.coordinates).toEqual([[0, 0], [10, 10]]);
+    expect(feature.geometry.coordinates).toEqual([
+      [0, 0],
+      [10, 10],
+    ]);
     expect(feature.properties).toMatchObject({
       id: "road-1",
       name: "Main St",
@@ -152,12 +163,22 @@ describe("buildRoadLabelFeatureCollection", () => {
     const shortSegment = makeRoad({
       id: "seg-short",
       name: "Abay Avenue",
-      geometry: { points: [{ x: 0, y: 0 }, { x: 1, y: 0 }] },
+      geometry: {
+        points: [
+          { x: 0, y: 0 },
+          { x: 1, y: 0 },
+        ],
+      },
     });
     const longSegment = makeRoad({
       id: "seg-long",
       name: "Abay Avenue",
-      geometry: { points: [{ x: 10, y: 0 }, { x: 10, y: 100 }] },
+      geometry: {
+        points: [
+          { x: 10, y: 0 },
+          { x: 10, y: 100 },
+        ],
+      },
     });
     const fc = buildRoadLabelFeatureCollection({
       roads: [shortSegment, longSegment],

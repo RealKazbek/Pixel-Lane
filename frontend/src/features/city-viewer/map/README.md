@@ -45,14 +45,17 @@ docs/city-model.md's spatial schema section) instead of the whole city:
   viewport request starts, so a stale response from an old viewport can
   never overwrite a newer one that resolves first.
 
-The full `City` object (from `useCity`, unchanged) is still passed down
-and still used for everything that isn't the rendered map layer:
-selection/details lookups (so a selected road/intersection keeps showing
-its details even if it scrolls out of the current viewport's fetched
-data), the geometry editor (edits the full City Model's road, not a
-viewport-limited copy), and the sidebar's bottleneck list/traffic
-analysis. `GET /cities/{id}` (the full-city endpoint) is unchanged and
-still exists for exactly these consumers.
+WGS84 cities load `/metadata` for the camera and count, then bbox features.
+`useSelectedCityEntity` loads just the selected road/intersection for the
+inspector/editor, retaining it outside the viewport. The in-memory City-
+shaped view contains only those details, not the full network. Cartesian
+examples retain the small full-city path. Successful bbox cache entries are
+keyed by zoom tier; failed requests remain retryable. Saving geometry updates
+the city revision and refreshes metadata/details/viewport without a full load.
+
+Below z12 only highway/arterial roads are requested/rendered; z12 adds
+collectors, z14 local roads, z15 intersections/signals, z16 local labels.
+The backend rejects oversized viewports instead of silently truncating.
 
 Traffic-light point features are derived from the viewport
 intersections' `traffic_light_id` field rather than a separate
@@ -175,7 +178,6 @@ No 3D buildings, no satellite imagery, no turn-by-turn navigation UI, no
 heatmaps/emergency routing, no full lane/turn editor, no general-purpose
 GIS suite, no vector-tile backend. PostGIS/bbox-scoped queries are now
 implemented on the backend (see docs/city-model.md) specifically to
-support this viewport-driven loading; the OSM importer itself still only
-covers the original ~850m demo area, not full Almaty -- these may become
-worth revisiting later, but weren't required to satisfy the current
-map/editor requirements.
+support this viewport-driven loading. Full Almaty ingestion and measured
+verification status are documented in `docs/osm-import.md` and
+`docs/full-almaty-verification.md`.

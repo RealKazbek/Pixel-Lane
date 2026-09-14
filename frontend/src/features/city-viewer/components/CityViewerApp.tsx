@@ -11,6 +11,7 @@ import { CityList } from "./sidebar/CityList";
 import { DetailsPanel } from "./details/DetailsPanel";
 import { useCities } from "../hooks/useCities";
 import { useCity } from "../hooks/useCity";
+import { useSelectedCityEntity } from "../hooks/useSelectedCityEntity";
 import { useTrafficAnalysis } from "../hooks/useTrafficAnalysis";
 import { buildAnalysisLookup } from "../lib/analysis-lookup";
 import { mapBasemapEnabledByDefault, mapStyleUrl } from "@/lib/config";
@@ -43,6 +44,7 @@ export function CityViewerApp() {
   const analysis = useTrafficAnalysis(selectedCityId);
 
   const [selected, setSelected] = useState<MapSelection | null>(null);
+  const detailCity = useSelectedCityEntity(city, selected);
   const [fitSignal, setFitSignal] = useState(0);
   const [basemapEnabled, setBasemapEnabled] = useState(
     mapBasemapEnabledByDefault,
@@ -189,7 +191,7 @@ export function CityViewerApp() {
           <EmptyState title={tMap("selectCityPrompt")} />
         )}
 
-        {city && city.roads.length === 0 && (
+        {city && (city.road_count ?? city.roads.length) === 0 && (
           <div className="pointer-events-none absolute inset-0 z-10 flex items-center justify-center bg-background/80">
             <EmptyState title={tMap("cityHasNoRoadData")} />
           </div>
@@ -198,7 +200,7 @@ export function CityViewerApp() {
         {city && (
           <>
             <PixelLaneMap
-              city={city}
+              city={detailCity ?? city}
               selected={selected}
               onSelect={setSelected}
               basemapEnabled={basemapEnabled}
@@ -245,7 +247,7 @@ export function CityViewerApp() {
                 }
                 mode={mode}
                 onSetMode={setMode}
-                canEditSelection={selected?.type === "road"}
+                canEditSelection={selected?.type === "road" && !!detailCity?.roads.some(r => r.id === selected.id)}
                 editorStatus={editorStatus}
                 onApply={() =>
                   setEditorAction({ type: "apply", token: Date.now() })
@@ -274,7 +276,7 @@ export function CityViewerApp() {
                 {selected && (
                   <div className="pointer-events-auto max-h-64 w-full max-w-xs overflow-y-auto rounded-md border border-border-subtle bg-surface/95 px-3 py-2 shadow-md backdrop-blur">
                     <DetailsPanel
-                      city={city}
+                      city={detailCity ?? city}
                       analysis={analysisLookup}
                       selected={selected}
                     />

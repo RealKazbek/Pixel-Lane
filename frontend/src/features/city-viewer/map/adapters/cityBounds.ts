@@ -6,6 +6,13 @@ import type { LngLatBoundsLike } from "maplibre-gl";
  * [lng, lat] order -- for `map.fitBounds()` (MapLibre's own "fit to
  * view", not a hand-rolled one; see AGENTS.md's library-first rule). */
 export function computeCityBounds(city: City): LngLatBoundsLike | null {
+  if (city.bounds) {
+    const [west, south, east, north] = city.bounds;
+    return [
+      [west, south],
+      [east, north],
+    ];
+  }
   let minLng = Infinity;
   let minLat = Infinity;
   let maxLng = -Infinity;

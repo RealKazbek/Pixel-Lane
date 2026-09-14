@@ -29,11 +29,21 @@ export function RoadDetails({
       <DetailRow label={t("id")} value={road.id.slice(0, 8)} />
       <DetailRow label={t("roadType")} value={road.road_type} />
       <DetailRow label={t("length")} value={`${length.toFixed(0)} m`} />
-      <DetailRow label={t("laneCount")} value={road.lanes.length} />
+      <DetailRow
+        label={t("laneCount")}
+        value={road.lanes.length || t("unknown")}
+      />
       <DetailRow
         label={t("speedLimit")}
-        value={`${road.default_speed_limit_kmh} km/h`}
+        value={
+          road.default_speed_limit_kmh === null
+            ? t("unknown")
+            : `${road.default_speed_limit_kmh} km/h`
+        }
       />
+      {road.source_lane_count != null && (
+        <DetailRow label={t("sourceLaneCount")} value={road.source_lane_count} />
+      )}
       {metric ? (
         <>
           <DetailRow

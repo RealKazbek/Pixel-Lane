@@ -71,6 +71,7 @@ export function buildIntersectionLayers(): LayerSpecification[] {
   return [
     {
       id: LAYER_IDS.intersections,
+      minzoom: 15,
       type: "circle",
       source: SOURCE_IDS.intersections,
       filter: isJunctionOrSignal,
@@ -97,7 +98,7 @@ export function buildTrafficLightLayer(): LayerSpecification {
     id: LAYER_IDS.trafficLights,
     type: "circle",
     source: SOURCE_IDS.trafficLights,
-    minzoom: 13,
+    minzoom: 15,
     paint: {
       "circle-radius": circleRadiusExpression(7, [
         [13, 2.5],
@@ -122,6 +123,7 @@ export function buildRoadLabelLayer(): LayerSpecification {
     type: "symbol",
     source: SOURCE_IDS.labels,
     minzoom: 13,
+    filter: ["any", [">=", ["zoom"], 16], ["<=", ["get", "label_rank"], 2]],
     layout: {
       "text-field": ["get", "name"],
       "text-size": [

@@ -13,7 +13,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { Map as MapLibreMap } from "maplibre-gl";
 import { getIntersectionsInBbox, getRoadsInBbox } from "../../api/cities";
-import type { Intersection, Road } from "../../types/city";
+import type { Intersection, MapRoad } from "../../types/city";
 import {
   boundsToBufferedBBox,
   isBBoxContained,
@@ -25,7 +25,7 @@ const DEBOUNCE_MS = 300;
 export type ViewportDataStatus = "idle" | "loading" | "ready" | "error";
 
 export interface ViewportCityData {
-  roads: Road[];
+  roads: MapRoad[];
   intersections: Intersection[];
   status: ViewportDataStatus;
 }
@@ -34,20 +34,30 @@ export function useViewportCityData(
   mapRef: React.RefObject<MapLibreMap | null>,
   isLoaded: boolean,
   cityId: string | null,
+  revision?: string,
 ): ViewportCityData {
-  const [roads, setRoads] = useState<Road[]>([]);
+  const [roads, setRoads] = useState<MapRoad[]>([]);
   const [intersections, setIntersections] = useState<Intersection[]>([]);
   const [status, setStatus] = useState<ViewportDataStatus>("idle");
 
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const abortRef = useRef<AbortController | null>(null);
   const lastFetchedBBoxRef = useRef<BBox | null>(null);
+  const lastTierRef = useRef<number | null>(null);
 
   const fetchViewport = useCallback(
     (map: MapLibreMap, currentCityId: string) => {
       const bbox = boundsToBufferedBBox(map.getBounds());
+      const zoom = Math.max(0, Math.min(24, map.getZoom()));
+      const tier = zoom < 12 ? 0 : zoom < 14 ? 1 : zoom < 15 ? 2 : 3;
       const lastFetched = lastFetchedBBoxRef.current;
-      if (lastFetched && isBBoxContained(bbox, lastFetched)) {
+      if (
+        lastTierRef.current === tier &&
+        lastFetched &&
+        isBBoxContained(bbox, lastFetched)
+      ) {
+        abortRef.current?.abort();
+        setStatus("ready");
         // Already have everything this viewport needs -- e.g. a small
         // pan/zoom-in that stays inside the previous buffer.
         return;
@@ -56,15 +66,18 @@ export function useViewportCityData(
       abortRef.current?.abort();
       const controller = new AbortController();
       abortRef.current = controller;
-      lastFetchedBBoxRef.current = bbox;
       setStatus("loading");
 
       Promise.all([
-        getRoadsInBbox(currentCityId, bbox, controller.signal),
-        getIntersectionsInBbox(currentCityId, bbox, controller.signal),
+        getRoadsInBbox(currentCityId, bbox, controller.signal, zoom),
+        zoom >= 15
+          ? getIntersectionsInBbox(currentCityId, bbox, controller.signal)
+          : Promise.resolve([]),
       ])
         .then(([nextRoads, nextIntersections]) => {
           if (controller.signal.aborted) return;
+          lastFetchedBBoxRef.current = bbox;
+          lastTierRef.current = tier;
           setRoads(nextRoads);
           setIntersections(nextIntersections);
           setStatus("ready");
@@ -74,6 +87,7 @@ export function useViewportCityData(
           // request) is not a real error -- only report a failure for a
           // request that actually ran to completion and failed.
           if (controller.signal.aborted) return;
+          lastFetchedBBoxRef.current = null;
           setStatus("error");
         });
     },
@@ -100,6 +114,7 @@ export function useViewportCityData(
     setRoads([]);
     setIntersections([]);
     lastFetchedBBoxRef.current = null;
+    lastTierRef.current = null;
 
     // Initial load: fetch immediately (no debounce -- there's no rapid
     // sequence of events to coalesce yet).
@@ -116,7 +131,7 @@ export function useViewportCityData(
       abortRef.current?.abort();
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps -- fetchViewport/scheduleFetch are stable (empty-dep useCallback)
-  }, [mapRef, isLoaded, cityId]);
+  }, [mapRef, isLoaded, cityId, revision]);
 
   return { roads, intersections, status };
 }

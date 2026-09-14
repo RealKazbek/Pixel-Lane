@@ -5,6 +5,7 @@ import type {
   Intersection,
   Polyline,
   Road,
+  MapRoad,
 } from "../types/city";
 import type { TrafficAnalysisResult } from "../types/traffic-analysis";
 import type { BBox } from "../map/adapters/viewport";
@@ -15,6 +16,36 @@ export function getCities(): Promise<CitySummary[]> {
 
 export function getCity(cityId: string): Promise<City> {
   return apiRequest<City>(`/api/v1/cities/${cityId}`);
+}
+
+export async function getCityForMap(cityId: string): Promise<City> {
+  const metadata = await apiRequest<
+    Omit<City, "roads" | "intersections" | "traffic_lights" | "parking_zones">
+  >(`/api/v1/cities/${cityId}/metadata`);
+  if (metadata.coordinate_system === "LOCAL_CARTESIAN") return getCity(cityId);
+  return {
+    ...metadata,
+    roads: [],
+    intersections: [],
+    traffic_lights: [],
+    parking_zones: [],
+  };
+}
+
+export function getRoad(
+  cityId: string,
+  roadId: string,
+  signal?: AbortSignal,
+): Promise<Road> {
+  return apiRequest(`/api/v1/cities/${cityId}/roads/${roadId}`, { signal });
+}
+
+export function getIntersection(
+  cityId: string,
+  id: string,
+  signal?: AbortSignal,
+): Promise<Intersection> {
+  return apiRequest(`/api/v1/cities/${cityId}/intersections/${id}`, { signal });
 }
 
 function bboxQueryParam(bbox: BBox): string {
@@ -28,9 +59,10 @@ export function getRoadsInBbox(
   cityId: string,
   bbox: BBox,
   signal?: AbortSignal,
-): Promise<Road[]> {
-  return apiRequest<Road[]>(
-    `/api/v1/cities/${cityId}/roads?bbox=${bboxQueryParam(bbox)}`,
+  zoom = 20,
+): Promise<MapRoad[]> {
+  return apiRequest<MapRoad[]>(
+    `/api/v1/cities/${cityId}/map-roads?bbox=${bboxQueryParam(bbox)}&zoom=${zoom}`,
     { signal },
   );
 }

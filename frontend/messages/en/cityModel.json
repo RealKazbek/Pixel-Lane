@@ -29,6 +29,8 @@
     "viewportDataFailed": "Couldn't load roads for this view. Pan or zoom to retry."
   },
   "details": {
+    "unknown": "Unknown",
+    "sourceLaneCount": "Source road lanes (total)",
     "clickToSeeDetails": "Click a road or intersection on the map to see its details here.",
     "intersectionHeading": "Intersection",
     "id": "ID",

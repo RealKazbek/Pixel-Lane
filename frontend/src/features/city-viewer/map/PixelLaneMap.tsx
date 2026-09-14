@@ -88,7 +88,9 @@ export function PixelLaneMap({
   onViewportStatusChange,
 }: PixelLaneMapProps) {
   const containerRef = useRef<HTMLDivElement>(null);
-  const bounds = useMemo(() => computeCityBounds(city), [city]);
+  // Entity detail responses must not recenter the map.
+  const boundsKey = JSON.stringify(city.bounds ?? null);
+  const bounds = useMemo(() => computeCityBounds(city), [city.id, boundsKey]); // eslint-disable-line react-hooks/exhaustive-deps
   const referenceLatitude = useMemo(
     () => computeReferenceLatitude(city),
     [city],
@@ -115,7 +117,18 @@ export function PixelLaneMap({
   // for selection/details/editor lookups below, which must keep working
   // for a currently-selected feature even if it scrolls out of the
   // freshly-fetched viewport (see the selection effects further down).
-  const viewport = useViewportCityData(mapRef, isLoaded, city.id);
+  const viewport = useViewportCityData(
+    mapRef,
+    isLoaded,
+    city.coordinate_system === "WGS84" ? city.id : null,
+    city.updated_at,
+  );
+  const visibleRoads =
+    city.coordinate_system === "WGS84" ? viewport.roads : city.roads;
+  const visibleIntersections =
+    city.coordinate_system === "WGS84"
+      ? viewport.intersections
+      : city.intersections;
 
   useEffect(() => {
     onViewportStatusChange?.(viewport.status);
@@ -128,7 +141,7 @@ export function PixelLaneMap({
     // exactly its parent intersection's -- derived here from whichever
     // viewport intersections carry a `traffic_light_id`, rather than a
     // fourth endpoint.
-    const trafficLights = viewport.intersections
+    const trafficLights = visibleIntersections
       .filter((i) => i.traffic_light_id !== null)
       .map((i) => ({
         id: i.traffic_light_id as string,
@@ -137,24 +150,24 @@ export function PixelLaneMap({
 
     return {
       roads: buildRoadFeatureCollection({
-        roads: viewport.roads,
+        roads: visibleRoads,
         coordinate_system: city.coordinate_system,
       }),
       intersections: buildIntersectionFeatureCollection({
-        intersections: viewport.intersections,
+        intersections: visibleIntersections,
         coordinate_system: city.coordinate_system,
       }),
       trafficLights: buildTrafficLightFeatureCollection({
         traffic_lights: trafficLights,
-        intersections: viewport.intersections,
+        intersections: visibleIntersections,
         coordinate_system: city.coordinate_system,
       }),
       labels: buildRoadLabelFeatureCollection({
-        roads: viewport.roads,
+        roads: visibleRoads,
         coordinate_system: city.coordinate_system,
       }),
     };
-  }, [viewport.roads, viewport.intersections, city.coordinate_system]);
+  }, [visibleRoads, visibleIntersections, city.coordinate_system]);
   const styleKey =
     basemapEnabled && mapStyleUrl ? mapStyleUrl : "pixel-lane-empty";
 
@@ -167,14 +180,13 @@ export function PixelLaneMap({
       const intersectionId =
         selected?.type === "intersection" ? selected.id : null;
       const lightId = intersectionId
-        ? (city.traffic_lights.find((l) => l.intersection_id === intersectionId)
-            ?.id ?? null)
+        ? (city.intersections.find((i) => i.id === intersectionId)?.traffic_light_id ?? null)
         : null;
       setSelectedFeature(map, SOURCE_IDS.roads, null, roadId);
       setSelectedFeature(map, SOURCE_IDS.intersections, null, intersectionId);
       setSelectedFeature(map, SOURCE_IDS.trafficLights, null, lightId);
     },
-    [city.traffic_lights, selected],
+    [city.intersections, selected],
   );
 
   // Safe to call after the initial style load and after every later style
@@ -276,7 +288,16 @@ export function PixelLaneMap({
         onSelect({ type: "intersection", id: String(intersectionId) });
       }
     };
-    const handleBackgroundClick = () => onSelect(null);
+    const handleBackgroundClick = (event: MapLayerMouseEvent) => {
+      const layers = [
+        LAYER_IDS.roadSurface,
+        LAYER_IDS.intersections,
+        LAYER_IDS.intersectionDetails,
+        LAYER_IDS.trafficLights,
+      ].filter((id) => map.getLayer(id));
+      if (!map.queryRenderedFeatures(event.point, { layers }).length)
+        onSelect(null);
+    };
 
     map.on("click", LAYER_IDS.intersections, handleIntersectionClick);
     map.on("click", LAYER_IDS.intersectionDetails, handleIntersectionClick);
@@ -319,14 +340,10 @@ export function PixelLaneMap({
     );
 
     const previousLightId = previousIntersectionId
-      ? (city.traffic_lights.find(
-          (light) => light.intersection_id === previousIntersectionId,
-        )?.id ?? null)
+      ? (city.intersections.find(i => i.id === previousIntersectionId)?.traffic_light_id ?? null)
       : null;
     const nextLightId = nextIntersectionId
-      ? (city.traffic_lights.find(
-          (light) => light.intersection_id === nextIntersectionId,
-        )?.id ?? null)
+      ? (city.intersections.find(i => i.id === nextIntersectionId)?.traffic_light_id ?? null)
       : null;
     setSelectedFeature(
       map,
@@ -336,7 +353,7 @@ export function PixelLaneMap({
     );
 
     previousSelectionRef.current = selected;
-  }, [selected, isLoaded, mapRef, city.traffic_lights]);
+  }, [selected, isLoaded, mapRef, city.intersections]);
 
   // Enter edit mode: load the selected road into the geometry editor.
   useEffect(() => {

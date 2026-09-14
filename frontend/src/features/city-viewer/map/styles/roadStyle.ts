@@ -10,7 +10,11 @@
  * app (see AGENTS.md's design-neutrality guidance).
  */
 
-import type { Road, RoadType } from "../../types/city";
+import type { Road, RoadType, MapRoad } from "../../types/city";
+
+export function roadLaneCount(road: Pick<Road, "lanes"> | Pick<MapRoad, "lane_count">): number {
+  return "lane_count" in road ? road.lane_count : road.lanes.length;
+}
 
 export const LANE_WIDTH_M = 3.2;
 const SEPARATOR_WIDTH_M = 0.3;
@@ -55,15 +59,15 @@ const HIERARCHY_WIDTH_BONUS_M: Record<RoadHierarchy, number> = {
  * measurements -- the goal is consistent, class-legible width, not exact
  * accuracy. */
 export function roadWidthMeters(
-  road: Pick<Road, "lanes" | "road_type">,
+  road: Pick<Road, "lanes" | "road_type"> | Pick<MapRoad, "lane_count" | "road_type">,
 ): number {
-  const laneCount = Math.max(1, road.lanes.length);
+  const laneCount = Math.max(1, roadLaneCount(road));
   const base = laneCount * LANE_WIDTH_M + SEPARATOR_WIDTH_M + SHOULDER_WIDTH_M;
   return base + HIERARCHY_WIDTH_BONUS_M[roadHierarchy(road.road_type)];
 }
 
 export function roadCasingWidthMeters(
-  road: Pick<Road, "lanes" | "road_type">,
+  road: Pick<Road, "lanes" | "road_type"> | Pick<MapRoad, "lane_count" | "road_type">,
 ): number {
   return roadWidthMeters(road) + CASING_EXTRA_M;
 }

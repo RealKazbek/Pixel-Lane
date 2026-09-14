@@ -20,8 +20,14 @@ function makeLanes(count: number): Lane[] {
 
 describe("roadWidthMeters", () => {
   it("scales with lane count", () => {
-    const narrow = roadWidthMeters({ lanes: makeLanes(1), road_type: "RESIDENTIAL" });
-    const wide = roadWidthMeters({ lanes: makeLanes(4), road_type: "RESIDENTIAL" });
+    const narrow = roadWidthMeters({
+      lanes: makeLanes(1),
+      road_type: "RESIDENTIAL",
+    });
+    const wide = roadWidthMeters({
+      lanes: makeLanes(4),
+      road_type: "RESIDENTIAL",
+    });
     expect(wide).toBeGreaterThan(narrow);
   });
 
@@ -49,7 +55,11 @@ describe("roadCasingWidthMeters", () => {
 describe("roadHierarchy", () => {
   it("passes known road types through unchanged", () => {
     const knownTypes: RoadType[] = [
-      "RESIDENTIAL", "COLLECTOR", "ARTERIAL", "HIGHWAY", "SERVICE",
+      "RESIDENTIAL",
+      "COLLECTOR",
+      "ARTERIAL",
+      "HIGHWAY",
+      "SERVICE",
     ];
     for (const type of knownTypes) {
       expect(roadHierarchy(type)).toBe(type);

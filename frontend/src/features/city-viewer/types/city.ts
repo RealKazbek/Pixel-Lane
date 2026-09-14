@@ -53,7 +53,11 @@ export interface Road {
   name: string;
   road_type: RoadType;
   geometry: Polyline;
-  default_speed_limit_kmh: number;
+  default_speed_limit_kmh: number | null;
+  source_id?: string | null;
+  source_road_type?: string | null;
+  one_way?: boolean | null;
+  source_lane_count?: number | null;
   lanes: Lane[];
 }
 
@@ -99,6 +103,8 @@ export interface ParkingZone {
 }
 
 export interface City {
+  bounds?: [number, number, number, number] | null;
+  road_count?: number;
   id: string;
   name: string;
   description: string | null;
@@ -118,3 +124,7 @@ export interface CitySummary {
   created_at: string;
   updated_at: string;
 }
+
+export type MapRoad = Pick<Road, "id" | "name" | "road_type" | "geometry"> & {
+  lane_count: number;
+};

@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import { getCity } from "../api/cities";
+import { getCityForMap } from "../api/cities";
 import type { City } from "../types/city";
 import type { AsyncStatus } from "./useCities";
 
@@ -18,7 +18,7 @@ export function useCity(cityId: string | null) {
   useEffect(() => {
     if (!cityId) return;
     let cancelled = false;
-    getCity(cityId)
+    getCityForMap(cityId)
       .then((result) => {
         if (cancelled) return;
         setCity(result);
@@ -47,5 +47,9 @@ export function useCity(cityId: string | null) {
         ? "ready"
         : "loading";
 
-  return { city: cityId && loadedForId === cityId ? city : null, status, refresh };
+  return {
+    city: cityId && loadedForId === cityId ? city : null,
+    status,
+    refresh,
+  };
 }

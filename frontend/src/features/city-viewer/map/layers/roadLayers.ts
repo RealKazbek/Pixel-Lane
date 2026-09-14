@@ -9,6 +9,12 @@ import {
   SELECTED_COLOR,
 } from "../styles/roadStyle";
 
+const roadVisibility: ExpressionSpecification = [
+  "any", [">=", ["zoom"], 14],
+  ["in", ["get", "hierarchy"], ["literal", ["HIGHWAY", "ARTERIAL"]]],
+  ["all", [">=", ["zoom"], 12], ["==", ["get", "hierarchy"], "COLLECTOR"]],
+];
+
 function matchOnHierarchy<T extends string | number>(
   values: Record<string, T>,
   fallback: T,
@@ -63,6 +69,7 @@ export function buildRoadLayers(
   ] as unknown as ExpressionSpecification;
 
   const casing: LayerSpecification = {
+    filter: roadVisibility,
     id: LAYER_IDS.roadCasing,
     type: "line",
     source: SOURCE_IDS.roads,
@@ -79,6 +86,7 @@ export function buildRoadLayers(
   };
 
   const surface: LayerSpecification = {
+    filter: roadVisibility,
     id: LAYER_IDS.roadSurface,
     type: "line",
     source: SOURCE_IDS.roads,

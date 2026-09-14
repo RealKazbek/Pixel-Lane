@@ -11,12 +11,14 @@ import {
   roadCasingWidthMeters,
   roadHierarchy,
   roadWidthMeters,
+  roadLaneCount,
 } from "../styles/roadStyle";
 import type {
   City,
   CoordinateSystem,
   Intersection,
   Road,
+  MapRoad,
   TrafficLight,
 } from "../../types/city";
 
@@ -80,7 +82,7 @@ const FALLBACK_NAME_PREFIX = "Unnamed road";
 
 function roadToLineString(
   coordinateSystem: CoordinateSystem,
-  road: Road,
+  road: Road | MapRoad,
 ): GeoJSON.LineString {
   return {
     type: "LineString",
@@ -91,7 +93,7 @@ function roadToLineString(
 }
 
 export function buildRoadFeatureCollection(
-  city: Pick<City, "roads" | "coordinate_system">,
+  city: { roads: (Road | MapRoad)[]; coordinate_system: CoordinateSystem },
 ): RoadFeatureCollection {
   return {
     type: "FeatureCollection",
@@ -107,7 +109,7 @@ export function buildRoadFeatureCollection(
           road_type: road.road_type,
           hierarchy,
           label_rank: HIERARCHY_LABEL_RANK[hierarchy],
-          lane_count: road.lanes.length,
+          lane_count: roadLaneCount(road),
           width_m: roadWidthMeters(road),
           casing_width_m: roadCasingWidthMeters(road),
         },
@@ -182,7 +184,7 @@ export function buildTrafficLightFeatureCollection(city: {
 
 function roadMidpoint(
   coordinateSystem: CoordinateSystem,
-  road: Road,
+  road: Road | MapRoad,
 ): GeoJSON.Position {
   const points = road.geometry.points;
   const mid = points[Math.floor(points.length / 2)];
@@ -196,9 +198,9 @@ function roadMidpoint(
  * almost all of it. Picking the single longest segment per name keeps
  * exactly one legible label per street. */
 export function buildRoadLabelFeatureCollection(
-  city: Pick<City, "roads" | "coordinate_system">,
+  city: { roads: (Road | MapRoad)[]; coordinate_system: CoordinateSystem },
 ): LabelFeatureCollection {
-  const longestByName = new Map<string, Road>();
+  const longestByName = new Map<string, Road | MapRoad>();
   for (const road of city.roads) {
     if (!road.name || road.name.startsWith(FALLBACK_NAME_PREFIX)) continue;
     const current = longestByName.get(road.name);
