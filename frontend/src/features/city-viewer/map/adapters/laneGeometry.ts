@@ -32,21 +32,16 @@
 
 import along from "@turf/along";
 import bearing from "@turf/bearing";
-import { lineString as turfLineString } from "@turf/helpers";
 import lineOffset from "@turf/line-offset";
-import { toLngLat } from "./coordinates";
 import { roadLengthMeters } from "./geometryLength";
+import { toRoadLineString, type AnyRoad } from "./roadLineString";
 import { roadLaneCount, roadWidthMeters } from "../styles/roadStyle";
 import type {
   CoordinateSystem,
   CyclewayType,
-  MapRoad,
   ParkingLaneOrientation,
-  Road,
   TurnLaneType,
 } from "../../types/city";
-
-type AnyRoad = Road | MapRoad;
 
 export interface LaneSurfaceProperties {
   road_id: string;
@@ -133,15 +128,7 @@ const LANE_USE_GAP_M = 0.3;
  * against deriving intersections from geometry). */
 const TURN_ARROW_POSITION_FRACTION = 0.85;
 
-function toLineStringFeature(
-  coordinateSystem: CoordinateSystem,
-  road: AnyRoad,
-): GeoJSON.Feature<GeoJSON.LineString> | null {
-  const points = road.geometry.points;
-  if (points.length < 2) return null;
-  const coords = points.map((p) => toLngLat(coordinateSystem, p));
-  return turfLineString(coords);
-}
+const toLineStringFeature = toRoadLineString;
 
 /** Offsets `line` by `distanceMeters` (positive = left, per
  * `@turf/line-offset`'s convention) -- `null` on any degenerate-geometry

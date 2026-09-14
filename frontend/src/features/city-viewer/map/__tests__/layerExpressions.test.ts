@@ -6,6 +6,7 @@ import {
   buildTrafficLightLayer,
 } from "../layers/pointLayers";
 import { buildRoadLayers } from "../layers/roadLayers";
+import { buildRoadSurfaceLayers } from "../layers/roadSurfaceLayers";
 import { buildLaneDetailLayers } from "../layers/laneDetailLayers";
 import { SOURCE_IDS } from "../layers/layerIds";
 
@@ -25,6 +26,7 @@ describe("Pixel Lane layer expressions", () => {
       ),
       layers: [
         ...buildRoadLayers(43.24),
+        ...buildRoadSurfaceLayers(),
         ...buildLaneDetailLayers(),
         ...buildIntersectionLayers(),
         buildTrafficLightLayer(),

@@ -10,11 +10,14 @@ export const SOURCE_IDS = {
   laneBoundaries: "pixel-lane-lane-boundaries",
   turnArrows: "pixel-lane-turn-arrows",
   laneUseMarkings: "pixel-lane-lane-use-markings",
+  roadSurfaces: "pixel-lane-road-surfaces",
 } as const;
 
 export const LAYER_IDS = {
   roadCasing: "pixel-lane-road-casing",
   roadSurface: "pixel-lane-road-surface",
+  roadSurfaceFill: "pixel-lane-road-surface-fill",
+  roadSurfaceEdge: "pixel-lane-road-surface-edge",
   laneMarkings: "pixel-lane-lane-markings",
   selection: "pixel-lane-selection",
   intersections: "pixel-lane-intersections",
@@ -39,6 +42,8 @@ export const LAYER_IDS = {
 export const LAYER_DRAW_ORDER: readonly string[] = [
   LAYER_IDS.roadCasing,
   LAYER_IDS.roadSurface,
+  LAYER_IDS.roadSurfaceFill,
+  LAYER_IDS.roadSurfaceEdge,
   LAYER_IDS.laneMarkings,
   LAYER_IDS.laneBusSurface,
   LAYER_IDS.laneParkingLine,
@@ -63,6 +68,8 @@ export const LAYER_GROUPS = {
   roads: [
     LAYER_IDS.roadCasing,
     LAYER_IDS.roadSurface,
+    LAYER_IDS.roadSurfaceFill,
+    LAYER_IDS.roadSurfaceEdge,
     LAYER_IDS.laneMarkings,
     LAYER_IDS.laneBusSurface,
     LAYER_IDS.laneBusLabel,

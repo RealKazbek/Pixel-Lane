@@ -37,6 +37,7 @@ import {
   buildLaneUseMarkingFeatureCollection,
   buildTurnArrowFeatureCollection,
 } from "./adapters/laneGeometry";
+import { buildRoadSurfaceFeatureCollection } from "./adapters/roadSurfaceGeometry";
 import {
   addPixelLaneSourcesAndLayers,
   setLayerGroupVisibility,
@@ -188,6 +189,11 @@ export function PixelLaneMap({
         visibleRoads,
         city.coordinate_system,
       ),
+      roadSurfaces: buildRoadSurfaceFeatureCollection(
+        visibleRoads,
+        visibleIntersections,
+        city.coordinate_system,
+      ),
     };
   }, [visibleRoads, visibleIntersections, city.coordinate_system]);
   const styleKey =
@@ -206,6 +212,7 @@ export function PixelLaneMap({
             ?.traffic_light_id ?? null)
         : null;
       setSelectedFeature(map, SOURCE_IDS.roads, null, roadId);
+      setSelectedFeature(map, SOURCE_IDS.roadSurfaces, null, roadId);
       setSelectedFeature(map, SOURCE_IDS.intersections, null, intersectionId);
       setSelectedFeature(map, SOURCE_IDS.trafficLights, null, lightId);
     },
@@ -314,6 +321,7 @@ export function PixelLaneMap({
     const handleBackgroundClick = (event: MapLayerMouseEvent) => {
       const layers = [
         LAYER_IDS.roadSurface,
+        LAYER_IDS.roadSurfaceFill,
         LAYER_IDS.intersections,
         LAYER_IDS.intersectionDetails,
         LAYER_IDS.trafficLights,
@@ -325,6 +333,11 @@ export function PixelLaneMap({
     map.on("click", LAYER_IDS.intersections, handleIntersectionClick);
     map.on("click", LAYER_IDS.intersectionDetails, handleIntersectionClick);
     map.on("click", LAYER_IDS.roadSurface, handleRoadClick);
+    // The close-zoom polygon fill (see roadSurfaceLayers.ts) has its own
+    // layer id -- a merged junction polygon has no `properties.id`, so
+    // clicking it is a no-op here rather than misattributing the click to
+    // one arbitrary constituent road (see roadSurfaceGeometry.ts).
+    map.on("click", LAYER_IDS.roadSurfaceFill, handleRoadClick);
     map.on("click", LAYER_IDS.trafficLights, handleTrafficLightClick);
     map.on("click", handleBackgroundClick);
 
@@ -332,6 +345,7 @@ export function PixelLaneMap({
       map.off("click", LAYER_IDS.intersections, handleIntersectionClick);
       map.off("click", LAYER_IDS.intersectionDetails, handleIntersectionClick);
       map.off("click", LAYER_IDS.roadSurface, handleRoadClick);
+      map.off("click", LAYER_IDS.roadSurfaceFill, handleRoadClick);
       map.off("click", LAYER_IDS.trafficLights, handleTrafficLightClick);
       map.off("click", handleBackgroundClick);
     };
@@ -350,6 +364,12 @@ export function PixelLaneMap({
     const previousRoadId = previous?.type === "road" ? previous.id : null;
     const nextRoadId = selected?.type === "road" ? selected.id : null;
     setSelectedFeature(map, SOURCE_IDS.roads, previousRoadId, nextRoadId);
+    setSelectedFeature(
+      map,
+      SOURCE_IDS.roadSurfaces,
+      previousRoadId,
+      nextRoadId,
+    );
 
     const previousIntersectionId =
       previous?.type === "intersection" ? previous.id : null;

@@ -367,3 +367,69 @@ signage, sidewalks, roundabout topology, paid/disabled parking as a
 distinct type, a standalone fabricated congestion overlay. These would
 each need new domain entities and are reasonable candidates for a
 dedicated future task, not a rushed addition here.
+
+## Continuous road-network surfaces (topology-aware rendering)
+
+**Root cause of "roads look like disconnected strips":** the renderer
+drew every Road as an independent `line-width` stroke (see Part 1's
+casing/surface layers). A stroke has no notion of a shared edge with a
+neighboring road, so at any junction the viewer sees N overlapping
+rectangle outlines, not one paved area -- purely a rendering-technique
+limitation. The underlying topology was never the problem: `Intersection`
+already is an explicit domain object (`connected_road_ids`/
+`connected_lane_ids`), never derived from a geometric crossing (see
+`app.city.importers.osm.mapper`'s module docstring) -- two roads that
+"happen to cross" in space were already never treated as connected by
+the domain model. The gap was purely that the renderer didn't *use* that
+topology to merge geometry.
+
+**Fix (`frontend/.../map/adapters/roadSurfaceGeometry.ts`):** each Road's
+centerline is buffered by half its real width (`@turf/buffer`) into an
+actual polygon. Every `Intersection` with 2+ connected roads then has its
+members' polygons unioned (`@turf/union`) into one seamless junction
+shape -- internal borders disappear because they're the same polygon, not
+because anything is hidden. A geometric crossing with no shared
+`Intersection` is never merged; the invariant "visual connection implies
+topological connection" is enforced by construction, not by policy alone,
+and covered by an explicit regression test.
+
+This is a `fill` + boundary-outline (`line` on the same polygon source)
+layer pair (`roadSurfaceLayers.ts`), replacing the old per-road stroke at
+`SURFACE_DETAIL_MIN_ZOOM` (15) and above -- below that, the simple
+zoom-scaled stroke remains (a true-to-scale polygon would be sub-pixel at
+city-wide zoom anyway). Unlike the schematic per-lane offset rendering in
+`laneGeometry.ts` (still `LOCAL_CARTESIAN`-only, see the section above),
+this buffer-and-union technique is a much lower-risk operation -- one
+width, one centerline, no compounding per-lane offsets -- so it runs for
+**both** Real Almaty (`WGS84`) and Demo City (`LOCAL_CARTESIAN`).
+
+**Demo District topology corrections.** Auditing this district against
+the new "visual connection implies topological connection" invariant
+found three real gaps, now fixed with real `Intersection`s: Kokzhiek
+Access Road's exact shared endpoint with Samal Street (a T-junction),
+Zevit Slip Road's endpoints (previously a near-miss coordinate matching
+nothing -- now exactly the lane-drop node and an existing vertex on Turan
+Avenue, a skewed merge), and Zhastar Street's northbound/southbound
+segments sharing a coordinate at their dead end (a turnaround node). A
+general (not per-road) test now asserts this invariant district-wide:
+any two roads sharing an endpoint must have a common `Intersection`.
+
+**Label cleanup.** Multi-segment real streets (a divided arterial's two
+carriageways, a lane-drop's two sub-segments, a loop's two directions)
+now intentionally share one clean `name` (e.g. "Turan Avenue", not
+"Turan Avenue (eastbound)") -- `cityModelToGeoJson.buildRoadLabelFeatureCollection`
+already de-duplicates by name and picks the longest segment, so this
+alone removes the debug-looking repeated/segmented labels without any
+new label-engine code. A `_RoadBuilder.key` (distinct from the
+user-facing `name`) keeps per-segment id/lane derivation unambiguous.
+
+**Explicitly out of scope for this pass** (each would need real
+computational-geometry work beyond what a single buffer+union pass
+provides): gradual width transitions across a lane-count change (currently
+a hard width jump at the shared node, matching the two Roads' own
+widths), tapered merge/diverge visuals, medians as their own polygon
+(currently just the real coordinate gap between two carriageways, which
+already reads as a median void), a toggleable graph/topology debug-mode
+overlay, and per-lane marking continuity through a junction (lane
+separators still stop/start at each Road's own endpoint). These are
+reasonable follow-ups once this baseline is confirmed visually correct.

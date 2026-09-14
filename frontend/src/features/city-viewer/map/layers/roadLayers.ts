@@ -1,7 +1,10 @@
 import type { ExpressionSpecification, LayerSpecification } from "maplibre-gl";
 import { LAYER_IDS, SOURCE_IDS } from "./layerIds";
 import { roadWidthPixelsExpression } from "./roadWidth";
-import { LANE_DETAIL_MIN_ZOOM } from "./zoomThresholds";
+import {
+  LANE_DETAIL_MIN_ZOOM,
+  SURFACE_DETAIL_MIN_ZOOM,
+} from "./zoomThresholds";
 import {
   ROAD_CASING_COLOR,
   ROAD_CASING_MIN_PIXEL_WIDTH,
@@ -84,6 +87,11 @@ export function buildRoadLayers(
     id: LAYER_IDS.roadCasing,
     type: "line",
     source: SOURCE_IDS.roads,
+    // Real metric road-surface polygons (see roadSurfaceLayers.ts) take
+    // over at SURFACE_DETAIL_MIN_ZOOM -- this simple per-road stroke
+    // stays for city-wide zoom levels where a true-to-scale polygon
+    // would be sub-pixel/invisible anyway.
+    maxzoom: SURFACE_DETAIL_MIN_ZOOM,
     layout: { "line-cap": "round", "line-join": "round" },
     paint: {
       "line-color": [
@@ -101,6 +109,7 @@ export function buildRoadLayers(
     id: LAYER_IDS.roadSurface,
     type: "line",
     source: SOURCE_IDS.roads,
+    maxzoom: SURFACE_DETAIL_MIN_ZOOM,
     layout: { "line-cap": "round", "line-join": "round" },
     paint: {
       "line-color": [

@@ -20,6 +20,7 @@ import {
   buildTrafficLightLayer,
 } from "./pointLayers";
 import { buildRoadLayers } from "./roadLayers";
+import { buildRoadSurfaceLayers } from "./roadSurfaceLayers";
 import { buildLaneDetailLayers } from "./laneDetailLayers";
 import {
   LAYER_DRAW_ORDER,
@@ -40,6 +41,7 @@ import type {
   LaneUseMarkingFeatureCollection,
   TurnArrowFeatureCollection,
 } from "../adapters/laneGeometry";
+import type { RoadSurfaceFeatureCollection } from "../adapters/roadSurfaceGeometry";
 
 export interface PixelLaneGeoJson {
   roads: RoadFeatureCollection;
@@ -50,6 +52,7 @@ export interface PixelLaneGeoJson {
   laneBoundaries: LaneBoundaryFeatureCollection;
   turnArrows: TurnArrowFeatureCollection;
   laneUseMarkings: LaneUseMarkingFeatureCollection;
+  roadSurfaces: RoadSurfaceFeatureCollection;
 }
 
 export function addPixelLaneSourcesAndLayers(
@@ -99,9 +102,16 @@ export function addPixelLaneSourcesAndLayers(
       data: data.laneUseMarkings,
     });
   }
+  if (!map.getSource(SOURCE_IDS.roadSurfaces)) {
+    map.addSource(SOURCE_IDS.roadSurfaces, {
+      type: "geojson",
+      data: data.roadSurfaces,
+    });
+  }
 
   const layers = [
     ...buildRoadLayers(referenceLatitudeDeg),
+    ...buildRoadSurfaceLayers(),
     ...buildLaneDetailLayers(),
     ...buildIntersectionLayers(),
     buildTrafficLightLayer(),
@@ -155,6 +165,10 @@ export function updatePixelLaneData(
   const laneUseMarkingsSource = map.getSource(SOURCE_IDS.laneUseMarkings);
   if (laneUseMarkingsSource instanceof GeoJSONSource)
     laneUseMarkingsSource.setData(data.laneUseMarkings);
+
+  const roadSurfacesSource = map.getSource(SOURCE_IDS.roadSurfaces);
+  if (roadSurfacesSource instanceof GeoJSONSource)
+    roadSurfacesSource.setData(data.roadSurfaces);
 }
 
 /** Applies the master "Overlay" toggle (a debugging aid for comparing
@@ -271,6 +285,20 @@ export function setEditedRoadHidden(
     "pixel-lane-road-casing",
     "pixel-lane-road-surface",
     "pixel-lane-lane-markings",
+  ]) {
+    if (map.getLayer(layerId)) {
+      map.setFilter(layerId, roadFilter);
+    }
+  }
+
+  // The polygon fill/edge (see roadSurfaceLayers.ts) uses `properties.id`
+  // like the line-based road layers above, but a merged junction polygon
+  // has no `id` at all -- excluding by `!= roadId` still hides only the
+  // edited road's own standalone polygon, never a junction it belongs to
+  // (that junction polygon is regenerated once the edit is applied).
+  for (const layerId of [
+    "pixel-lane-road-surface-fill",
+    "pixel-lane-road-surface-edge",
   ]) {
     if (map.getLayer(layerId)) {
       map.setFilter(layerId, roadFilter);

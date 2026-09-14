@@ -78,12 +78,13 @@ class _RoadBuilder:
 
     def __init__(self) -> None:
         self.roads: list[RoadCreate] = []
-        self.lane_ids_by_name: dict[tuple[str, int], UUID] = {}
+        self.lane_ids_by_key: dict[tuple[str, int], UUID] = {}
 
     def add_road(
         self,
         name: str,
         *,
+        key: str | None = None,
         road_type: RoadType,
         points: list[tuple[float, float]],
         lanes: list[dict],
@@ -91,11 +92,22 @@ class _RoadBuilder:
         median: MedianType = MedianType.NONE,
         speed_limit_kmh: float = 50.0,
     ) -> UUID:
-        road_id = _id("road", name)
+        """`name` is the user-facing map label -- several segments of the
+        same real-world street (e.g. a divided arterial's two
+        carriageways, or a lane-drop's two sub-segments) intentionally
+        share one `name` so they de-duplicate into a single label (see
+        `cityModelToGeoJson.buildRoadLabelFeatureCollection`), instead of
+        each segment's internal identity leaking into the map as its own
+        debug-looking label. `key` is that internal identity (defaults to
+        `name` when segments don't repeat it) -- unique per segment,
+        used only for deterministic id generation and lane lookups.
+        """
+        road_key = key or name
+        road_id = _id("road", road_key)
         lane_creates: list[LaneCreate] = []
         for lane in lanes:
-            lane_id = _id("lane", name, lane["index"])
-            self.lane_ids_by_name[(name, lane["index"])] = lane_id
+            lane_id = _id("lane", road_key, lane["index"])
+            self.lane_ids_by_key[(road_key, lane["index"])] = lane_id
             lane_creates.append(
                 LaneCreate(
                     id=lane_id,
@@ -122,8 +134,8 @@ class _RoadBuilder:
         )
         return road_id
 
-    def lane_id(self, name: str, index: int) -> UUID:
-        return self.lane_ids_by_name[(name, index)]
+    def lane_id(self, key: str, index: int) -> UUID:
+        return self.lane_ids_by_key[(key, index)]
 
 
 def build_demo_district() -> CityCreate:
@@ -136,8 +148,14 @@ def build_demo_district() -> CityCreate:
 
     # --- Turan Avenue: main divided arterial (6 lanes total across two
     # one-way carriageways, physical median, bus lane, turn pockets) ------
+    # Both carriageways share the display name "Turan Avenue" -- they are
+    # the same real-world street, and buildRoadLabelFeatureCollection
+    # already de-duplicates by name, so this alone gives one clean label
+    # instead of two "(eastbound)"/"(westbound)" debug-looking ones (see
+    # docs/city-model.md's label-improvement note).
     eastbound = b.add_road(
-        "Turan Avenue (eastbound)",
+        "Turan Avenue",
+        key="turan-eastbound",
         road_type=RoadType.ARTERIAL,
         points=[(0.0, 152.0), (180.0, 152.0), (220.0, 152.0), (400.0, 152.0)],
         one_way=True,
@@ -155,7 +173,8 @@ def build_demo_district() -> CityCreate:
         ],
     )
     westbound = b.add_road(
-        "Turan Avenue (westbound)",
+        "Turan Avenue",
+        key="turan-westbound",
         road_type=RoadType.ARTERIAL,
         points=[(400.0, 148.0), (220.0, 148.0), (180.0, 148.0), (0.0, 148.0)],
         one_way=True,
@@ -181,7 +200,8 @@ def build_demo_district() -> CityCreate:
     # with a lane drop northbound and lane addition (same segment pair,
     # read in the other direction) ---------------------------------------
     zhastar_north_near = b.add_road(
-        "Zhastar Street (northbound, near)",
+        "Zhastar Street",
+        key="zhastar-north-near",
         road_type=RoadType.ARTERIAL,
         points=[(200.0, 152.0), (200.0, 220.0)],
         one_way=True,
@@ -205,7 +225,8 @@ def build_demo_district() -> CityCreate:
     # counts (the same mechanism a real OSM import already produces when
     # `lanes` differs between segments, see client.py's edge_attrs_differ).
     zhastar_north_far = b.add_road(
-        "Zhastar Street (northbound, far)",
+        "Zhastar Street",
+        key="zhastar-north-far",
         road_type=RoadType.ARTERIAL,
         points=[(200.0, 220.0), (200.0, 300.0)],
         one_way=True,
@@ -213,7 +234,8 @@ def build_demo_district() -> CityCreate:
         lanes=[{"index": 0}],
     )
     zhastar_south = b.add_road(
-        "Zhastar Street (southbound)",
+        "Zhastar Street",
+        key="zhastar-south",
         road_type=RoadType.ARTERIAL,
         points=[(200.0, 300.0), (200.0, 148.0)],
         one_way=True,
@@ -260,7 +282,11 @@ def build_demo_district() -> CityCreate:
     )
 
     # --- Kokzhiek Access Road: short one-way service/access spur ----------
-    b.add_road(
+    # Its start point exactly matches Samal Street's own last point --
+    # this is a real graph connection (see the T-junction Intersection
+    # below), not just a visually-near coincidence (see docs/city-model.md's
+    # "visual connection implies topological connection" invariant).
+    kokzhiek = b.add_road(
         "Kokzhiek Access Road",
         road_type=RoadType.SERVICE,
         points=[(320.0, 250.0), (350.0, 262.0)],
@@ -269,20 +295,28 @@ def build_demo_district() -> CityCreate:
         lanes=[{"index": 0}],
     )
 
-    # --- Zenvit Slip Road: one-way slip connector bypassing the main
-    # signalized intersection (Zhastar northbound -> Turan eastbound) -----
-    b.add_road(
+    # --- Zevit Slip Road: one-way slip connector bypassing the main
+    # signalized intersection (Zhastar's lane-drop node -> Turan Avenue).
+    # Both endpoints exactly match existing nodes/points -- the lane-drop
+    # Intersection's position, and an existing vertex already on Turan
+    # Avenue (eastbound)'s own polyline -- rather than a near-miss
+    # coordinate, so it is a real graph connection at both ends.
+    zevit_slip = b.add_road(
         "Zevit Slip Road",
         road_type=RoadType.COLLECTOR,
-        points=[(210.0, 220.0), (222.0, 190.0), (230.0, 155.0)],
+        points=[(200.0, 220.0), (210.0, 190.0), (220.0, 152.0)],
         one_way=True,
         speed_limit_kmh=30.0,
         lanes=[{"index": 0}],
     )
 
-    # --- Round Park Drive: curved collector, both directions -------------
+    # --- Round Park Drive: curved collector loop, both directions --------
+    # An intentionally isolated scenic loop (touches nothing else) -- not
+    # a defect: it never visually appears connected to another road, so
+    # there is no true-topology mismatch to fix here.
     b.add_road(
-        "Round Park Drive (outbound)",
+        "Round Park Drive",
+        key="round-park-outbound",
         road_type=RoadType.COLLECTOR,
         points=[(350.0, 40.0), (390.0, 70.0), (400.0, 120.0), (385.0, 170.0)],
         one_way=True,
@@ -290,7 +324,8 @@ def build_demo_district() -> CityCreate:
         lanes=[{"index": 0}],
     )
     b.add_road(
-        "Round Park Drive (inbound)",
+        "Round Park Drive",
+        key="round-park-inbound",
         road_type=RoadType.COLLECTOR,
         points=[(383.0, 172.0), (398.0, 122.0), (388.0, 72.0), (348.0, 42.0)],
         one_way=True,
@@ -302,16 +337,16 @@ def build_demo_district() -> CityCreate:
     main_intersection_id = _id("intersection", "turan-x-zhastar")
     main_connected_roads = [eastbound, westbound, zhastar_north_near, zhastar_south]
     main_connected_lanes = [
-        b.lane_id("Turan Avenue (eastbound)", 0),
-        b.lane_id("Turan Avenue (eastbound)", 1),
-        b.lane_id("Turan Avenue (eastbound)", 2),
-        b.lane_id("Turan Avenue (westbound)", 0),
-        b.lane_id("Turan Avenue (westbound)", 1),
-        b.lane_id("Turan Avenue (westbound)", 2),
-        b.lane_id("Zhastar Street (northbound, near)", 0),
-        b.lane_id("Zhastar Street (northbound, near)", 1),
-        b.lane_id("Zhastar Street (southbound)", 0),
-        b.lane_id("Zhastar Street (southbound)", 1),
+        b.lane_id("turan-eastbound", 0),
+        b.lane_id("turan-eastbound", 1),
+        b.lane_id("turan-eastbound", 2),
+        b.lane_id("turan-westbound", 0),
+        b.lane_id("turan-westbound", 1),
+        b.lane_id("turan-westbound", 2),
+        b.lane_id("zhastar-north-near", 0),
+        b.lane_id("zhastar-north-near", 1),
+        b.lane_id("zhastar-south", 0),
+        b.lane_id("zhastar-south", 1),
     ]
     traffic_light_id = _id("signal", "turan-x-zhastar")
     ns_group_id = _id("signal-group", "turan-x-zhastar", "ns")
@@ -320,6 +355,8 @@ def build_demo_district() -> CityCreate:
     samal_intersection_id = _id("intersection", "turan-x-samal")
     bereke_intersection_id = _id("intersection", "turan-x-bereke")
     lane_drop_node_id = _id("intersection", "zhastar-lane-drop")
+    kokzhiek_junction_id = _id("intersection", "samal-x-kokzhiek")
+    slip_road_junction_id = _id("intersection", "turan-x-zevit-slip")
 
     intersections = [
         IntersectionCreate(
@@ -344,10 +381,37 @@ def build_demo_district() -> CityCreate:
             connected_lane_ids=[b.lane_id("Bereke Lane", 0)],
             control_type=IntersectionControlType.UNCONTROLLED,
         ),
+        # Lane-drop node, also where the slip road branches off (a real
+        # 3-way junction, not merely a pass-through point).
         IntersectionCreate(
             id=lane_drop_node_id,
             position=_pt(200.0, 220.0),
-            connected_road_ids=[zhastar_north_near, zhastar_north_far],
+            connected_road_ids=[zhastar_north_near, zhastar_north_far, zevit_slip],
+            control_type=IntersectionControlType.UNCONTROLLED,
+        ),
+        # T-junction: Kokzhiek Access Road branches off Samal Street.
+        IntersectionCreate(
+            id=kokzhiek_junction_id,
+            position=_pt(320.0, 250.0),
+            connected_road_ids=[samal, kokzhiek],
+            control_type=IntersectionControlType.UNCONTROLLED,
+        ),
+        # Skewed merge: the slip road rejoins Turan Avenue at a shallow
+        # angle rather than square-on.
+        IntersectionCreate(
+            id=slip_road_junction_id,
+            position=_pt(220.0, 152.0),
+            connected_road_ids=[zevit_slip, eastbound],
+            control_type=IntersectionControlType.UNCONTROLLED,
+        ),
+        # Dead-end turn-around: Zhastar Street's far northbound segment
+        # ends exactly where its southbound segment begins (200, 300) --
+        # a real node (a cul-de-sac turnaround), not a coincidental reuse
+        # of the same coordinate for two unrelated things.
+        IntersectionCreate(
+            id=_id("intersection", "zhastar-north-turnaround"),
+            position=_pt(200.0, 300.0),
+            connected_road_ids=[zhastar_north_far, zhastar_south],
             control_type=IntersectionControlType.UNCONTROLLED,
         ),
     ]
@@ -361,22 +425,22 @@ def build_demo_district() -> CityCreate:
                     id=ns_group_id,
                     name="North-South",
                     controlled_lane_ids=[
-                        b.lane_id("Zhastar Street (northbound, near)", 0),
-                        b.lane_id("Zhastar Street (northbound, near)", 1),
-                        b.lane_id("Zhastar Street (southbound)", 0),
-                        b.lane_id("Zhastar Street (southbound)", 1),
+                        b.lane_id("zhastar-north-near", 0),
+                        b.lane_id("zhastar-north-near", 1),
+                        b.lane_id("zhastar-south", 0),
+                        b.lane_id("zhastar-south", 1),
                     ],
                 ),
                 SignalGroupCreate(
                     id=ew_group_id,
                     name="East-West",
                     controlled_lane_ids=[
-                        b.lane_id("Turan Avenue (eastbound)", 0),
-                        b.lane_id("Turan Avenue (eastbound)", 1),
-                        b.lane_id("Turan Avenue (eastbound)", 2),
-                        b.lane_id("Turan Avenue (westbound)", 0),
-                        b.lane_id("Turan Avenue (westbound)", 1),
-                        b.lane_id("Turan Avenue (westbound)", 2),
+                        b.lane_id("turan-eastbound", 0),
+                        b.lane_id("turan-eastbound", 1),
+                        b.lane_id("turan-eastbound", 2),
+                        b.lane_id("turan-westbound", 0),
+                        b.lane_id("turan-westbound", 1),
+                        b.lane_id("turan-westbound", 2),
                     ],
                 ),
             ],
