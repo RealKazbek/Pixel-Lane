@@ -6,6 +6,9 @@ services:
     # it) would fail against it. See docs/city-model.md's spatial schema
     # section for why PostGIS was introduced.
     image: postgis/postgis:16-3.4
+    # Upstream 16-3.4 is amd64-only. Explicit emulation on Apple Silicon
+    # preserves the existing PG16/PostGIS3.4 volume; see docs/osm-import.md.
+    platform: linux/amd64
     restart: unless-stopped
     environment:
       POSTGRES_DB: ${POSTGRES_DB:-pixel_lane}

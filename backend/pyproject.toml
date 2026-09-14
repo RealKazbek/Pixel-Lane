@@ -38,6 +38,7 @@ dev = [
 # never requires this group -- see AGENTS.md's dependency-isolation rule.
 osm = [
   "osmnx>=2.0,<3.0",
+  "osmium>=4.3,<5.0",
 ]
 
 [tool.ruff]

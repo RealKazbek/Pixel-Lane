@@ -13,3 +13,5 @@ venv/
 # osmnx's local HTTP cache for the OSM importer -- never a source of
 # truth, safe to delete, not committed.
 .osmnx_cache/
+# Inherited Nominatim boundary cache; preserve locally, never commit downloads.
+cache/
