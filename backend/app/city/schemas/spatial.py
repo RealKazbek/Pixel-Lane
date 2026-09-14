@@ -9,7 +9,7 @@ from uuid import UUID
 
 from pydantic import BaseModel, model_validator
 
-from app.city.domain.enums import RoadType
+from app.city.domain.enums import MedianType, RoadType
 from app.city.domain.geometry import Polyline
 
 
@@ -21,6 +21,13 @@ class MapRoad(BaseModel):
     road_type: RoadType
     geometry: Polyline
     lane_count: int
+    width_m: float | None = None
+    is_width_estimated: bool = True
+    carriageway_count: int = 1
+    median: MedianType = MedianType.NONE
+    level: int = 0
+    is_bridge: bool = False
+    is_tunnel: bool = False
 
 
 # WGS84 ranges. A bbox outside these isn't a real place on Earth, so it's

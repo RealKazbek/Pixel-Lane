@@ -61,6 +61,13 @@ def build_city(payload: CityCreate) -> City:
             source_road_type=road_data.source_road_type,
             one_way=road_data.one_way,
             source_lane_count=road_data.source_lane_count,
+            width_m=road_data.width_m,
+            is_width_estimated=road_data.is_width_estimated,
+            carriageway_count=road_data.carriageway_count,
+            median=road_data.median.value,
+            level=road_data.level,
+            is_bridge=road_data.is_bridge,
+            is_tunnel=road_data.is_tunnel,
             lanes=lanes,
         )
         roads.append(road)

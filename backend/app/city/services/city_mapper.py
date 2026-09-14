@@ -13,6 +13,7 @@ from app.city.domain.enums import (
     IntersectionControlType,
     LaneDirection,
     LaneType,
+    MedianType,
     MovementType,
     ParkingSide,
     RoadType,
@@ -63,6 +64,13 @@ def to_road_read(road: Road) -> RoadRead:
         source_road_type=road.source_road_type,
         one_way=road.one_way,
         source_lane_count=road.source_lane_count,
+        width_m=road.width_m,
+        is_width_estimated=road.is_width_estimated,
+        carriageway_count=road.carriageway_count,
+        median=MedianType(road.median),
+        level=road.level,
+        is_bridge=road.is_bridge,
+        is_tunnel=road.is_tunnel,
         lanes=[_to_lane_read(lane) for lane in road.lanes],
     )
 

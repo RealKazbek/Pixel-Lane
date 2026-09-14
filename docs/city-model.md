@@ -67,6 +67,40 @@ add these fields without replacing existing geometry or relationship tables.
 The speed migration refuses downgrade if unknown speeds exist; resolve them
 from real data or restore a pre-import backup instead of fabricating values.
 
+## Detailed road geometry (City Model Part 1)
+
+`Road` carries physical carriageway attributes beyond a bare centerline +
+lane count, added by migration `a1c3d9f7e421`:
+
+- `width_m` / `is_width_estimated` -- physical width in meters. An explicit
+  source value (e.g. OSM `width=*`) when known; otherwise a centrally
+  computed fallback (`app.city.domain.road_geometry.estimate_width_m`),
+  which is the *only* place fallback width rules live (fallback hierarchy:
+  motorway > trunk > primary > secondary > tertiary > residential > service
+  > unclassified). `is_width_estimated=True` marks a guess, never presented
+  as measured fact.
+- `carriageway_count` (1 or 2) and `median` (`NONE`/`PAINTED`/`PHYSICAL`/
+  `UNKNOWN`) -- distinguishes a single shared surface from a physically
+  separated carriageway pair (e.g. a divided arterial). The OSM importer's
+  heuristic (`mapper._carriageway_and_median`) treats a one-way edge as
+  likely one of a divided pair with `UNKNOWN` median (never asserting a
+  specific divider type it can't observe), and a two-way edge as one
+  undivided surface (`NONE`).
+- `level` -- vertical level relative to ground (0 = ground, positive =
+  overpass/bridge, negative = underpass/tunnel), from OSM `layer=*` (or
+  inferred `+1`/`-1` for untagged bridges/tunnels).
+- `is_bridge` / `is_tunnel` -- preserved from OSM `bridge=*`/`tunnel=*`.
+
+All of these are optional/defaulted (`width_m` nullable, others default to
+the "nothing special" case) so roads imported before this migration keep
+loading unchanged. This model deliberately stays at road/carriageway
+granularity -- individual lane geometry, turn lanes, and full intersection
+topology are later City Model roadmap parts (2 onward). Two roads that
+cross in plan view at different `level`s are never assumed to be an
+intersection: this architecture only ever creates `Intersection`s from real
+OSM graph nodes (see `mapper.map_network_to_city`), never from geometric
+line crossings.
+
 `CityImport` is a separate trusted offline contract with larger aggregate
 limits; public `CityCreate` limits and HTTP request-size protection remain.
 `city_service.replace_imported_city` validates before atomic replacement,

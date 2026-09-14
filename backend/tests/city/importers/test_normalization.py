@@ -9,10 +9,14 @@ installed.
 
 from app.city.importers.osm.normalization import (
     extract_network,
+    parse_bridge,
     parse_lane_count,
+    parse_level,
     parse_maxspeed_kmh,
     parse_node_control,
     parse_oneway,
+    parse_tunnel,
+    parse_width_m,
 )
 
 
@@ -170,3 +174,45 @@ def test_extract_network_handles_parallel_edges_with_distinct_keys() -> None:
 
     assert len(network.edges) == 2
     assert {e.key for e in network.edges} == {0, 1}
+
+
+def test_parse_width_m_plain_number() -> None:
+    assert parse_width_m({"width": "7.5"}) == 7.5
+
+
+def test_parse_width_m_with_meter_suffix() -> None:
+    assert parse_width_m({"width": "12 m"}) == 12.0
+
+
+def test_parse_width_m_missing_is_none() -> None:
+    assert parse_width_m({}) is None
+
+
+def test_parse_width_m_rejects_unreasonable_values() -> None:
+    assert parse_width_m({"width": "abc"}) is None
+    assert parse_width_m({"width": "-5"}) is None
+    assert parse_width_m({"width": "0"}) is None
+
+
+def test_parse_bridge_and_tunnel_flags() -> None:
+    assert parse_bridge({"bridge": "yes"}) is True
+    assert parse_bridge({"bridge": "no"}) is False
+    assert parse_bridge({}) is False
+    assert parse_tunnel({"tunnel": "yes"}) is True
+    assert parse_tunnel({}) is False
+
+
+def test_parse_level_uses_explicit_layer_tag() -> None:
+    assert parse_level({"layer": "2"}) == 2
+    assert parse_level({"layer": "-1"}) == -1
+
+
+def test_parse_level_falls_back_to_bridge_or_tunnel_when_no_layer_tag() -> None:
+    assert parse_level({"bridge": "yes"}) == 1
+    assert parse_level({"tunnel": "yes"}) == -1
+    assert parse_level({}) == 0
+
+
+def test_parse_level_clamps_extreme_values() -> None:
+    assert parse_level({"layer": "99"}) == 4
+    assert parse_level({"layer": "-99"}) == -4

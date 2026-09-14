@@ -23,6 +23,21 @@ class RoadType(StrEnum):
     SERVICE = "SERVICE"
 
 
+class MedianType(StrEnum):
+    """Physical/visual divider between opposing traffic flows on a road.
+
+    `NONE` means there genuinely is no divider (traffic flows share the
+    surface with no separation); `UNKNOWN` means the source data does not
+    say either way -- these are deliberately distinct so "no median" is
+    never guessed from missing data (see docs/city-model.md's Part 1
+    road-geometry section)."""
+
+    NONE = "NONE"
+    PAINTED = "PAINTED"
+    PHYSICAL = "PHYSICAL"
+    UNKNOWN = "UNKNOWN"
+
+
 class LaneDirection(StrEnum):
     """Travel direction relative to the road's polyline point order."""
 

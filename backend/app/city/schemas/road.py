@@ -2,7 +2,7 @@ from uuid import UUID
 
 from pydantic import BaseModel, Field
 
-from app.city.domain.enums import RoadType
+from app.city.domain.enums import MedianType, RoadType
 from app.city.domain.geometry import Polyline
 from app.city.domain.limits import (
     MAX_LANES_PER_ROAD,
@@ -23,6 +23,13 @@ class RoadCreate(BaseModel):
     source_road_type: str | None = Field(default=None, max_length=200)
     one_way: bool | None = None
     source_lane_count: int | None = Field(default=None, gt=0)
+    width_m: float | None = Field(default=None, gt=0)
+    is_width_estimated: bool = True
+    carriageway_count: int = Field(default=1, ge=1, le=2)
+    median: MedianType = MedianType.NONE
+    level: int = Field(default=0, ge=-4, le=4)
+    is_bridge: bool = False
+    is_tunnel: bool = False
 
 
 class RoadRead(BaseModel):
@@ -36,6 +43,13 @@ class RoadRead(BaseModel):
     source_road_type: str | None = None
     one_way: bool | None = None
     source_lane_count: int | None = None
+    width_m: float | None = None
+    is_width_estimated: bool = True
+    carriageway_count: int = 1
+    median: MedianType = MedianType.NONE
+    level: int = 0
+    is_bridge: bool = False
+    is_tunnel: bool = False
     lanes: list[LaneRead]
 
     model_config = {"from_attributes": True}

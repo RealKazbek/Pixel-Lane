@@ -40,6 +40,13 @@ def find_map_roads(db: Session, city_id: UUID, bbox: BBox, zoom: float):
             Road.road_type,
             func.ST_AsGeoJSON(geometry).label("geometry"),
             func.coalesce(lanes.c.count, 0).label("lane_count"),
+            Road.width_m,
+            Road.is_width_estimated,
+            Road.carriageway_count,
+            Road.median,
+            Road.level,
+            Road.is_bridge,
+            Road.is_tunnel,
         )
         .outerjoin(lanes, lanes.c.road_id == Road.id)
         .where(Road.city_id == city_id, ST_Intersects(Road.geom, _envelope(bbox)))

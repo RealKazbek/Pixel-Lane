@@ -27,6 +27,7 @@ from app.city.domain.enums import (
     CoordinateSystem,
     IntersectionControlType,
     LaneDirection,
+    MedianType,
     MovementType,
     RoadType,
     TrafficRuleTargetType,
@@ -34,6 +35,7 @@ from app.city.domain.enums import (
 )
 from app.city.domain.geometry import Point, Polyline
 from app.city.domain.limits import MAX_LANES_PER_ROAD, MAX_LANES_PER_SIGNAL_GROUP
+from app.city.domain.road_geometry import estimate_width_m, resolve_road_class
 from app.city.importers.osm.defaults import (
     DEFAULT_SPEED_LIMIT_KMH,
     FALLBACK_ROAD_NAME,
@@ -76,6 +78,22 @@ def _road_name(edge: NormalizedEdge) -> str:
     return edge.name or f"{FALLBACK_ROAD_NAME} {edge.osm_ids[0]}"
 
 
+def _carriageway_and_median(edge: NormalizedEdge) -> tuple[int, MedianType]:
+    """Heuristic only: OSM's usual convention for a physically divided
+    road (e.g. a dual-carriageway arterial) is two separate one-way ways,
+    one per direction, rather than a single two-way way. A one-way edge
+    is therefore *likely* one physical carriageway of a divided road, but
+    this is not certain -- a plain one-way local street is also
+    `oneway=yes` with no median at all. Because of that uncertainty this
+    never claims a specific median type for a one-way edge; `UNKNOWN`
+    keeps that honest, and a two-way edge (single shared surface) is
+    always `NONE`. Revisit if OSM division/median tags are parsed
+    directly in a later pass."""
+    if edge.oneway:
+        return 2, MedianType.UNKNOWN
+    return 1, MedianType.NONE
+
+
 def _map_edge(
     edge: NormalizedEdge, warnings: list[str], *, observed_only: bool = False
 ) -> tuple[RoadCreate, list[UUID]]:
@@ -105,6 +123,12 @@ def _map_edge(
             )
         )
 
+    road_class = resolve_road_class(edge.highway)
+    width = estimate_width_m(
+        road_class=road_class, lane_count=lane_count, explicit_width_m=edge.width_m
+    )
+    carriageway_count, median = _carriageway_and_median(edge)
+
     road = RoadCreate(
         id=road_id,
         name=_road_name(edge),
@@ -119,6 +143,13 @@ def _map_edge(
         source_lane_count=edge.source_lane_count
         if edge.source_lane_count and edge.source_lane_count > 0
         else None,
+        width_m=width.width_m,
+        is_width_estimated=width.is_estimated,
+        carriageway_count=carriageway_count,
+        median=median,
+        level=edge.level,
+        is_bridge=edge.bridge,
+        is_tunnel=edge.tunnel,
         lanes=lanes,
     )
     return road, lane_ids

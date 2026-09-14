@@ -10,6 +10,7 @@ from uuid import UUID
 
 from sqlalchemy.orm import Session
 
+from app.city.domain.enums import MedianType
 from app.city.domain.geometry import Point, Polyline
 from app.city.errors import CityValidationError
 from app.city.repositories import city_repository, spatial_repository
@@ -45,6 +46,13 @@ def find_map_roads(db: Session, city_id: UUID, bbox: BBox, zoom: float) -> list[
                     Point(x=lon, y=lat) for lon, lat in json.loads(row["geometry"])["coordinates"]
                 ]
             ),
+            width_m=row["width_m"],
+            is_width_estimated=row["is_width_estimated"],
+            carriageway_count=row["carriageway_count"],
+            median=MedianType(row["median"]),
+            level=row["level"],
+            is_bridge=row["is_bridge"],
+            is_tunnel=row["is_tunnel"],
         )
         for row in rows
     ]

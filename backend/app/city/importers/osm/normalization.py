@@ -66,6 +66,56 @@ def parse_lane_count(tags: dict[str, Any], *, oneway: bool, observed_only: bool 
     return 0 if observed_only else DEFAULT_LANE_COUNT
 
 
+def parse_width_m(tags: dict[str, Any]) -> float | None:
+    """Parses OSM `width=*` (meters, per OSM convention -- a bare number
+    or a number with a `m`/`meters`/`meter` suffix). Anything else
+    (feet, ranges, unparsable junk) is skipped rather than guessed at;
+    the importer falls back to the centralized width estimate instead
+    (see app.city.domain.road_geometry)."""
+    raw = tags.get("width")
+    if raw is None:
+        return None
+    text = str(first(raw)).strip().lower()
+    for suffix in ("meters", "meter", "m"):
+        if text.endswith(suffix):
+            text = text[: -len(suffix)].strip()
+            break
+    value = _parse_float(text)
+    if value is not None and 0 < value <= 100:
+        return value
+    return None
+
+
+def parse_bridge(tags: dict[str, Any]) -> bool:
+    value = first(tags.get("bridge"))
+    if value is None or value is False:
+        return False
+    return str(value).strip().lower() != "no"
+
+
+def parse_tunnel(tags: dict[str, Any]) -> bool:
+    value = first(tags.get("tunnel"))
+    if value is None or value is False:
+        return False
+    return str(value).strip().lower() != "no"
+
+
+def parse_level(tags: dict[str, Any]) -> int:
+    """OSM `layer=*` (vertical stacking order, ground = 0/absent). Falls
+    back to +1/-1 for bridge/tunnel ways with no explicit `layer`, since
+    those physically are not at ground level even when untagged."""
+    raw = tags.get("layer")
+    if raw is not None:
+        parsed = _parse_int(first(raw))
+        if parsed is not None:
+            return max(-4, min(4, parsed))
+    if parse_bridge(tags):
+        return 1
+    if parse_tunnel(tags):
+        return -1
+    return 0
+
+
 def _parse_int(value: Any) -> int | None:
     try:
         return int(float(str(value).strip()))
@@ -144,6 +194,10 @@ class NormalizedEdge:
     lane_count: int
     maxspeed_kmh: float | None
     source_lane_count: int | None = None
+    width_m: float | None = None
+    bridge: bool = False
+    tunnel: bool = False
+    level: int = 0
 
 
 @dataclass(frozen=True)
@@ -207,6 +261,10 @@ def extract_network(graph: Any, *, observed_only: bool = False) -> NormalizedNet
                 lane_count=parse_lane_count(tags, oneway=oneway, observed_only=observed_only),
                 maxspeed_kmh=parse_maxspeed_kmh(tags, warnings, edge_label=edge_label),
                 source_lane_count=_parse_int(first(tags.get("lanes"))),
+                width_m=parse_width_m(tags),
+                bridge=parse_bridge(tags),
+                tunnel=parse_tunnel(tags),
+                level=parse_level(tags),
             )
         )
 
