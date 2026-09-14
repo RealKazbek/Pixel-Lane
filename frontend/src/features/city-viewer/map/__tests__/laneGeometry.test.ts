@@ -44,7 +44,7 @@ describe("buildLaneSurfaceFeatureCollection", () => {
     const road = makeRoad({
       lanes: [makeLane({ index: 0 }), makeLane({ id: "lane-1", index: 1 })],
     });
-    const fc = buildLaneSurfaceFeatureCollection([road], "WGS84");
+    const fc = buildLaneSurfaceFeatureCollection([road], "LOCAL_CARTESIAN");
 
     expect(fc.features).toHaveLength(2);
     const [left, right] = fc.features;
@@ -63,7 +63,7 @@ describe("buildLaneSurfaceFeatureCollection", () => {
 
   it("marks a lane BUS only when the source lane_type says so", () => {
     const road = makeRoad({ lanes: [makeLane({ lane_type: "BUS" })] });
-    const fc = buildLaneSurfaceFeatureCollection([road], "WGS84");
+    const fc = buildLaneSurfaceFeatureCollection([road], "LOCAL_CARTESIAN");
 
     expect(fc.features[0].properties.is_bus).toBe(true);
     expect(fc.features[0].properties.lane_type).toBe("BUS");
@@ -86,7 +86,7 @@ describe("buildLaneSurfaceFeatureCollection", () => {
       lane_count: 1,
       width_m: 6,
     };
-    const fc = buildLaneSurfaceFeatureCollection([mapRoad], "WGS84");
+    const fc = buildLaneSurfaceFeatureCollection([mapRoad], "LOCAL_CARTESIAN");
 
     expect(fc.features).toHaveLength(1);
     expect(fc.features[0].properties.is_bus).toBe(false);
@@ -97,7 +97,7 @@ describe("buildLaneSurfaceFeatureCollection", () => {
 describe("buildLaneBoundaryFeatureCollection", () => {
   it("produces two edges and no separators for a single-lane road", () => {
     const road = makeRoad({ lanes: [makeLane()] });
-    const fc = buildLaneBoundaryFeatureCollection([road], "WGS84");
+    const fc = buildLaneBoundaryFeatureCollection([road], "LOCAL_CARTESIAN");
 
     const kinds = fc.features.map((f) => f.properties.kind);
     expect(kinds.filter((k) => k === "edge")).toHaveLength(2);
@@ -112,7 +112,7 @@ describe("buildLaneBoundaryFeatureCollection", () => {
         makeLane({ id: "lane-2", index: 2 }),
       ],
     });
-    const fc = buildLaneBoundaryFeatureCollection([road], "WGS84");
+    const fc = buildLaneBoundaryFeatureCollection([road], "LOCAL_CARTESIAN");
 
     const kinds = fc.features.map((f) => f.properties.kind);
     expect(kinds.filter((k) => k === "edge")).toHaveLength(2);
@@ -128,7 +128,7 @@ describe("buildTurnArrowFeatureCollection", () => {
         makeLane({ id: "lane-1", index: 1, allowed_turns: null }),
       ],
     });
-    const fc = buildTurnArrowFeatureCollection([road], "WGS84");
+    const fc = buildTurnArrowFeatureCollection([road], "LOCAL_CARTESIAN");
 
     expect(fc.features).toHaveLength(1);
     expect(fc.features[0].properties.lane_index).toBe(0);
@@ -138,7 +138,7 @@ describe("buildTurnArrowFeatureCollection", () => {
     const road = makeRoad({
       lanes: [makeLane({ index: 0, allowed_turns: ["THROUGH", "RIGHT"] })],
     });
-    const fc = buildTurnArrowFeatureCollection([road], "WGS84");
+    const fc = buildTurnArrowFeatureCollection([road], "LOCAL_CARTESIAN");
 
     expect(fc.features[0].properties.arrow).toBe("↑→");
   });
@@ -150,14 +150,14 @@ describe("buildTurnArrowFeatureCollection", () => {
         makeLane({ id: "lane-1", index: 1, allowed_turns: [] }),
       ],
     });
-    const fc = buildTurnArrowFeatureCollection([road], "WGS84");
+    const fc = buildTurnArrowFeatureCollection([road], "LOCAL_CARTESIAN");
 
     expect(fc.features).toHaveLength(0);
   });
 
   it("does not draw an arrow for an explicit NONE-only token", () => {
     const road = makeRoad({ lanes: [makeLane({ allowed_turns: ["NONE"] })] });
-    const fc = buildTurnArrowFeatureCollection([road], "WGS84");
+    const fc = buildTurnArrowFeatureCollection([road], "LOCAL_CARTESIAN");
 
     expect(fc.features).toHaveLength(0);
   });
@@ -166,14 +166,14 @@ describe("buildTurnArrowFeatureCollection", () => {
 describe("buildLaneUseMarkingFeatureCollection", () => {
   it("draws nothing when parking/cycleway are UNKNOWN (the default)", () => {
     const road = makeRoad();
-    const fc = buildLaneUseMarkingFeatureCollection([road], "WGS84");
+    const fc = buildLaneUseMarkingFeatureCollection([road], "LOCAL_CARTESIAN");
 
     expect(fc.features).toHaveLength(0);
   });
 
   it("draws nothing when parking is explicitly NONE", () => {
     const road = makeRoad({ parking_left: "NONE", parking_right: "NONE" });
-    const fc = buildLaneUseMarkingFeatureCollection([road], "WGS84");
+    const fc = buildLaneUseMarkingFeatureCollection([road], "LOCAL_CARTESIAN");
 
     expect(fc.features).toHaveLength(0);
   });
@@ -183,7 +183,7 @@ describe("buildLaneUseMarkingFeatureCollection", () => {
       parking_left: "PARALLEL",
       parking_right: "UNKNOWN",
     });
-    const fc = buildLaneUseMarkingFeatureCollection([road], "WGS84");
+    const fc = buildLaneUseMarkingFeatureCollection([road], "LOCAL_CARTESIAN");
 
     expect(fc.features).toHaveLength(1);
     expect(fc.features[0].properties).toMatchObject({
@@ -195,7 +195,7 @@ describe("buildLaneUseMarkingFeatureCollection", () => {
 
   it("draws a cycleway marking when present, independent of parking", () => {
     const road = makeRoad({ cycleway_right: "TRACK" });
-    const fc = buildLaneUseMarkingFeatureCollection([road], "WGS84");
+    const fc = buildLaneUseMarkingFeatureCollection([road], "LOCAL_CARTESIAN");
 
     expect(fc.features).toHaveLength(1);
     expect(fc.features[0].properties).toMatchObject({
@@ -203,5 +203,45 @@ describe("buildLaneUseMarkingFeatureCollection", () => {
       side: "right",
       value: "TRACK",
     });
+  });
+});
+
+describe("WGS84 (real-world import) gate", () => {
+  /** Regression: schematic per-lane offset geometry produced long
+   * spiky/self-intersecting artifacts on real (WGS84) OSM road geometry
+   * -- it must never run for anything but a controlled LOCAL_CARTESIAN
+   * fixture (see this file's adapter docstring and docs/city-model.md's
+   * Demo City section). */
+  const road = makeRoad({
+    lanes: [
+      makeLane({ index: 0, allowed_turns: ["LEFT"] }),
+      makeLane({ id: "lane-1", index: 1 }),
+    ],
+    parking_left: "PARALLEL",
+    cycleway_right: "TRACK",
+  });
+
+  it("never produces lane surfaces for a WGS84 road", () => {
+    expect(
+      buildLaneSurfaceFeatureCollection([road], "WGS84").features,
+    ).toHaveLength(0);
+  });
+
+  it("never produces lane boundaries for a WGS84 road", () => {
+    expect(
+      buildLaneBoundaryFeatureCollection([road], "WGS84").features,
+    ).toHaveLength(0);
+  });
+
+  it("never produces turn arrows for a WGS84 road", () => {
+    expect(
+      buildTurnArrowFeatureCollection([road], "WGS84").features,
+    ).toHaveLength(0);
+  });
+
+  it("never produces parking/cycleway markings for a WGS84 road", () => {
+    expect(
+      buildLaneUseMarkingFeatureCollection([road], "WGS84").features,
+    ).toHaveLength(0);
   });
 });

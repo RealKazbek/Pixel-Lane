@@ -17,6 +17,17 @@
  * these features is only drawn when the corresponding source-derived
  * field (`Lane.allowed_turns`, `Lane.lane_type`, `Road.parking_left/
  * right`, `Road.cycleway_left/right`) is present and not UNKNOWN/absent.
+ *
+ * IMPORTANT -- `LOCAL_CARTESIAN`-only: every builder below returns an
+ * empty collection for `WGS84` (real-world imports, e.g. Almaty). This
+ * schematic offset technique assumes clean, gently-curved geometry; real
+ * OSM road polylines are not curated for it (sharp angles, very short
+ * segments, near-duplicate points), and applying it there produced long
+ * spiky self-intersecting offset artifacts, not readable lane markings.
+ * `LOCAL_CARTESIAN` is also what Pixel Lane's existing hand-authored
+ * example cities already use (see `app/city/examples/`), so this gate is
+ * "controlled/synthetic fixture" vs. "real import", not a demo-specific
+ * special case -- see docs/city-model.md's Demo City section.
  */
 
 import along from "@turf/along";
@@ -171,10 +182,22 @@ function laneBoundaryOffsetsM(
   return offsets;
 }
 
+/** See this file's top-level docstring: schematic per-lane rendering is
+ * only safe/reliable for controlled synthetic fixtures, never a raw
+ * real-world import. */
+function supportsLaneDetailRendering(
+  coordinateSystem: CoordinateSystem,
+): boolean {
+  return coordinateSystem === "LOCAL_CARTESIAN";
+}
+
 export function buildLaneSurfaceFeatureCollection(
   roads: AnyRoad[],
   coordinateSystem: CoordinateSystem,
 ): LaneSurfaceFeatureCollection {
+  if (!supportsLaneDetailRendering(coordinateSystem)) {
+    return { type: "FeatureCollection", features: [] };
+  }
   const features: LaneSurfaceFeatureCollection["features"] = [];
   for (const road of roads) {
     const laneCount = roadLaneCount(road);
@@ -211,6 +234,9 @@ export function buildLaneBoundaryFeatureCollection(
   roads: AnyRoad[],
   coordinateSystem: CoordinateSystem,
 ): LaneBoundaryFeatureCollection {
+  if (!supportsLaneDetailRendering(coordinateSystem)) {
+    return { type: "FeatureCollection", features: [] };
+  }
   const features: LaneBoundaryFeatureCollection["features"] = [];
   for (const road of roads) {
     const laneCount = roadLaneCount(road);
@@ -244,6 +270,9 @@ export function buildTurnArrowFeatureCollection(
   roads: AnyRoad[],
   coordinateSystem: CoordinateSystem,
 ): TurnArrowFeatureCollection {
+  if (!supportsLaneDetailRendering(coordinateSystem)) {
+    return { type: "FeatureCollection", features: [] };
+  }
   const features: TurnArrowFeatureCollection["features"] = [];
   for (const road of roads) {
     const lanes = "lanes" in road ? road.lanes : undefined;
@@ -300,6 +329,9 @@ export function buildLaneUseMarkingFeatureCollection(
   roads: AnyRoad[],
   coordinateSystem: CoordinateSystem,
 ): LaneUseMarkingFeatureCollection {
+  if (!supportsLaneDetailRendering(coordinateSystem)) {
+    return { type: "FeatureCollection", features: [] };
+  }
   const features: LaneUseMarkingFeatureCollection["features"] = [];
   for (const road of roads) {
     const laneCount = roadLaneCount(road);

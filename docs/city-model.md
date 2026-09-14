@@ -281,3 +281,89 @@ validated against 2GIS in a browser (no browser tool was available in
 that session) -- it was validated via unit tests (offset direction/sign,
 arrow-glyph composition, MapLibre style-spec validation of every new
 layer) and by inspecting real Almaty viewport API responses directly.
+
+## Two-mode City Model: Real Almaty vs. Demo City
+
+Applying Road + Lane V1's schematic per-lane offset renderer to **real**
+Almaty geometry produced long, spiky, self-intersecting offset lines,
+including a near-black "road edge" line rendered well outside the actual
+road surface. Root cause: `@turf/line-offset` assumes reasonably smooth
+input geometry; real OSM road polylines are not curated for that (sharp
+angles at simplification points, very short segments, occasional
+near-duplicate points), so offsetting them produces geometrically valid
+but visually nonsensical results. This is a data-quality/rendering-
+technique mismatch, not a bug in a single color or width value.
+
+**Fix (in `adapters/laneGeometry.ts`):** every lane-detail builder
+(`buildLaneSurfaceFeatureCollection`, `buildLaneBoundaryFeatureCollection`,
+`buildTurnArrowFeatureCollection`, `buildLaneUseMarkingFeatureCollection`)
+now returns an empty `FeatureCollection` unless
+`coordinate_system === "LOCAL_CARTESIAN"`. A **real** OSM import is
+always `WGS84`; Pixel Lane's existing hand-authored example cities
+(`four_way_intersection.json`, `two_intersection_corridor.json`) were
+already `LOCAL_CARTESIAN`. So this is not a demo-specific special case
+bolted onto the renderer -- it is "controlled/curated fixture" vs. "raw
+real-world import," expressed through a property the City Model already
+had. Real Almaty now renders with exactly Part 1's clean casing/surface
+(+ the coarse dashed multi-lane hint below zoom 17), nothing more, until
+real per-lane rendering is revisited with a geometry-smoothing approach
+that's actually safe for raw import data.
+
+**Demo City (`app/city/examples/demo_district.py`).** A deterministic
+Python generator -- not hand-written JSON like the two smaller existing
+examples, and not a giant frontend constant -- that builds a `CityCreate`
+using the same domain schemas a real import produces (`RoadCreate`,
+`LaneCreate`, `IntersectionCreate`, `TrafficLightCreate`,
+`ParkingZoneCreate`, `TrafficDemandCreate`). Same pipeline as Real
+Almaty end to end: `CityCreate` → `city_service.create_city` →
+`city_builder.build_city` → PostgreSQL → the same `CityRead`/`MapRoad`
+API → the same GeoJSON adapters → the same MapLibre layers. No
+`if (demoCity) { ... }` branch anywhere in the renderer -- the only
+distinguishing signal is `coordinate_system`, exactly as above.
+
+Seed it with `make seed-demo-city` (idempotent: fixed deterministic id
+via uuid5, re-running reports "already seeded" rather than duplicating).
+It then appears in the existing city list (`GET /cities`) and the
+existing sidebar `CityList` picker automatically -- no new city-selector
+UI was needed.
+
+**What the Demo District ("Demo District", ~400m x 300m) covers**, using
+only existing domain concepts:
+
+- Two-way street (Samal Street), one-way street (Bereke Lane).
+- 4-lane undivided secondary arterial (Zhastar Street) with a genuine
+  lane drop/addition across two sequential Road segments sharing a node
+  (Zhastar Street (northbound, near) → (far), 2 lanes → 1 lane) -- the
+  same mechanism a real OSM import already produces when `lanes` differs
+  between segments (see `client.py`'s `edge_attrs_differ`), verified
+  rather than special-cased.
+- Divided arterial with a physical median (Turan Avenue, two one-way
+  carriageways, `median=PHYSICAL` -- authored ground truth here, not an
+  inferred guess, since this is hand-designed fixture data).
+- Turn pockets: `LEFT`/`RIGHT` `TURN_ONLY` lanes with both the legacy
+  `allowed_movements` and Part 2A's `allowed_turns` populated (the
+  frontend's arrow rendering reads `allowed_turns`).
+- Bus lane (`LaneType.BUS`), bike lane (`LaneType.BICYCLE`).
+- Parking (`ParkingZone`, Samal Street).
+- Slip road (Zevit Slip Road, bypassing the main signalized junction),
+  curved road (Round Park Drive), short one-way service/access road
+  (Kokzhiek Access Road).
+- One signalized four-approach intersection (Turan Ave × Zhastar St,
+  reusing the exact `TrafficLight`/`SignalGroup`/`Phase` shape the
+  four-way example already established) and two smaller intersections
+  (a `STOP_SIGN` junction and an `UNCONTROLLED` one).
+- A routable `TrafficDemand` (source != destination), so **real**
+  Traffic Analysis produces genuine congestion coloring on this
+  district on request -- deliberately not a separate hardcoded "demo
+  congestion overlay," since the real pipeline already does this
+  correctly once real-looking demand data exists.
+
+**Explicitly out of scope for this pass** (no City Model domain
+representation exists for any of these yet, and inventing one just to
+decorate a demo would contradict "reusable pipeline, not a special
+case"): buildings/building archetypes, trees/greenery, stop lines,
+crosswalks, yellow-box/waffle junction markings, bus stops, traffic
+signage, sidewalks, roundabout topology, paid/disabled parking as a
+distinct type, a standalone fabricated congestion overlay. These would
+each need new domain entities and are reasonable candidates for a
+dedicated future task, not a rushed addition here.

@@ -3,7 +3,7 @@
 	frontend-dev frontend-lint frontend-typecheck frontend-build frontend-test \
 	frontend-check-i18n check-agents \
 	backend-dev backend-lint backend-typecheck backend-test migrate migration \
-	simulation-test import-almaty
+	simulation-test import-almaty seed-demo-city
 
 help:
 	@echo "Pixel Lane development commands"
@@ -40,6 +40,7 @@ help:
 	@echo "make migration msg=...   - create a new backend migration"
 	@echo "make simulation-test     - run simulation package tests"
 	@echo "make import-almaty       - import the Almaty, Kazakhstan OSM demo city"
+	@echo "make seed-demo-city      - seed the synthetic Demo District (renderer showcase)"
 	@echo "                           (one-time: pip install -e '.[osm]' in backend/.venv first)"
 
 # --- Project lifecycle (Docker Compose) --------------------------------
@@ -177,6 +178,13 @@ import-almaty: check-env start-db
 	cd backend && . .venv/bin/activate && \
 	DATABASE_URL=$${DATABASE_URL:-postgresql+psycopg://pixel_lane:change-me@localhost:5432/pixel_lane} \
 	python -m app.city.importers.osm.cli
+
+# Seeds the synthetic Demo District (renderer showcase, LOCAL_CARTESIAN,
+# not a real place) -- idempotent, safe to re-run.
+seed-demo-city: check-env start-db
+	cd backend && . .venv/bin/activate && \
+	DATABASE_URL=$${DATABASE_URL:-postgresql+psycopg://pixel_lane:change-me@localhost:5432/pixel_lane} \
+	python -m app.city.examples.seed_demo_district
 
 # Explicit replacement of the canonical Almaty city (including demo data).
 .PHONY: import-almaty-full
