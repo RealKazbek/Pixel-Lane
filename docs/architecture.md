@@ -46,7 +46,7 @@ section below.
 | Traffic Engine v1 | `simulation/pixel_lane_simulation/traffic/` | Static network/routing/congestion analysis | `analyze_city()` / `TrafficEngine.analyze()` | Nothing in this repo (its own `CityInput` contract only) |
 | Traffic adapter | `backend/app/traffic/` | Translates City -> Traffic Engine input, serializes result | REST `POST /api/v1/cities/{id}/traffic-analysis` | City Model, Traffic Engine |
 | Map/editor v2 | `frontend/src/features/city-viewer/` | Rendering and limited road geometry editing | `CityViewerApp` component | City Model API, Traffic Analysis API |
-| OSM importer | `backend/app/city/importers/osm/` | One-shot import of real OpenStreetMap road networks into the City Model | `import_city_from_osm()`, CLI (`make import-almaty`) | City Model service layer; osmnx (isolated, optional `backend[osm]` extra) |
+| OSM importer | `backend/app/city/importers/osm/` | Administrative-boundary import from regional PBF or cached polygon chunks; atomic replacement | Full CLI (`make import-almaty-full`), legacy `import_city_from_osm()` | City Model service; OSMnx/PyOsmium (isolated optional `backend[osm]`) |
 
 **Planned** (not implemented, see their sections under "High-level
 components" below): 2D Editor, SUMO adapter, external hardware
@@ -157,9 +157,17 @@ populated only for WGS84 cities, used only by the bbox query endpoints
 (`GET /cities/{id}/roads?bbox=...`, `GET /cities/{id}/intersections?bbox=...`).
 Dropping the JSONB/position columns in favor of the spatial ones is a
 separate future cleanup, not done yet. Still not introduced: vector
-tiles, and the OSM importer still only imports the original ~850m demo
-radius (see docs/osm-import.md) -- full-city import is a distinct,
-not-yet-started task.
+tiles. Full Almaty ingestion now has a regional PBF path and cached polygon
+queries (see docs/osm-import.md); measured execution status is recorded in
+docs/full-almaty-verification.md. Public create-payload limits stay small;
+trusted imports use a separately bounded `CityImport` contract.
+
+WGS84 map loading uses metadata (road count and stored-road extent), zoom-
+filtered bbox queries, and individual selected-entity endpoints. Cartesian
+examples retain full loading. Import replacement is serialized per city and
+commits atomically. Unknown source speed/lane/timing data remain null/empty;
+source observations have optional generic road fields, without OSM objects
+leaking into the API or Traffic Engine.
 
 **Planned: SUMO boundary.** City Model v1 has no simulation code. When the
 simulation adapter is built (see `simulation/`), it will read the City
@@ -396,7 +404,16 @@ the full rationale and the exact thresholds.
 - Road/casing/hierarchy width numbers are calibrated for visual legibility,
   not measured from real Almaty pavement widths.
 
-## Almaty OpenStreetMap demo
+## Almaty OpenStreetMap import
+
+Full-city workflow: `make import-almaty-full`, using OSM administrative
+relation 2465058 and either a streamed regional PBF extract or cached queries
+subdivided to at most 25 km². The same canonical UUID replaces the old demo
+transactionally. Read [the workflow](osm-import.md) for exact commands,
+unknown-data semantics, boundary provenance and update/backup behavior, and
+[verification results](full-almaty-verification.md) for measured completion.
+
+The following describes the retained **legacy demo command only**:
 
 **Source: OpenStreetMap** (fetched via the Overpass API through the
 [OSMnx](https://osmnx.readthedocs.io/) library). This is a real road
@@ -437,9 +454,8 @@ intersections, 400+ roads, dozens of signalized intersections).
 re-running it after the city already exists reports it instead of creating
 a duplicate. See `backend/app/city/importers/osm/README.md`.
 
-**Not done here** (future, separate work): full-city tiled loading,
-background map tiles/basemap, live traffic, building footprints, public
-transport, SUMO, PostGIS, periodic OSM sync, or a map editor.
+Still outside this import task: live traffic, building footprints, public
+transport, SUMO, automatic periodic synchronization and vector tiles.
 
 ## High-level components (planned)
 

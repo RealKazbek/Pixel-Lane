@@ -48,8 +48,27 @@ traffic analysis and non-map consumers) -- see the frontend's
 viewport-loading architecture in
 `frontend/src/features/city-viewer/map/README.md`.
 
-**Still demo-scale.** These endpoints scale to full Almaty; the *data*
-does not yet -- the OSM importer still only imports the original ~850m
-demo radius (see docs/osm-import.md). Full-city import is a distinct,
-not-yet-started task that this spatial/bbox foundation was built to make
-safe to attempt.
+The WGS84 map loads `/cities/{id}/metadata` (stored-road extent and count)
+and individual `/roads/{road_id}` or `/intersections/{intersection_id}`
+details. It never needs the full aggregate. Road bbox queries accept `zoom`
+for class filtering; responses exceeding 10,000 features fail explicitly.
+See [the import workflow](osm-import.md) and
+[measured verification](full-almaty-verification.md).
+
+## Observed geographic data
+
+Roads may have an unknown (`null`) default speed and no known directional
+lanes. Empty movement lists and signal phases/groups represent unknown data,
+not measured zero capacity or an always-green timing plan. Optional road
+`source_id`, `source_road_type`, `one_way` and `source_lane_count` preserve
+source observations. A source total lane count does not imply a particular
+allocation to each directed road. Migrations `6b14f092a731` and `7d014a16239c`
+add these fields without replacing existing geometry or relationship tables.
+The speed migration refuses downgrade if unknown speeds exist; resolve them
+from real data or restore a pre-import backup instead of fabricating values.
+
+`CityImport` is a separate trusted offline contract with larger aggregate
+limits; public `CityCreate` limits and HTTP request-size protection remain.
+`city_service.replace_imported_city` validates before atomic replacement,
+with per-city advisory locking in the repository. Simulation remains behind
+the existing backend adapter.

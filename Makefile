@@ -177,3 +177,9 @@ import-almaty: check-env start-db
 	cd backend && . .venv/bin/activate && \
 	DATABASE_URL=$${DATABASE_URL:-postgresql+psycopg://pixel_lane:change-me@localhost:5432/pixel_lane} \
 	python -m app.city.importers.osm.cli
+
+# Explicit replacement of the canonical Almaty city (including demo data).
+.PHONY: import-almaty-full
+import-almaty-full: check-env start-db
+	cd backend && DATABASE_URL=$${DATABASE_URL:-postgresql+psycopg://pixel_lane:change-me@localhost:5432/pixel_lane} \
+	.venv/bin/python -m app.city.importers.osm.full_cli --replace $(ARGS)
