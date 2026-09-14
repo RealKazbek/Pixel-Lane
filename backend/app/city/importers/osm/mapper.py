@@ -79,19 +79,27 @@ def _road_name(edge: NormalizedEdge) -> str:
 
 
 def _carriageway_and_median(edge: NormalizedEdge) -> tuple[int, MedianType]:
-    """Heuristic only: OSM's usual convention for a physically divided
-    road (e.g. a dual-carriageway arterial) is two separate one-way ways,
-    one per direction, rather than a single two-way way. A one-way edge
-    is therefore *likely* one physical carriageway of a divided road, but
-    this is not certain -- a plain one-way local street is also
-    `oneway=yes` with no median at all. Because of that uncertainty this
-    never claims a specific median type for a one-way edge; `UNKNOWN`
-    keeps that honest, and a two-way edge (single shared surface) is
-    always `NONE`. Revisit if OSM division/median tags are parsed
-    directly in a later pass."""
-    if edge.oneway:
-        return 2, MedianType.UNKNOWN
-    return 1, MedianType.NONE
+    """Each Road already corresponds to exactly one traced physical way
+    (one polyline/geometry) -- so `carriageway_count` for any single Road
+    is always `1`: it is never correct to claim a Road *is* two
+    carriageways just because the underlying OSM way is `oneway=yes`.
+
+    A physically divided arterial is represented in OSM (and therefore in
+    the City Model, per mapper.py's one-Road-per-directed-edge mapping)
+    as *two separate ways/Roads*, each already `carriageway_count=1` on
+    its own -- correctly separate carriageways, not one Road claiming to
+    be two. Detecting that pairing (so the two Roads can be linked as a
+    divided arterial) requires real evidence -- e.g. parsing OSM
+    `dual_carriageway`/relation tags directly -- which this importer does
+    not yet do; see docs/city-model.md.
+
+    `oneway=false` NEVER implies a median (see the CRITICAL RULE in the
+    Part 1 audit: direction is not separation) -- a two-way edge is one
+    shared surface, `MedianType.NONE`. `oneway=true` is also not evidence
+    of a median (an ordinary one-way local street has none either), so it
+    stays `MedianType.UNKNOWN` rather than guessing either way."""
+    median = MedianType.NONE if not edge.oneway else MedianType.UNKNOWN
+    return 1, median
 
 
 def _map_edge(

@@ -79,13 +79,21 @@ lane count, added by migration `a1c3d9f7e421`:
   motorway > trunk > primary > secondary > tertiary > residential > service
   > unclassified). `is_width_estimated=True` marks a guess, never presented
   as measured fact.
-- `carriageway_count` (1 or 2) and `median` (`NONE`/`PAINTED`/`PHYSICAL`/
-  `UNKNOWN`) -- distinguishes a single shared surface from a physically
-  separated carriageway pair (e.g. a divided arterial). The OSM importer's
-  heuristic (`mapper._carriageway_and_median`) treats a one-way edge as
-  likely one of a divided pair with `UNKNOWN` median (never asserting a
-  specific divider type it can't observe), and a two-way edge as one
-  undivided surface (`NONE`).
+- `carriageway_count` and `median` (`NONE`/`PAINTED`/`PHYSICAL`/`UNKNOWN`)
+  -- `carriageway_count` is currently always `1`: each Road already
+  corresponds to exactly one traced physical way/geometry, so a single
+  Road is never marked as "2 carriageways" (see `mapper._carriageway_and_median`
+  and the Part 1 carriageway-inference audit below). Direction
+  (`oneway`) and lane count are **never** treated as evidence of a second
+  carriageway or a median -- a two-way edge is one undivided shared
+  surface (`median=NONE`); a one-way edge's median is `UNKNOWN` (a plain
+  one-way local street has no median either, so direction alone proves
+  nothing). A genuinely divided arterial is represented in OSM (and
+  therefore here) as two separate ways, each its own Road with
+  `carriageway_count=1` -- correctly two Roads, never one Road claiming
+  to be two. Detecting and linking that pair as a divided arterial is not
+  implemented yet; it requires real evidence (e.g. parsing OSM
+  dual-carriageway/relation tags), not a direction/lane-count heuristic.
 - `level` -- vertical level relative to ground (0 = ground, positive =
   overpass/bridge, negative = underpass/tunnel), from OSM `layer=*` (or
   inferred `+1`/`-1` for untagged bridges/tunnels).

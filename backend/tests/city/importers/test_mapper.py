@@ -276,11 +276,13 @@ def test_two_way_road_has_single_undivided_carriageway() -> None:
     assert road.median == MedianType.NONE
 
 
-def test_one_way_road_treated_as_one_of_a_pair_of_carriageways() -> None:
-    """Heuristic: a one-way OSM way is commonly one physical carriageway
-    of a divided road, but this can't be known for certain from a single
-    edge (see mapper._carriageway_and_median) -- the median is therefore
-    UNKNOWN, never asserted as a specific divider type."""
+def test_one_way_road_is_not_assumed_to_be_a_divided_carriageway() -> None:
+    """Regression: `oneway=yes` alone must never manufacture a second
+    carriageway (see mapper._carriageway_and_median) -- each Road is
+    exactly one traced physical way, so carriageway_count stays 1
+    regardless of direction. The median also stays UNKNOWN (not NONE and
+    not PHYSICAL/PAINTED): direction tells us nothing about a divider
+    either way."""
     network = NormalizedNetwork(
         nodes=(_node(1, 0.0, 0.0), _node(2, 0.001, 0.0)),
         edges=(_edge(1, 2, oneway=True),),
@@ -288,8 +290,41 @@ def test_one_way_road_treated_as_one_of_a_pair_of_carriageways() -> None:
 
     road = _map(network).city.roads[0]
 
-    assert road.carriageway_count == 2
+    assert road.carriageway_count == 1
     assert road.median == MedianType.UNKNOWN
+
+
+def test_multi_lane_two_way_road_is_not_assumed_to_be_divided() -> None:
+    """Regression: a high lane count must never imply a second
+    carriageway or a median -- lane count and physical separation are
+    independent facts."""
+    network = NormalizedNetwork(
+        nodes=(_node(1, 0.0, 0.0), _node(2, 0.001, 0.0)),
+        edges=(_edge(1, 2, oneway=False, lane_count=4),),
+    )
+
+    road = _map(network).city.roads[0]
+
+    assert road.carriageway_count == 1
+    assert road.median == MedianType.NONE
+
+
+def test_two_directed_edges_of_one_two_way_street_each_stay_undivided() -> None:
+    """Regression: OSMnx models an ordinary two-way street as two directed
+    edges (one per direction, same physical way) -- neither becomes a
+    second carriageway or a divided median just because there are two
+    Road rows for one street."""
+    network = NormalizedNetwork(
+        nodes=(_node(1, 0.0, 0.0), _node(2, 0.001, 0.0)),
+        edges=(_edge(1, 2, oneway=False), _edge(2, 1, oneway=False)),
+    )
+
+    roads = _map(network).city.roads
+
+    assert len(roads) == 2
+    for road in roads:
+        assert road.carriageway_count == 1
+        assert road.median == MedianType.NONE
 
 
 def test_bridge_and_tunnel_metadata_and_level_are_preserved() -> None:
