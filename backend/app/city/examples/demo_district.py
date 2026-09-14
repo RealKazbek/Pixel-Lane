@@ -156,48 +156,83 @@ def build_demo_district() -> CityCreate:
     # already de-duplicates by name, so this alone gives one clean label
     # instead of two "(eastbound)"/"(westbound)" debug-looking ones (see
     # docs/city-model.md's label-improvement note).
-    eastbound = b.add_road(
-        "Turan Avenue",
-        key="turan-eastbound",
-        road_type=RoadType.ARTERIAL,
-        points=[(0.0, 152.0), (180.0, 152.0), (220.0, 152.0), (400.0, 152.0)],
-        one_way=True,
-        median=MedianType.PHYSICAL,
-        speed_limit_kmh=60.0,
-        lanes=[
-            {"index": 0, "lane_type": LaneType.BUS},
-            {"index": 1},
-            {
-                "index": 2,
-                "lane_type": LaneType.TURN_ONLY,
-                "allowed_movements": [MovementType.RIGHT],
-                "allowed_turns": [TurnLaneType.RIGHT],
-            },
-        ],
-    )
-    westbound = b.add_road(
-        "Turan Avenue",
-        key="turan-westbound",
-        road_type=RoadType.ARTERIAL,
-        points=[(400.0, 148.0), (220.0, 148.0), (180.0, 148.0), (0.0, 148.0)],
-        one_way=True,
-        median=MedianType.PHYSICAL,
-        speed_limit_kmh=60.0,
-        lanes=[
-            {
-                "index": 0,
-                "lane_type": LaneType.TURN_ONLY,
-                "allowed_movements": [MovementType.LEFT],
-                "allowed_turns": [TurnLaneType.LEFT],
-            },
-            {"index": 1},
-            {
-                "index": 2,
-                "allowed_movements": [MovementType.STRAIGHT, MovementType.RIGHT],
-                "allowed_turns": [TurnLaneType.THROUGH, TurnLaneType.RIGHT],
-            },
-        ],
-    )
+    # Turan Avenue is split into a segment *per junction it actually
+    # touches* (Bereke, the main signalized junction, the Zevit slip
+    # merge, Samal), exactly like a real OSM import splits a way at
+    # every node another way joins -- see app.city.importers.osm.mapper's
+    # module docstring. Each carriageway's stored endpoint at a junction
+    # is the *exact* junction position; the two carriageways only bulge
+    # apart (to read as a physical median) at each segment's own
+    # midpoint, tapering back to a single shared point at both ends --
+    # never a coordinate gap that would leave a road failing to register
+    # as incident to the Intersection it's declared to connect to (see
+    # roadSurfaceGeometry.ts's endpoint-matching invariant).
+    _EASTBOUND_LANES: list[dict] = [
+        {"index": 0, "lane_type": LaneType.BUS},
+        {"index": 1},
+        {
+            "index": 2,
+            "lane_type": LaneType.TURN_ONLY,
+            "allowed_movements": [MovementType.RIGHT],
+            "allowed_turns": [TurnLaneType.RIGHT],
+        },
+    ]
+    _WESTBOUND_LANES: list[dict] = [
+        {
+            "index": 0,
+            "lane_type": LaneType.TURN_ONLY,
+            "allowed_movements": [MovementType.LEFT],
+            "allowed_turns": [TurnLaneType.LEFT],
+        },
+        {"index": 1},
+        {
+            "index": 2,
+            "allowed_movements": [MovementType.STRAIGHT, MovementType.RIGHT],
+            "allowed_turns": [TurnLaneType.THROUGH, TurnLaneType.RIGHT],
+        },
+    ]
+    _TURAN_Y = 150.0
+
+    def _turan_segment(
+        key: str, x_start: float, x_end: float, offset_m: float
+    ) -> tuple[UUID, UUID]:
+        mid_x = (x_start + x_end) / 2
+        median = MedianType.PHYSICAL if offset_m > 0 else MedianType.NONE
+        eb_id = b.add_road(
+            "Turan Avenue",
+            key=f"{key}-eb",
+            road_type=RoadType.ARTERIAL,
+            points=[
+                (x_start, _TURAN_Y),
+                (mid_x, _TURAN_Y + offset_m),
+                (x_end, _TURAN_Y),
+            ],
+            one_way=True,
+            median=median,
+            speed_limit_kmh=60.0,
+            lanes=_EASTBOUND_LANES,
+        )
+        wb_id = b.add_road(
+            "Turan Avenue",
+            key=f"{key}-wb",
+            road_type=RoadType.ARTERIAL,
+            points=[
+                (x_end, _TURAN_Y),
+                (mid_x, _TURAN_Y - offset_m),
+                (x_start, _TURAN_Y),
+            ],
+            one_way=True,
+            median=median,
+            speed_limit_kmh=60.0,
+            lanes=_WESTBOUND_LANES,
+        )
+        return eb_id, wb_id
+
+    eb0, wb0 = _turan_segment("turan-0", 0.0, 80.0, 6.0)
+    eb1, wb1 = _turan_segment("turan-1", 80.0, 200.0, 6.0)
+    eb2, wb2 = _turan_segment("turan-2", 200.0, 220.0, 3.0)
+    eb3, wb3 = _turan_segment("turan-3", 220.0, 320.0, 6.0)
+    eb4, wb4 = _turan_segment("turan-4", 320.0, 400.0, 6.0)
 
     # --- Zhastar Street: secondary arterial, undivided, 4 lanes total,
     # with a lane drop northbound and lane addition (same segment pair,
@@ -206,7 +241,7 @@ def build_demo_district() -> CityCreate:
         "Zhastar Street",
         key="zhastar-north-near",
         road_type=RoadType.ARTERIAL,
-        points=[(200.0, 152.0), (200.0, 220.0)],
+        points=[(200.0, 150.0), (200.0, 220.0)],
         one_way=True,
         speed_limit_kmh=50.0,
         lanes=[
@@ -240,7 +275,7 @@ def build_demo_district() -> CityCreate:
         "Zhastar Street",
         key="zhastar-south",
         road_type=RoadType.ARTERIAL,
-        points=[(200.0, 300.0), (200.0, 148.0)],
+        points=[(200.0, 300.0), (200.0, 150.0)],
         one_way=True,
         speed_limit_kmh=50.0,
         lanes=[
@@ -255,20 +290,45 @@ def build_demo_district() -> CityCreate:
     )
 
     # --- Samal Street: ordinary two-way local street with parking --------
-    samal = b.add_road(
+    # Split at (320, 150) -- its own crossing with Turan Avenue -- for the
+    # same reason Turan Avenue itself is split above: a road must have a
+    # real endpoint at every junction it connects to, never pass through
+    # as an interior vertex.
+    samal_north = b.add_road(
         "Samal Street",
+        key="samal-north",
         road_type=RoadType.RESIDENTIAL,
-        points=[(320.0, 50.0), (320.0, 150.0), (320.0, 250.0)],
+        points=[(320.0, 50.0), (320.0, 150.0)],
+        one_way=False,
+        speed_limit_kmh=30.0,
+        lanes=[{"index": 0}],
+    )
+    samal_south = b.add_road(
+        "Samal Street",
+        key="samal-south",
+        road_type=RoadType.RESIDENTIAL,
+        points=[(320.0, 150.0), (320.0, 250.0)],
         one_way=False,
         speed_limit_kmh=30.0,
         lanes=[{"index": 0}],
     )
 
     # --- Bereke Lane: one-way local street --------------------------------
-    bereke = b.add_road(
+    # Split at (80, 150) for the same reason.
+    bereke_north = b.add_road(
         "Bereke Lane",
+        key="bereke-north",
         road_type=RoadType.RESIDENTIAL,
-        points=[(80.0, 50.0), (80.0, 150.0), (80.0, 250.0)],
+        points=[(80.0, 50.0), (80.0, 150.0)],
+        one_way=True,
+        speed_limit_kmh=30.0,
+        lanes=[{"index": 0}],
+    )
+    bereke_south = b.add_road(
+        "Bereke Lane",
+        key="bereke-south",
+        road_type=RoadType.RESIDENTIAL,
+        points=[(80.0, 150.0), (80.0, 250.0)],
         one_way=True,
         speed_limit_kmh=30.0,
         lanes=[{"index": 0}],
@@ -307,7 +367,7 @@ def build_demo_district() -> CityCreate:
     zevit_slip = b.add_road(
         "Zevit Slip Road",
         road_type=RoadType.COLLECTOR,
-        points=[(200.0, 220.0), (210.0, 190.0), (220.0, 152.0)],
+        points=[(200.0, 220.0), (210.0, 190.0), (220.0, 150.0)],
         one_way=True,
         speed_limit_kmh=30.0,
         lanes=[{"index": 0}],
@@ -390,14 +450,18 @@ def build_demo_district() -> CityCreate:
 
     # --- Intersections -----------------------------------------------------
     main_intersection_id = _id("intersection", "turan-x-zhastar")
-    main_connected_roads = [eastbound, westbound, zhastar_north_near, zhastar_south]
+    # Only the lanes actually arriving at this junction's stop line are
+    # signal-controlled: eb1 (eastbound approaching from the west) and
+    # wb2 (westbound approaching from the east) -- eb2/wb1 depart the
+    # junction, not approach it.
+    main_connected_roads = [eb1, eb2, wb1, wb2, zhastar_north_near, zhastar_south]
     main_connected_lanes = [
-        b.lane_id("turan-eastbound", 0),
-        b.lane_id("turan-eastbound", 1),
-        b.lane_id("turan-eastbound", 2),
-        b.lane_id("turan-westbound", 0),
-        b.lane_id("turan-westbound", 1),
-        b.lane_id("turan-westbound", 2),
+        b.lane_id("turan-1-eb", 0),
+        b.lane_id("turan-1-eb", 1),
+        b.lane_id("turan-1-eb", 2),
+        b.lane_id("turan-2-wb", 0),
+        b.lane_id("turan-2-wb", 1),
+        b.lane_id("turan-2-wb", 2),
         b.lane_id("zhastar-north-near", 0),
         b.lane_id("zhastar-north-near", 1),
         b.lane_id("zhastar-south", 0),
@@ -425,15 +489,15 @@ def build_demo_district() -> CityCreate:
         IntersectionCreate(
             id=samal_intersection_id,
             position=_pt(320.0, 150.0),
-            connected_road_ids=[eastbound, westbound, samal],
-            connected_lane_ids=[b.lane_id("Samal Street", 0)],
+            connected_road_ids=[eb3, eb4, wb3, wb4, samal_north, samal_south],
+            connected_lane_ids=[b.lane_id("samal-north", 0), b.lane_id("samal-south", 0)],
             control_type=IntersectionControlType.STOP_SIGN,
         ),
         IntersectionCreate(
             id=bereke_intersection_id,
             position=_pt(80.0, 150.0),
-            connected_road_ids=[eastbound, westbound, bereke],
-            connected_lane_ids=[b.lane_id("Bereke Lane", 0)],
+            connected_road_ids=[eb0, eb1, wb0, wb1, bereke_north, bereke_south],
+            connected_lane_ids=[b.lane_id("bereke-north", 0), b.lane_id("bereke-south", 0)],
             control_type=IntersectionControlType.UNCONTROLLED,
         ),
         # Lane-drop node, also where the slip road branches off (a real
@@ -448,15 +512,22 @@ def build_demo_district() -> CityCreate:
         IntersectionCreate(
             id=kokzhiek_junction_id,
             position=_pt(320.0, 250.0),
-            connected_road_ids=[samal, kokzhiek],
+            connected_road_ids=[samal_south, kokzhiek],
             control_type=IntersectionControlType.UNCONTROLLED,
         ),
-        # Skewed merge: the slip road rejoins Turan Avenue at a shallow
-        # angle rather than square-on.
+        # Skewed merge: the slip road rejoins Turan Avenue's eastbound
+        # carriageway at a shallow angle rather than square-on. Both
+        # eastbound sub-segments meeting here (eb2/eb3) are included, same
+        # as any other through-road at a junction -- a merge point is
+        # topologically a 3+-way junction, not an exception (see
+        # geometry/junctionSolver.ts's merge-detection docstring). The
+        # westbound pass-through node at this same x also lands here
+        # (wb2/wb3), a plain 2-road continuation with nothing merging into
+        # it -- generic junction solving handles that gracefully too.
         IntersectionCreate(
             id=slip_road_junction_id,
-            position=_pt(220.0, 152.0),
-            connected_road_ids=[zevit_slip, eastbound],
+            position=_pt(220.0, 150.0),
+            connected_road_ids=[eb2, eb3, wb2, wb3, zevit_slip],
             control_type=IntersectionControlType.UNCONTROLLED,
         ),
         # Dead-end turn-around: Zhastar Street's far northbound segment
@@ -473,7 +544,7 @@ def build_demo_district() -> CityCreate:
         IntersectionCreate(
             id=_id("intersection", "zharyq-fork"),
             position=_pt(80.0, 50.0),
-            connected_road_ids=[zharyq_approach, bereke, zharyq_alley],
+            connected_road_ids=[zharyq_approach, bereke_north, zharyq_alley],
             control_type=IntersectionControlType.UNCONTROLLED,
         ),
         # Diverge/split: one single-lane approach forking into two
@@ -505,12 +576,12 @@ def build_demo_district() -> CityCreate:
                     id=ew_group_id,
                     name="East-West",
                     controlled_lane_ids=[
-                        b.lane_id("turan-eastbound", 0),
-                        b.lane_id("turan-eastbound", 1),
-                        b.lane_id("turan-eastbound", 2),
-                        b.lane_id("turan-westbound", 0),
-                        b.lane_id("turan-westbound", 1),
-                        b.lane_id("turan-westbound", 2),
+                        b.lane_id("turan-1-eb", 0),
+                        b.lane_id("turan-1-eb", 1),
+                        b.lane_id("turan-1-eb", 2),
+                        b.lane_id("turan-2-wb", 0),
+                        b.lane_id("turan-2-wb", 1),
+                        b.lane_id("turan-2-wb", 2),
                     ],
                 ),
             ],
@@ -534,8 +605,8 @@ def build_demo_district() -> CityCreate:
     parking_zones = [
         ParkingZoneCreate(
             id=_id("parking", "samal-street"),
-            road_id=samal,
-            lane_id=b.lane_id("Samal Street", 0),
+            road_id=samal_north,
+            lane_id=b.lane_id("samal-north", 0),
             allowed=True,
             side=ParkingSide.RIGHT,
             capacity=12,
@@ -545,14 +616,14 @@ def build_demo_district() -> CityCreate:
     bus_stops = [
         BusStopCreate(
             id=_id("bus-stop", "turan-eastbound-near-samal"),
-            road_id=eastbound,
+            road_id=eb1,
             position_x=90.0,
-            position_y=152.0,
+            position_y=_TURAN_Y,
             name="Turan Avenue / Samal Street",
         ),
         BusStopCreate(
             id=_id("bus-stop", "samal-street"),
-            road_id=samal,
+            road_id=samal_north,
             position_x=320.0,
             position_y=100.0,
             name="Samal Street",
@@ -568,11 +639,11 @@ def build_demo_district() -> CityCreate:
             position_ratio=0.95,
         ),
         # Pedestrian crossing at the Samal Street / Turan Avenue stop-sign
-        # junction.
+        # junction, just before Samal Street's north segment reaches it.
         CrosswalkCreate(
             id=_id("crosswalk", "samal-at-turan"),
-            road_id=samal,
-            position_ratio=0.5,
+            road_id=samal_north,
+            position_ratio=0.95,
         ),
     ]
 
