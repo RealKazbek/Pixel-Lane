@@ -88,19 +88,34 @@ one-off `--my-component-color`.
 
 ## The map / City Model workspace
 
-`frontend/src/features/city-viewer/map/styles/` (`mapStyle.ts`,
-`roadStyle.ts`) intentionally keeps its **own** fixed, neutral
-"engineering map" palette (a light stone/slate road-surface scale on a
-light canvas background) — this is a deliberate, self-contained
-visualization convention, like a real GIS tool's map canvas, and was
-never theme-reactive even before this system existed; it is unaffected by
-the app's Light/Dark toggle by design, not by omission. What *does* use
-the shared tokens, and was audited/migrated for the explicit toggle, is
-everything around the canvas: the toolbar (`MapToolbar.tsx`), the layer
-visibility control (`MapLayersToggle.tsx`), the selected-object details
-panel, and the sidebar — these already used `dark:` utilities and now
-correctly follow an explicit theme choice via the `@custom-variant`
-change above.
+`frontend/src/features/city-viewer/map/styles/mapTheme.ts` defines the
+map canvas's **own** Light/Dark token set (`MapThemeColors`) — a
+self-contained "engineering map" palette (road asphalt/casing per
+hierarchy, lane markings, labels+halos, junction markers, traffic
+lights, bus/parking colors and badge icons), separate from the shared
+app tokens in `globals.css`, but no longer fixed to one variant. This
+reverses an earlier decision (the map canvas was originally exempt from
+the Light/Dark toggle by design, like a fixed GIS tool palette); it is
+now held to the same Definition-of-Done as any other user-facing surface
+(AGENTS.md § 21) — a dark-mode user must not get a jarring light map
+under dark chrome, and every label must stay readable in both themes.
+
+Every `map/layers/*.ts` builder function takes a `MapThemeColors`
+argument (`roadStyle.ts` itself stays theme-agnostic — width/hierarchy
+math only, not colors). `PixelLaneMap.tsx` resolves the current theme via
+`next-themes`'s `useTheme().resolvedTheme` (the one sanctioned exception
+to "read a CSS custom property" — MapLibre paint expressions can't do
+that) and calls `layers/setupLayers.ts`'s `updatePixelLaneTheme()` on a
+theme change, which re-paints every Pixel Lane layer and re-registers the
+bus/parking badge icons (`layers/icons.ts`) in place, without touching
+sources/data or reloading the map — the map updates immediately, per
+AGENTS.md § 21's "no reload" requirement.
+
+What *also* uses the shared app tokens, unchanged from before: the
+toolbar (`MapToolbar.tsx`), the layer visibility control
+(`MapLayersToggle.tsx`), the selected-object details panel, and the
+sidebar — these use `dark:` utilities and follow an explicit theme choice
+via the `@custom-variant` change above, same as any other UI chrome.
 
 ## Persistence
 

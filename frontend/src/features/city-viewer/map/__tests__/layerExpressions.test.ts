@@ -9,9 +9,13 @@ import { buildRoadLayers } from "../layers/roadLayers";
 import { buildRoadSurfaceLayers } from "../layers/roadSurfaceLayers";
 import { buildLaneDetailLayers } from "../layers/laneDetailLayers";
 import { SOURCE_IDS } from "../layers/layerIds";
+import { DARK_MAP_THEME, LIGHT_MAP_THEME } from "../styles/mapTheme";
 
 describe("Pixel Lane layer expressions", () => {
-  it("uses style-spec-valid expressions for every custom layer", () => {
+  it.each([
+    ["light", LIGHT_MAP_THEME],
+    ["dark", DARK_MAP_THEME],
+  ])("uses style-spec-valid expressions for every custom layer (%s theme)", (_name, theme) => {
     const emptyCollection = {
       type: "FeatureCollection" as const,
       features: [],
@@ -25,12 +29,12 @@ describe("Pixel Lane layer expressions", () => {
         ]),
       ),
       layers: [
-        ...buildRoadLayers(43.24),
-        ...buildRoadSurfaceLayers(),
-        ...buildLaneDetailLayers(),
-        ...buildIntersectionLayers(),
-        buildTrafficLightLayer(),
-        buildRoadLabelLayer(),
+        ...buildRoadLayers(43.24, theme),
+        ...buildRoadSurfaceLayers(theme),
+        ...buildLaneDetailLayers(theme),
+        ...buildIntersectionLayers(theme),
+        buildTrafficLightLayer(theme),
+        buildRoadLabelLayer(theme),
       ],
     });
 

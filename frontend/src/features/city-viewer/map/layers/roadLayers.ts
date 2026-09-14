@@ -6,12 +6,10 @@ import {
   SURFACE_DETAIL_MIN_ZOOM,
 } from "./zoomThresholds";
 import {
-  ROAD_CASING_COLOR,
   ROAD_CASING_MIN_PIXEL_WIDTH,
   ROAD_MIN_PIXEL_WIDTH,
-  ROAD_SURFACE_COLOR,
-  SELECTED_COLOR,
 } from "../styles/roadStyle";
+import type { MapThemeColors } from "../styles/mapTheme";
 
 const roadVisibility: ExpressionSpecification = [
   "any",
@@ -43,6 +41,7 @@ function matchOnHierarchy<T extends string | number>(
  * road never requires rebuilding or re-sending the whole road dataset. */
 export function buildRoadLayers(
   referenceLatitudeDeg: number,
+  theme: MapThemeColors,
 ): LayerSpecification[] {
   const surfaceWidth = roadWidthPixelsExpression(
     referenceLatitudeDeg,
@@ -97,8 +96,8 @@ export function buildRoadLayers(
       "line-color": [
         "case",
         isSelected,
-        SELECTED_COLOR,
-        matchOnHierarchy(ROAD_CASING_COLOR, ROAD_CASING_COLOR.OTHER),
+        theme.selected,
+        matchOnHierarchy(theme.roadCasing, theme.roadCasing.OTHER),
       ] as ExpressionSpecification,
       "line-width": casingWidth,
     },
@@ -115,8 +114,8 @@ export function buildRoadLayers(
       "line-color": [
         "case",
         isSelected,
-        "#dbeafe", // blue-100 -- selected surface reads as "lit up", casing carries the accent color
-        matchOnHierarchy(ROAD_SURFACE_COLOR, ROAD_SURFACE_COLOR.OTHER),
+        theme.selectedSurface,
+        matchOnHierarchy(theme.roadAsphalt, theme.roadAsphalt.OTHER),
       ] as ExpressionSpecification,
       "line-width": surfaceWidth,
     },
@@ -139,7 +138,7 @@ export function buildRoadLayers(
     filter: [">", ["get", "lane_count"], 1],
     layout: { "line-cap": "butt", "line-join": "round" },
     paint: {
-      "line-color": "#fafaf9",
+      "line-color": theme.laneMarking,
       "line-opacity": 0.85,
       "line-width": 1,
       "line-dasharray": [3, 3],
@@ -152,7 +151,7 @@ export function buildRoadLayers(
     source: SOURCE_IDS.roads,
     layout: { "line-cap": "round", "line-join": "round" },
     paint: {
-      "line-color": SELECTED_COLOR,
+      "line-color": theme.selected,
       "line-width": selectionWidth,
       // MapLibre permits feature-state in paint expressions, but not in a
       // layer filter. Keeping unselected features transparent preserves the

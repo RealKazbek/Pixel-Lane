@@ -1,6 +1,6 @@
 /**
  * Close-zoom lane-detail layers (Road + Lane Representation V1): lane
- * separators, bus-lane surface/label, parking/cycleway schematic
+ * separators, bus-lane surface/badge, parking/cycleway schematic
  * markings, and turn arrows -- everything driven by
  * `adapters/laneGeometry.ts`'s derived GeoJSON, never by re-deriving
  * geometry in a paint expression (see map/README.md's performance notes).
@@ -9,19 +9,30 @@
  * parking (dashed) and cycleway (solid) each get their own layer instead
  * of one layer switching style via a `case` expression -- see
  * roadLayers.ts's `laneMarkings` comment for the same constraint.
+ *
+ * Bus/parking markings are `icon-image` badges (`layers/icons.ts`), not
+ * repeated plain text -- see that file's docstring for why (controlled
+ * on-screen spacing + real icon collision detection, replacing a
+ * cluttered "A A A A A A..." every ~80m).
  */
 
 import type { LayerSpecification } from "maplibre-gl";
+import { ICON_IDS } from "./icons";
 import { LAYER_IDS, SOURCE_IDS } from "./layerIds";
 import { LANE_DETAIL_MIN_ZOOM, LANE_LABEL_MIN_ZOOM } from "./zoomThresholds";
+import type { MapThemeColors } from "../styles/mapTheme";
 
-const BUS_LANE_COLOR = "#c2410c"; // orange-700 -- reads as "bus lane" without copying any specific real-world scheme
-const PARKING_MARKING_COLOR = "#78716c"; // stone-500
-const CYCLEWAY_COLOR = "#16a34a"; // green-600 -- conventional "bike" association, not copied styling
-const SEPARATOR_COLOR = "#fafaf9"; // near-white, like a painted lane line
-const EDGE_COLOR = "#1c1917"; // stone-900, matches ROAD_CASING_COLOR.HIGHWAY
+/** Screen-pixel spacing between repeated badges along a lane -- large
+ * enough that a normal city block shows at most one or two, never a
+ * dense repeated stencil. */
+const BADGE_SYMBOL_SPACING_PX = 220;
 
-export function buildLaneDetailLayers(): LayerSpecification[] {
+export function buildLaneDetailLayers(theme: MapThemeColors): LayerSpecification[] {
+  const BUS_LANE_COLOR = theme.busLane;
+  const PARKING_MARKING_COLOR = theme.parking;
+  const CYCLEWAY_COLOR = theme.cycleway;
+  const SEPARATOR_COLOR = theme.laneMarking;
+  const EDGE_COLOR = theme.roadCasing.HIGHWAY;
   const laneBusSurface: LayerSpecification = {
     id: LAYER_IDS.laneBusSurface,
     type: "line",
@@ -52,16 +63,15 @@ export function buildLaneDetailLayers(): LayerSpecification[] {
     filter: ["==", ["get", "is_bus"], true],
     layout: {
       "symbol-placement": "line",
-      "symbol-spacing": 80,
-      "text-field": "A",
-      "text-size": 12,
-      "text-font": ["Noto Sans Regular"],
+      "symbol-spacing": BADGE_SYMBOL_SPACING_PX,
+      "icon-image": ICON_IDS.busLaneBadge,
+      "icon-size": 0.6,
+      "icon-rotation-alignment": "map",
+      "icon-allow-overlap": false,
+      "icon-ignore-placement": false,
+      "icon-padding": 4,
     },
-    paint: {
-      "text-color": "#fff7ed",
-      "text-halo-color": BUS_LANE_COLOR,
-      "text-halo-width": 1.5,
-    },
+    paint: {},
   };
 
   const laneBoundaryEdge: LayerSpecification = {
@@ -108,8 +118,8 @@ export function buildLaneDetailLayers(): LayerSpecification[] {
       "text-ignore-placement": true,
     },
     paint: {
-      "text-color": "#fafaf9",
-      "text-halo-color": "#1c1917",
+      "text-color": theme.laneMarking,
+      "text-halo-color": theme.roadCasing.HIGHWAY,
       "text-halo-width": 1.2,
     },
   };
@@ -136,16 +146,15 @@ export function buildLaneDetailLayers(): LayerSpecification[] {
     filter: ["==", ["get", "kind"], "parking"],
     layout: {
       "symbol-placement": "line",
-      "symbol-spacing": 100,
-      "text-field": "P",
-      "text-size": 11,
-      "text-font": ["Noto Sans Regular"],
+      "symbol-spacing": BADGE_SYMBOL_SPACING_PX,
+      "icon-image": ICON_IDS.parkingBadge,
+      "icon-size": 0.55,
+      "icon-rotation-alignment": "map",
+      "icon-allow-overlap": false,
+      "icon-ignore-placement": false,
+      "icon-padding": 4,
     },
-    paint: {
-      "text-color": "#fafaf9",
-      "text-halo-color": PARKING_MARKING_COLOR,
-      "text-halo-width": 1.2,
-    },
+    paint: {},
   };
 
   const laneCyclewayLine: LayerSpecification = {

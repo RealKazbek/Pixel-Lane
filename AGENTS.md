@@ -674,10 +674,12 @@ custom properties defined once in `frontend/src/app/globals.css`.
 - verify (by code inspection, and visually when a browser is available)
   that a UI change reads correctly in both Light and Dark before calling
   it done;
-- keep the map/City Model workspace's own canvas styling (which is a
-  self-contained engineering-map palette, not app chrome) and the
+- keep the map/City Model workspace's own canvas styling (a
+  self-contained engineering-map palette with its own Light/Dark tokens
+  in `map/styles/mapTheme.ts`, not the shared app tokens) and the
   surrounding overlay/toolbar/panel chrome (which *does* use the shared
-  tokens) conceptually distinct — see `docs/theming.md`;
+  `globals.css` tokens) conceptually distinct, while both must still read
+  correctly in both Light and Dark — see `docs/theming.md`;
 - localize any new theme-switcher-adjacent labels through the existing
   i18n system for `kk`/`ru`/`en`, per § 20 — a theme feature is still a
   user-facing feature.

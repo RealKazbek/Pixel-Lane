@@ -16,11 +16,7 @@
 import type { ExpressionSpecification, LayerSpecification } from "maplibre-gl";
 import { LAYER_IDS, SOURCE_IDS } from "./layerIds";
 import { SURFACE_DETAIL_MIN_ZOOM } from "./zoomThresholds";
-import {
-  ROAD_CASING_COLOR,
-  ROAD_SURFACE_COLOR,
-  SELECTED_COLOR,
-} from "../styles/roadStyle";
+import type { MapThemeColors } from "../styles/mapTheme";
 
 function matchOnHierarchy<T extends string | number>(
   values: Record<string, T>,
@@ -38,7 +34,7 @@ function matchOnHierarchy<T extends string | number>(
   ] as unknown as ExpressionSpecification;
 }
 
-export function buildRoadSurfaceLayers(): LayerSpecification[] {
+export function buildRoadSurfaceLayers(theme: MapThemeColors): LayerSpecification[] {
   const isSelected: ExpressionSpecification = [
     "boolean",
     ["feature-state", "selected"],
@@ -54,8 +50,8 @@ export function buildRoadSurfaceLayers(): LayerSpecification[] {
       "fill-color": [
         "case",
         isSelected,
-        "#dbeafe", // blue-100, matches the old line-based selection surface tint
-        matchOnHierarchy(ROAD_SURFACE_COLOR, ROAD_SURFACE_COLOR.OTHER),
+        theme.selectedSurface,
+        matchOnHierarchy(theme.roadAsphalt, theme.roadAsphalt.OTHER),
       ] as ExpressionSpecification,
     },
   };
@@ -70,8 +66,8 @@ export function buildRoadSurfaceLayers(): LayerSpecification[] {
       "line-color": [
         "case",
         isSelected,
-        SELECTED_COLOR,
-        matchOnHierarchy(ROAD_CASING_COLOR, ROAD_CASING_COLOR.OTHER),
+        theme.selected,
+        matchOnHierarchy(theme.roadCasing, theme.roadCasing.OTHER),
       ] as ExpressionSpecification,
       "line-width": 1.5,
     },

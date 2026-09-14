@@ -104,25 +104,11 @@ export const ROAD_CASING_MIN_PIXEL_WIDTH: Record<RoadHierarchy, number> =
     ]),
   ) as Record<RoadHierarchy, number>;
 
-export const ROAD_SURFACE_COLOR: Record<RoadHierarchy, string> = {
-  HIGHWAY: "#78716c", // stone-500 -- lighter surface reads as "paved", not a graph edge
-  ARTERIAL: "#a8a29e", // stone-400
-  COLLECTOR: "#c4b8ac", // warm light stone
-  RESIDENTIAL: "#e5e1da", // near-white warm gray, like light pavement
-  SERVICE: "#ece8e1",
-  OTHER: "#d6d2ca",
-};
-
-export const ROAD_CASING_COLOR: Record<RoadHierarchy, string> = {
-  HIGHWAY: "#1c1917", // stone-900
-  ARTERIAL: "#292524", // stone-800
-  COLLECTOR: "#44403c", // stone-700
-  RESIDENTIAL: "#57534e", // stone-600
-  SERVICE: "#78716c", // stone-500
-  OTHER: "#57534e",
-};
-
-export const SELECTED_COLOR = "#2563eb"; // blue-600
+// Road/casing/selection colors used to live here as flat constants. They
+// are now Light/Dark-themed tokens in `styles/mapTheme.ts`
+// (`MapThemeColors.roadAsphalt`/`roadCasing`/`selected`/`selectedSurface`)
+// -- this file stays theme-agnostic (width/hierarchy math only) so it has
+// no reason to change when a theme's palette does.
 
 /** Draw-priority rank per hierarchy, used both for label collision
  * priority (lower wins) and for deciding which roads get labeled first

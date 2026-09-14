@@ -10,6 +10,7 @@
  */
 
 import { useCallback, useEffect, useMemo, useRef } from "react";
+import { useTheme } from "next-themes";
 import type { Map as MapLibreMap, MapLayerMouseEvent } from "maplibre-gl";
 import { useMapLibreMap } from "./hooks/useMapLibreMap";
 import {
@@ -43,10 +44,12 @@ import {
   setLayerGroupVisibility,
   setSelectedFeature,
   updatePixelLaneData,
+  updatePixelLaneTheme,
   type PixelLaneGeoJson,
 } from "./layers/setupLayers";
 import { SOURCE_IDS, LAYER_IDS } from "./layers/layerIds";
 import { resolveMapStyle } from "./styles/mapStyle";
+import { resolveMapTheme } from "./styles/mapTheme";
 import type { City } from "../types/city";
 import type { LayerVisibility, MapMode, MapSelection } from "./types";
 
@@ -105,8 +108,19 @@ export function PixelLaneMap({
   const editor = useGeometryEditor();
   const appliedStyleKeyRef = useRef<string | null>(null);
 
+  // `next-themes`'s resolved appearance ("system" already resolved to
+  // "light"/"dark") -- the one sanctioned exception to "consume the
+  // shared CSS tokens" for a non-CSS consumer (see docs/theming.md): a
+  // MapLibre paint expression can't read a CSS custom property, so the
+  // current theme is threaded through explicitly instead.
+  const { resolvedTheme } = useTheme();
+  const mapTheme = useMemo(
+    () => resolveMapTheme(resolvedTheme === "dark" ? "dark" : "light"),
+    [resolvedTheme],
+  );
+
   const { mapRef, isLoaded } = useMapLibreMap(containerRef, {
-    style: resolveMapStyle(basemapEnabled, mapStyleUrl),
+    style: resolveMapStyle(basemapEnabled, mapStyleUrl, mapTheme.background),
     // A reasonable initial guess only -- the fit-to-view effect below runs
     // right after load and corrects this to the city's actual bounds. Still
     // worth getting right: it's what's briefly visible before that fit runs.
@@ -228,7 +242,7 @@ export function PixelLaneMap({
   // feature-state are all refreshed from the City Model and React state.
   const ensurePixelLaneLayers = useCallback(
     (map: MapLibreMap) => {
-      addPixelLaneSourcesAndLayers(map, geoJson, referenceLatitude);
+      addPixelLaneSourcesAndLayers(map, geoJson, referenceLatitude, mapTheme);
       setLayerGroupVisibility(map, overlayVisible, layerVisibility);
       applyCurrentSelection(map);
     },
@@ -238,6 +252,7 @@ export function PixelLaneMap({
       overlayVisible,
       layerVisibility,
       referenceLatitude,
+      mapTheme,
     ],
   );
 
@@ -277,7 +292,7 @@ export function PixelLaneMap({
     // quickly, and the overlay must be restored after—not before—the new
     // style is ready.
     map.once("style.load", () => ensurePixelLaneLayers(map));
-    map.setStyle(resolveMapStyle(basemapEnabled, mapStyleUrl));
+    map.setStyle(resolveMapStyle(basemapEnabled, mapStyleUrl, mapTheme.background));
     appliedStyleKeyRef.current = styleKey;
   }, [
     basemapEnabled,
@@ -286,6 +301,39 @@ export function PixelLaneMap({
     mapRef,
     mapStyleUrl,
     styleKey,
+    mapTheme,
+  ]);
+
+  // Theme change (Light/Dark/System resolving differently): re-paint
+  // every Pixel Lane layer + icon badge in place, without touching
+  // sources/data or requiring a style reload -- the map must update
+  // immediately (see AGENTS.md 21's Definition of Done for a
+  // user-facing surface). Only needed for a genuine theme change after
+  // the initial layer setup above already applied the theme once.
+  const previousThemeRef = useRef(mapTheme);
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map || !isLoaded) return;
+    if (previousThemeRef.current === mapTheme) return;
+    previousThemeRef.current = mapTheme;
+    updatePixelLaneTheme(map, referenceLatitude, mapTheme);
+    setLayerGroupVisibility(map, overlayVisible, layerVisibility);
+    applyCurrentSelection(map);
+    if (map.getLayer("pixel-lane-empty-background")) {
+      map.setPaintProperty(
+        "pixel-lane-empty-background",
+        "background-color",
+        mapTheme.background,
+      );
+    }
+  }, [
+    mapTheme,
+    isLoaded,
+    mapRef,
+    referenceLatitude,
+    overlayVisible,
+    layerVisibility,
+    applyCurrentSelection,
   ]);
 
   // Fit-to-view: on demand (button) and whenever the city itself changes.

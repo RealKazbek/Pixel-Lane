@@ -1,9 +1,6 @@
 import type { ExpressionSpecification, LayerSpecification } from "maplibre-gl";
 import { LAYER_IDS, SOURCE_IDS } from "./layerIds";
-import { SELECTED_COLOR } from "../styles/roadStyle";
-
-const JUNCTION_FILL = "#78716c"; // stone-500, close to the road surface tones
-const JUNCTION_STROKE = "#1c1917"; // stone-900
+import type { MapThemeColors } from "../styles/mapTheme";
 
 const isSelected: ExpressionSpecification = [
   "boolean",
@@ -45,7 +42,7 @@ function circleRadiusExpression(
   ] as ExpressionSpecification;
 }
 
-export function buildIntersectionLayers(): LayerSpecification[] {
+export function buildIntersectionLayers(theme: MapThemeColors): LayerSpecification[] {
   const radius = circleRadiusExpression(8, [
     [13, 1.2],
     [16, 2.6],
@@ -56,14 +53,14 @@ export function buildIntersectionLayers(): LayerSpecification[] {
     "circle-color": [
       "case",
       isSelected,
-      SELECTED_COLOR,
-      JUNCTION_FILL,
+      theme.selected,
+      theme.intersectionFill,
     ] as ExpressionSpecification,
     "circle-stroke-color": [
       "case",
       isSelected,
-      SELECTED_COLOR,
-      JUNCTION_STROKE,
+      theme.selected,
+      theme.intersectionStroke,
     ] as ExpressionSpecification,
     "circle-stroke-width": 1,
     "circle-opacity": 0.9,
@@ -93,7 +90,7 @@ export function buildIntersectionLayers(): LayerSpecification[] {
  * it read as an unrelated stray dot). Not a live phase indicator --
  * Traffic Engine v1 has no signal-timing simulation (see
  * docs/architecture.md). */
-export function buildTrafficLightLayer(): LayerSpecification {
+export function buildTrafficLightLayer(theme: MapThemeColors): LayerSpecification {
   return {
     id: LAYER_IDS.trafficLights,
     type: "circle",
@@ -108,16 +105,16 @@ export function buildTrafficLightLayer(): LayerSpecification {
       "circle-color": [
         "case",
         isSelected,
-        SELECTED_COLOR,
-        "#f59e0b", // amber-500 -- reads as "signal", not "error" (avoids plain red)
+        theme.selected,
+        theme.trafficLight,
       ] as ExpressionSpecification,
-      "circle-stroke-color": "#1c1917",
+      "circle-stroke-color": theme.trafficLightStroke,
       "circle-stroke-width": 1.5,
     },
   };
 }
 
-export function buildRoadLabelLayer(): LayerSpecification {
+export function buildRoadLabelLayer(theme: MapThemeColors): LayerSpecification {
   return {
     id: LAYER_IDS.roadLabels,
     type: "symbol",
@@ -146,8 +143,8 @@ export function buildRoadLabelLayer(): LayerSpecification {
       "symbol-sort-key": ["get", "label_rank"],
     },
     paint: {
-      "text-color": "#292524",
-      "text-halo-color": "#fffdf7",
+      "text-color": theme.roadLabel,
+      "text-halo-color": theme.roadLabelHalo,
       "text-halo-width": 1.6,
     },
   };

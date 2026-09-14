@@ -15,22 +15,26 @@ import type { StyleSpecification } from "maplibre-gl";
  * demo font-glyph endpoint -- text rendering needs *some* SDF glyph
  * source and this is part of the mapping library itself, not a
  * commercial basemap/tile provider. Self-hosting glyphs to drop this
- * too is a reasonable future improvement (see map/README.md). */
-export const EMPTY_STYLE: StyleSpecification = {
-  version: 8,
-  glyphs: "https://demotiles.maplibre.org/font/{fontstack}/{range}.pbf",
-  sources: {},
-  layers: [
-    // A flat, muted canvas color instead of MapLibre's default stark
-    // white/transparent void -- reads as a deliberate engineering-map
-    // background rather than a blank debug screen in Pixel Lane-only mode.
-    {
-      id: "pixel-lane-empty-background",
-      type: "background",
-      paint: { "background-color": "#f2f1ed" },
-    },
-  ],
-};
+ * too is a reasonable future improvement (see map/README.md).
+ *
+ * The background color is the current theme's `background` token
+ * (`styles/mapTheme.ts`) -- a flat, muted canvas rather than MapLibre's
+ * default stark white/transparent void, and correct for both Light and
+ * Dark. */
+export function buildEmptyStyle(backgroundColor: string): StyleSpecification {
+  return {
+    version: 8,
+    glyphs: "https://demotiles.maplibre.org/font/{fontstack}/{range}.pbf",
+    sources: {},
+    layers: [
+      {
+        id: "pixel-lane-empty-background",
+        type: "background",
+        paint: { "background-color": backgroundColor },
+      },
+    ],
+  };
+}
 
 /** Resolves what to hand MapLibre as its `style` -- a configured style
  * URL when the basemap is enabled and one is set, otherwise the empty
@@ -38,9 +42,10 @@ export const EMPTY_STYLE: StyleSpecification = {
 export function resolveMapStyle(
   basemapEnabled: boolean,
   styleUrl: string | null,
+  backgroundColor: string,
 ): string | StyleSpecification {
   if (basemapEnabled && styleUrl) {
     return styleUrl;
   }
-  return EMPTY_STYLE;
+  return buildEmptyStyle(backgroundColor);
 }

@@ -22,6 +22,7 @@ import {
 import { buildRoadLayers } from "./roadLayers";
 import { buildRoadSurfaceLayers } from "./roadSurfaceLayers";
 import { buildLaneDetailLayers } from "./laneDetailLayers";
+import { ensurePixelLaneIcons } from "./icons";
 import {
   LAYER_DRAW_ORDER,
   LAYER_GROUPS,
@@ -29,6 +30,7 @@ import {
   SOURCE_IDS,
 } from "./layerIds";
 import type { LayerVisibility } from "../types";
+import type { MapThemeColors } from "../styles/mapTheme";
 import type {
   IntersectionFeatureCollection,
   LabelFeatureCollection,
@@ -55,11 +57,27 @@ export interface PixelLaneGeoJson {
   roadSurfaces: RoadSurfaceFeatureCollection;
 }
 
+function buildAllLayers(
+  referenceLatitudeDeg: number,
+  theme: MapThemeColors,
+) {
+  return [
+    ...buildRoadLayers(referenceLatitudeDeg, theme),
+    ...buildRoadSurfaceLayers(theme),
+    ...buildLaneDetailLayers(theme),
+    ...buildIntersectionLayers(theme),
+    buildTrafficLightLayer(theme),
+    buildRoadLabelLayer(theme),
+  ];
+}
+
 export function addPixelLaneSourcesAndLayers(
   map: MapLibreMap,
   data: PixelLaneGeoJson,
   referenceLatitudeDeg: number,
+  theme: MapThemeColors,
 ): void {
+  ensurePixelLaneIcons(map, theme.busBadge, theme.parkingBadge);
   if (!map.getSource(SOURCE_IDS.roads)) {
     map.addSource(SOURCE_IDS.roads, { type: "geojson", data: data.roads });
   }
@@ -109,14 +127,7 @@ export function addPixelLaneSourcesAndLayers(
     });
   }
 
-  const layers = [
-    ...buildRoadLayers(referenceLatitudeDeg),
-    ...buildRoadSurfaceLayers(),
-    ...buildLaneDetailLayers(),
-    ...buildIntersectionLayers(),
-    buildTrafficLightLayer(),
-    buildRoadLabelLayer(),
-  ];
+  const layers = buildAllLayers(referenceLatitudeDeg, theme);
   for (const layer of layers) {
     if (!map.getLayer(layer.id)) {
       map.addLayer(layer);
@@ -129,6 +140,31 @@ export function addPixelLaneSourcesAndLayers(
     if (map.getLayer(layerId)) {
       map.moveLayer(layerId);
     }
+  }
+}
+
+/** Re-applies every Pixel Lane layer's paint for a new theme without
+ * touching sources/data -- layers are cheap metadata, so this removes
+ * and re-adds them with the new theme's colors baked in, rather than
+ * hand-tracking every individual `setPaintProperty` call across each
+ * layer file. Icon badges are re-registered too (`ensurePixelLaneIcons`
+ * is idempotent). Callers must re-apply layer-group visibility and
+ * selection feature-state afterward (both are independent of layer
+ * identity) -- see `PixelLaneMap.tsx`'s `ensurePixelLaneLayers`. */
+export function updatePixelLaneTheme(
+  map: MapLibreMap,
+  referenceLatitudeDeg: number,
+  theme: MapThemeColors,
+): void {
+  ensurePixelLaneIcons(map, theme.busBadge, theme.parkingBadge);
+  for (const layerId of LAYER_DRAW_ORDER) {
+    if (map.getLayer(layerId)) map.removeLayer(layerId);
+  }
+  for (const layer of buildAllLayers(referenceLatitudeDeg, theme)) {
+    map.addLayer(layer);
+  }
+  for (const layerId of LAYER_DRAW_ORDER) {
+    if (map.getLayer(layerId)) map.moveLayer(layerId);
   }
 }
 
