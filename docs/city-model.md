@@ -114,3 +114,69 @@ limits; public `CityCreate` limits and HTTP request-size protection remain.
 `city_service.replace_imported_city` validates before atomic replacement,
 with per-city advisory locking in the repository. Simulation remains behind
 the existing backend adapter.
+
+## Lane data parsing (City Model Part 2A)
+
+Added by migration `f3b7c1d92a58`, on top of Part 1. This is normalized
+lane *metadata* only -- no lane geometry, no lane rendering, no
+intersection lane connectivity (later roadmap parts).
+
+- `Road.forward_lane_count` / `backward_lane_count` / `both_ways_lane_count`
+  -- raw OSM `lanes:forward` / `lanes:backward` / `lanes:both_ways` tag
+  values for the *original* (possibly two-way) way this Road was derived
+  from, kept regardless of which direction this particular Road
+  represents (see `mapper._map_edge`). `NULL` means the tag was absent --
+  **never** an inferred/split value.
+- `Road.lane_count_quality` (`SOURCE`/`INFERRED`/`FALLBACK`/`UNKNOWN`,
+  `LaneCountQuality`) -- confidence of this Road's own generated lane
+  count (`len(lanes)`, i.e. how many `Lane` rows exist for it):
+  `SOURCE` when an explicit per-direction tag matched this Road's own
+  direction; `INFERRED` when `oneway=yes` let a generic `lanes=*` total
+  safely apply to the single direction; `FALLBACK` when nothing usable
+  existed, including an ambiguous two-way `lanes=*` total with no
+  directional breakdown -- **a two-way `lanes=4` is never split into
+  2+2**, it falls back to `DEFAULT_LANE_COUNT` instead, explicitly marked
+  as a guess. `UNKNOWN` is reserved for the observation-only full-import
+  mode, which never synthesizes a fallback (returns `count=0`).
+- `Lane.allowed_turns` -- normalized `turn:lanes=*` tokens
+  (`TurnLaneType`: `LEFT`/`SLIGHT_LEFT`/`THROUGH`/`SLIGHT_RIGHT`/`RIGHT`/
+  `REVERSE`/`MERGE_TO_LEFT`/`MERGE_TO_RIGHT`/`NONE`), one group per lane,
+  supporting multiple turns per lane (`through;right`). `NULL` = no
+  reliable data for the whole road (tag absent, or discarded because its
+  lane-group count didn't match the resolved lane count); an empty group
+  (`[]`) = the tag was present and trustworthy but asserted nothing for
+  that specific lane (OSM's empty-segment convention, e.g.
+  `"through||right"`) -- these are deliberately distinct.
+- `Lane.lane_change` -- normalized `change:lanes=*` value
+  (`LaneChangePermission`: `YES`/`NO`/`NOT_LEFT`/`NOT_RIGHT`/`ONLY_LEFT`/
+  `ONLY_RIGHT`), `NULL` when not provided or unreliable, same
+  mismatch-discard rule as `allowed_turns`.
+
+**Lane ordering.** Lane `index` is now a documented convention (it had
+none before Part 2A): index `0` is the **leftmost lane in this Road's own
+direction of travel**, ascending to the right -- this matches OSM's own
+`turn:lanes`/`change:lanes` left-to-right convention, so token position
+maps directly onto `index` with no reversal.
+
+**Direction selection.** An unsuffixed `turn:lanes`/`change:lanes` tag is
+only ever applied when the way is `oneway=yes` (the single direction is
+unambiguous). On a two-way way, only the `:forward`/`:backward`-suffixed
+tag matching this edge's actual direction (via OSMnx's `reversed` flag) is
+trusted; an unsuffixed tag on a two-way way is ambiguous and is never
+applied to either direction (see `normalization._select_directional_tag`).
+
+**Malformed data.** If a per-lane tag's pipe-separated group count doesn't
+match the lane count actually resolved for this Road, the whole tag is
+discarded (with a warning) rather than misapplied to the wrong lane
+indices; unsupported tokens are skipped individually with a warning. The
+importer never crashes on malformed lane tags.
+
+**Not implemented in Part 2A** (deferred, not silently dropped): OSM
+`width:lanes` (per-lane width) and `placement`/`placement:forward`/
+`placement:backward` (lane-offset-within-carriageway) are recognized as
+relevant future tags but are not parsed -- both only become useful once
+lane *geometry* exists (a later roadmap part), and parsing them now
+without a geometric consumer would risk stale/unused data drifting from
+the source. Detecting and linking paired divided-arterial carriageways
+(see Part 1's `carriageway_count`) also remains unimplemented; it needs
+real evidence (e.g. OSM relation tags), not a heuristic.

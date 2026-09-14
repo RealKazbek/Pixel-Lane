@@ -38,6 +38,53 @@ class MedianType(StrEnum):
     UNKNOWN = "UNKNOWN"
 
 
+class LaneCountQuality(StrEnum):
+    """Confidence of a Road's own per-direction lane count (`len(lanes)`,
+    i.e. how many `Lane` rows were generated for it).
+
+    `SOURCE` -- an explicit per-direction OSM tag (`lanes:forward` /
+    `lanes:backward`) matched this Road's own direction exactly.
+    `INFERRED` -- no per-direction tag, but the way is `oneway=yes` and a
+    generic `lanes=*` total exists, which safely describes that single
+    direction (see docs/city-model.md Part 2A). `FALLBACK` -- no usable
+    source evidence at all (including an ambiguous two-way `lanes=*` total
+    with no directional breakdown -- NEVER split evenly, see mapper.py);
+    `DEFAULT_LANE_COUNT` was used. `UNKNOWN` -- reserved for
+    observation-only import modes that must not synthesize a fallback."""
+
+    SOURCE = "SOURCE"
+    INFERRED = "INFERRED"
+    FALLBACK = "FALLBACK"
+    UNKNOWN = "UNKNOWN"
+
+
+class TurnLaneType(StrEnum):
+    """Normalized OSM `turn:lanes=*` per-lane token vocabulary. `NONE` is
+    the explicit OSM token meaning "no turn indicated for this lane" --
+    distinct from an empty per-lane group (see normalization.py)."""
+
+    LEFT = "LEFT"
+    SLIGHT_LEFT = "SLIGHT_LEFT"
+    THROUGH = "THROUGH"
+    SLIGHT_RIGHT = "SLIGHT_RIGHT"
+    RIGHT = "RIGHT"
+    REVERSE = "REVERSE"
+    MERGE_TO_LEFT = "MERGE_TO_LEFT"
+    MERGE_TO_RIGHT = "MERGE_TO_RIGHT"
+    NONE = "NONE"
+
+
+class LaneChangePermission(StrEnum):
+    """Normalized OSM `change:lanes=*` per-lane token vocabulary."""
+
+    YES = "YES"
+    NO = "NO"
+    NOT_LEFT = "NOT_LEFT"
+    NOT_RIGHT = "NOT_RIGHT"
+    ONLY_LEFT = "ONLY_LEFT"
+    ONLY_RIGHT = "ONLY_RIGHT"
+
+
 class LaneDirection(StrEnum):
     """Travel direction relative to the road's polyline point order."""
 

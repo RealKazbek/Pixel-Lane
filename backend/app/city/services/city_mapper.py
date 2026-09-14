@@ -11,6 +11,8 @@ from uuid import UUID
 from app.city.domain.enums import (
     CoordinateSystem,
     IntersectionControlType,
+    LaneChangePermission,
+    LaneCountQuality,
     LaneDirection,
     LaneType,
     MedianType,
@@ -19,6 +21,7 @@ from app.city.domain.enums import (
     RoadType,
     TrafficRuleTargetType,
     TrafficRuleType,
+    TurnLaneType,
     VehicleCategory,
 )
 from app.city.domain.geometry import Point, Polyline
@@ -49,6 +52,12 @@ def _to_lane_read(lane: Lane) -> LaneRead:
         allowed_movements=[MovementType(m) for m in lane.allowed_movements],
         lane_type=LaneType(lane.lane_type),
         speed_limit_kmh=lane.speed_limit_kmh,
+        allowed_turns=(
+            [TurnLaneType(t) for t in lane.allowed_turns]
+            if lane.allowed_turns is not None
+            else None
+        ),
+        lane_change=LaneChangePermission(lane.lane_change) if lane.lane_change else None,
     )
 
 
@@ -71,6 +80,10 @@ def to_road_read(road: Road) -> RoadRead:
         level=road.level,
         is_bridge=road.is_bridge,
         is_tunnel=road.is_tunnel,
+        forward_lane_count=road.forward_lane_count,
+        backward_lane_count=road.backward_lane_count,
+        both_ways_lane_count=road.both_ways_lane_count,
+        lane_count_quality=LaneCountQuality(road.lane_count_quality),
         lanes=[_to_lane_read(lane) for lane in road.lanes],
     )
 

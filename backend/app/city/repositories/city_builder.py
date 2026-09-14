@@ -43,6 +43,12 @@ def build_city(payload: CityCreate) -> City:
                 allowed_movements=[m.value for m in lane_data.allowed_movements],
                 lane_type=lane_data.lane_type.value,
                 speed_limit_kmh=lane_data.speed_limit_kmh,
+                allowed_turns=(
+                    [t.value for t in lane_data.allowed_turns]
+                    if lane_data.allowed_turns is not None
+                    else None
+                ),
+                lane_change=lane_data.lane_change.value if lane_data.lane_change else None,
             )
             for lane_data in road_data.lanes
         ]
@@ -68,6 +74,10 @@ def build_city(payload: CityCreate) -> City:
             level=road_data.level,
             is_bridge=road_data.is_bridge,
             is_tunnel=road_data.is_tunnel,
+            forward_lane_count=road_data.forward_lane_count,
+            backward_lane_count=road_data.backward_lane_count,
+            both_ways_lane_count=road_data.both_ways_lane_count,
+            lane_count_quality=road_data.lane_count_quality.value,
             lanes=lanes,
         )
         roads.append(road)

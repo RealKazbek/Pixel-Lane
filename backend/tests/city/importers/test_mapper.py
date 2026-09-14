@@ -32,6 +32,12 @@ def _edge(
     bridge: bool = False,
     tunnel: bool = False,
     level: int = 0,
+    lane_count_quality: str = "FALLBACK",
+    lanes_forward_raw: int | None = None,
+    lanes_backward_raw: int | None = None,
+    lanes_both_ways_raw: int | None = None,
+    turn_lanes: tuple[tuple[str, ...], ...] | None = None,
+    change_lanes: tuple[str | None, ...] | None = None,
 ) -> NormalizedEdge:
     return NormalizedEdge(
         u=u,
@@ -48,6 +54,12 @@ def _edge(
         bridge=bridge,
         tunnel=tunnel,
         level=level,
+        lane_count_quality=lane_count_quality,
+        lanes_forward_raw=lanes_forward_raw,
+        lanes_backward_raw=lanes_backward_raw,
+        lanes_both_ways_raw=lanes_both_ways_raw,
+        turn_lanes=turn_lanes,
+        change_lanes=change_lanes,
     )
 
 
@@ -389,3 +401,53 @@ def test_a_bridge_and_an_unrelated_crossing_road_are_not_merged_into_one_interse
     assert len(result.city.intersections) == 4
     for intersection in result.city.intersections:
         assert len(intersection.connected_road_ids) == 1
+
+
+def test_lane_count_and_change_permissions_are_carried_onto_lane_rows() -> None:
+    network = NormalizedNetwork(
+        nodes=(_node(1, 0.0, 0.0), _node(2, 0.001, 0.0)),
+        edges=(
+            _edge(
+                1,
+                2,
+                lane_count=2,
+                lane_count_quality="SOURCE",
+                lanes_forward_raw=2,
+                lanes_backward_raw=1,
+                turn_lanes=(("LEFT",), ("THROUGH", "RIGHT")),
+                change_lanes=(None, "NO"),
+            ),
+        ),
+    )
+
+    road = _map(network).city.roads[0]
+
+    assert road.lane_count_quality == "SOURCE"
+    assert road.forward_lane_count == 2
+    assert road.backward_lane_count == 1
+    assert road.both_ways_lane_count is None
+    assert [lane.allowed_turns for lane in road.lanes] == [["LEFT"], ["THROUGH", "RIGHT"]]
+    assert [lane.lane_change for lane in road.lanes] == [None, "NO"]
+
+
+def test_no_turn_or_change_lane_data_leaves_lanes_unmarked() -> None:
+    network = NormalizedNetwork(
+        nodes=(_node(1, 0.0, 0.0), _node(2, 0.001, 0.0)),
+        edges=(_edge(1, 2, lane_count=2),),
+    )
+
+    road = _map(network).city.roads[0]
+
+    assert all(lane.allowed_turns is None for lane in road.lanes)
+    assert all(lane.lane_change is None for lane in road.lanes)
+
+
+def test_both_ways_lane_count_is_preserved() -> None:
+    network = NormalizedNetwork(
+        nodes=(_node(1, 0.0, 0.0), _node(2, 0.001, 0.0)),
+        edges=(_edge(1, 2, oneway=False, lanes_both_ways_raw=1),),
+    )
+
+    road = _map(network).city.roads[0]
+
+    assert road.both_ways_lane_count == 1

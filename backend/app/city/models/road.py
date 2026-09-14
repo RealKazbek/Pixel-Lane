@@ -23,6 +23,22 @@ class Road(Base):
         CheckConstraint(
             "median IN ('NONE', 'PAINTED', 'PHYSICAL', 'UNKNOWN')", name="ck_roads_median"
         ),
+        CheckConstraint(
+            "forward_lane_count IS NULL OR forward_lane_count > 0",
+            name="ck_roads_forward_lane_count",
+        ),
+        CheckConstraint(
+            "backward_lane_count IS NULL OR backward_lane_count > 0",
+            name="ck_roads_backward_lane_count",
+        ),
+        CheckConstraint(
+            "both_ways_lane_count IS NULL OR both_ways_lane_count > 0",
+            name="ck_roads_both_ways_lane_count",
+        ),
+        CheckConstraint(
+            "lane_count_quality IN ('SOURCE', 'INFERRED', 'FALLBACK', 'UNKNOWN')",
+            name="ck_roads_lane_count_quality",
+        ),
         Index("ix_roads_geom", "geom", postgresql_using="gist"),
     )
 
@@ -87,6 +103,19 @@ class Road(Base):
     level: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
     is_bridge: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
     is_tunnel: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
+
+    # --- City Model Part 2A: lane data parsing ---------------------------
+    # Raw OSM `lanes:forward` / `lanes:backward` / `lanes:both_ways` tag
+    # values for the *original* (possibly two-way) way this Road was
+    # derived from -- kept regardless of which direction this particular
+    # Road represents (see app.city.importers.osm.mapper). NULL means the
+    # tag was absent, never an inferred split (see docs/city-model.md).
+    forward_lane_count: Mapped[int | None] = mapped_column(Integer)
+    backward_lane_count: Mapped[int | None] = mapped_column(Integer)
+    both_ways_lane_count: Mapped[int | None] = mapped_column(Integer)
+    # SOURCE / INFERRED / FALLBACK / UNKNOWN -- confidence of this Road's
+    # own generated lane count (`len(lanes)`). See LaneCountQuality.
+    lane_count_quality: Mapped[str] = mapped_column(String(20), nullable=False, default="FALLBACK")
 
     city: Mapped["City"] = relationship(back_populates="roads")
     lanes: Mapped[list["Lane"]] = relationship(

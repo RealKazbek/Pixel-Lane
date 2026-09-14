@@ -57,8 +57,8 @@ def test_full_mapping_does_not_fabricate_unknown_data():
 
 def test_directional_lanes_follow_reverse_edge():
     tags = {"lanes:forward": "3", "lanes:backward": "1", "reversed": True}
-    assert parse_lane_count(tags, oneway=False, observed_only=True) == 1
-    assert parse_lane_count({"lanes": "3"}, oneway=False, observed_only=True) == 0
+    assert parse_lane_count(tags, oneway=False, observed_only=True).count == 1
+    assert parse_lane_count({"lanes": "3"}, oneway=False, observed_only=True).count == 0
 
 
 @requires_postgres

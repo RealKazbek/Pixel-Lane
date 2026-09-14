@@ -10,12 +10,14 @@ installed.
 from app.city.importers.osm.normalization import (
     extract_network,
     parse_bridge,
+    parse_change_lanes,
     parse_lane_count,
     parse_level,
     parse_maxspeed_kmh,
     parse_node_control,
     parse_oneway,
     parse_tunnel,
+    parse_turn_lanes,
     parse_width_m,
 )
 
@@ -49,20 +51,178 @@ def test_parse_oneway_missing_defaults_false() -> None:
 
 
 def test_parse_lane_count_uses_directional_tag() -> None:
-    assert parse_lane_count({"lanes:forward": "2"}, oneway=False) == 2
+    result = parse_lane_count({"lanes:forward": "2"}, oneway=False)
+    assert result.count == 2
+    assert result.quality == "SOURCE"
+    assert result.forward_raw == 2
+    assert result.backward_raw is None
 
 
-def test_parse_lane_count_splits_generic_lanes_for_two_way() -> None:
-    assert parse_lane_count({"lanes": "4"}, oneway=False) == 2
+def test_parse_lane_count_does_not_split_generic_lanes_for_two_way() -> None:
+    """Regression: lanes=4, oneway=no must NEVER be inferred as 2+2 -- see
+    the Part 2A audit. With no directional tags this falls back to
+    DEFAULT_LANE_COUNT, explicitly marked FALLBACK, not a guessed split."""
+    result = parse_lane_count({"lanes": "4"}, oneway=False)
+    assert result.count == 1
+    assert result.quality == "FALLBACK"
+    assert result.forward_raw is None
+    assert result.backward_raw is None
 
 
 def test_parse_lane_count_uses_full_generic_lanes_for_oneway() -> None:
-    assert parse_lane_count({"lanes": "3"}, oneway=True) == 3
+    result = parse_lane_count({"lanes": "3"}, oneway=True)
+    assert result.count == 3
+    assert result.quality == "INFERRED"
 
 
 def test_parse_lane_count_fallback_when_no_lane_data() -> None:
-    assert parse_lane_count({}, oneway=False) == 1
-    assert parse_lane_count({}, oneway=True) == 1
+    assert parse_lane_count({}, oneway=False).count == 1
+    assert parse_lane_count({}, oneway=False).quality == "FALLBACK"
+    assert parse_lane_count({}, oneway=True).count == 1
+    assert parse_lane_count({}, oneway=True).quality == "FALLBACK"
+
+
+def test_parse_lane_count_observed_only_never_synthesizes_fallback() -> None:
+    result = parse_lane_count({}, oneway=False, observed_only=True)
+    assert result.count == 0
+    assert result.quality == "UNKNOWN"
+
+
+def test_parse_lane_count_explicit_forward_and_backward_and_both_ways() -> None:
+    result = parse_lane_count(
+        {"lanes": "4", "lanes:forward": "3", "lanes:backward": "1", "lanes:both_ways": "1"},
+        oneway=False,
+    )
+    assert result.count == 3
+    assert result.quality == "SOURCE"
+    assert result.forward_raw == 3
+    assert result.backward_raw == 1
+    assert result.both_ways_raw == 1
+
+
+def test_parse_lane_count_reversed_edge_uses_backward_tag() -> None:
+    """A reversed edge (OSMnx's `reversed=True`, e.g. from `oneway=-1`
+    normalization) must read `lanes:backward`, never `lanes:forward`."""
+    result = parse_lane_count(
+        {"lanes:forward": "3", "lanes:backward": "1", "reversed": True}, oneway=False
+    )
+    assert result.count == 1
+    assert result.quality == "SOURCE"
+
+
+def test_parse_lane_count_malformed_directional_tag_does_not_crash() -> None:
+    result = parse_lane_count({"lanes:forward": "not-a-number", "lanes": "2"}, oneway=True)
+    assert result.count == 2
+    assert result.quality == "INFERRED"
+    assert result.forward_raw is None
+
+
+def test_parse_turn_lanes_single_and_multiple_turns_per_lane() -> None:
+    warnings: list[str] = []
+    result = parse_turn_lanes(
+        {"turn:lanes": "left|through;right"},
+        oneway=True,
+        lane_count=2,
+        warnings=warnings,
+        edge_label="x",
+    )
+    assert result == (("LEFT",), ("THROUGH", "RIGHT"))
+    assert warnings == []
+
+
+def test_parse_turn_lanes_empty_lane_token_is_distinct_from_missing_tag() -> None:
+    warnings: list[str] = []
+    result = parse_turn_lanes(
+        {"turn:lanes": "through||right"},
+        oneway=True,
+        lane_count=3,
+        warnings=warnings,
+        edge_label="x",
+    )
+    assert result == (("THROUGH",), (), ("RIGHT",))
+
+    assert parse_turn_lanes({}, oneway=True, lane_count=1, warnings=[], edge_label="x") is None
+
+
+def test_parse_turn_lanes_unsupported_token_is_skipped_with_warning() -> None:
+    warnings: list[str] = []
+    result = parse_turn_lanes(
+        {"turn:lanes": "left|bogus_token"},
+        oneway=True,
+        lane_count=2,
+        warnings=warnings,
+        edge_label="way 1",
+    )
+    assert result == (("LEFT",), ())
+    assert any("bogus_token" in w and "way 1" in w for w in warnings)
+
+
+def test_parse_turn_lanes_mismatched_lane_count_discards_data_safely() -> None:
+    """Regression: a malformed/stale turn:lanes tag whose group count
+    doesn't match the resolved lane count must never be applied to the
+    wrong lane indices -- discard with a warning instead of crashing or
+    guessing."""
+    warnings: list[str] = []
+    result = parse_turn_lanes(
+        {"turn:lanes": "left|through|right"},
+        oneway=True,
+        lane_count=2,
+        warnings=warnings,
+        edge_label="way 2",
+    )
+    assert result is None
+    assert any("way 2" in w for w in warnings)
+
+
+def test_parse_turn_lanes_two_way_requires_directional_suffix() -> None:
+    """An unsuffixed turn:lanes on a two-way way is ambiguous and must
+    never be applied -- only turn:lanes:forward/:backward are trusted."""
+    result = parse_turn_lanes(
+        {"turn:lanes": "left|right"}, oneway=False, lane_count=2, warnings=[], edge_label="x"
+    )
+    assert result is None
+
+    result_forward = parse_turn_lanes(
+        {"turn:lanes:forward": "left|right"},
+        oneway=False,
+        lane_count=2,
+        warnings=[],
+        edge_label="x",
+    )
+    assert result_forward == (("LEFT",), ("RIGHT",))
+
+    result_backward = parse_turn_lanes(
+        {"turn:lanes:forward": "left|right", "turn:lanes:backward": "through", "reversed": True},
+        oneway=False,
+        lane_count=1,
+        warnings=[],
+        edge_label="x",
+    )
+    assert result_backward == (("THROUGH",),)
+
+
+def test_parse_change_lanes_tokens() -> None:
+    warnings: list[str] = []
+    result = parse_change_lanes(
+        {"change:lanes": "yes|not_left|no"},
+        oneway=True,
+        lane_count=3,
+        warnings=warnings,
+        edge_label="x",
+    )
+    assert result == ("YES", "NOT_LEFT", "NO")
+    assert warnings == []
+
+
+def test_parse_change_lanes_empty_token_is_none_not_a_guess() -> None:
+    result = parse_change_lanes(
+        {"change:lanes": "yes|"}, oneway=True, lane_count=2, warnings=[], edge_label="x"
+    )
+    assert result == ("YES", None)
+
+
+def test_parse_change_lanes_missing_tag_is_unknown() -> None:
+    assert parse_change_lanes({}, oneway=True, lane_count=1, warnings=[], edge_label="x") is None
 
 
 def test_parse_maxspeed_kmh_plain_number() -> None:

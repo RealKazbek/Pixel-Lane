@@ -16,6 +16,23 @@ from app.city.importers.osm.errors import OsmFetchError
 
 DEFAULT_NETWORK_TYPE = "drive"
 
+# Extra way tags needed for City Model Part 2A lane data parsing, beyond
+# OSMnx's own default `useful_tags_way` set (which already includes
+# `lanes`, `oneway`, `width`, `maxspeed`, `bridge`, `tunnel`, `layer`).
+# Without these, the corresponding OSM tags are silently dropped before
+# normalization.py ever sees them -- see docs/city-model.md.
+_LANE_DETAIL_TAGS = (
+    "lanes:forward",
+    "lanes:backward",
+    "lanes:both_ways",
+    "turn:lanes",
+    "turn:lanes:forward",
+    "turn:lanes:backward",
+    "change:lanes",
+    "change:lanes:forward",
+    "change:lanes:backward",
+)
+
 # Local-only HTTP response cache (never committed, never a source of
 # truth -- see backend/.gitignore). Avoids re-fetching Overpass data on
 # every `make import-almaty` run once it's already cached once.
@@ -47,13 +64,7 @@ def fetch_almaty_network(
     ox.settings.overpass_rate_limit = provider == "primary"
     ox.settings.log_console = True
     ox.settings.useful_tags_way = list(
-        dict.fromkeys(
-            [
-                *ox.settings.useful_tags_way,
-                "lanes:forward",
-                "lanes:backward",
-            ]
-        )
+        dict.fromkeys([*ox.settings.useful_tags_way, *_LANE_DETAIL_TAGS])
     )
     if boundary_file is None:
         boundary = ox.geocode_to_gdf("R2465058", by_osmid=True)
@@ -108,10 +119,9 @@ def fetch_almaty_network(
             "name",
             "highway",
             "lanes",
-            "lanes:forward",
-            "lanes:backward",
             "maxspeed",
             "oneway",
+            *_LANE_DETAIL_TAGS,
         ],
         remove_rings=False,
     )
@@ -137,6 +147,9 @@ def fetch_drive_network(center_lat: float, center_lon: float, radius_m: float) -
 
     ox.settings.use_cache = True
     ox.settings.cache_folder = str(_CACHE_DIR)
+    ox.settings.useful_tags_way = list(
+        dict.fromkeys([*ox.settings.useful_tags_way, *_LANE_DETAIL_TAGS])
+    )
 
     try:
         return ox.graph_from_point(

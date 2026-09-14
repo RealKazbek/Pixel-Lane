@@ -26,12 +26,15 @@ from uuid import NAMESPACE_DNS, UUID, uuid5
 from app.city.domain.enums import (
     CoordinateSystem,
     IntersectionControlType,
+    LaneChangePermission,
+    LaneCountQuality,
     LaneDirection,
     MedianType,
     MovementType,
     RoadType,
     TrafficRuleTargetType,
     TrafficRuleType,
+    TurnLaneType,
 )
 from app.city.domain.geometry import Point, Polyline
 from app.city.domain.limits import MAX_LANES_PER_ROAD, MAX_LANES_PER_SIGNAL_GROUP
@@ -102,6 +105,13 @@ def _carriageway_and_median(edge: NormalizedEdge) -> tuple[int, MedianType]:
     return 1, median
 
 
+def _lane_change_for_index(edge: NormalizedEdge, index: int) -> LaneChangePermission | None:
+    if edge.change_lanes is None:
+        return None
+    raw = edge.change_lanes[index]
+    return LaneChangePermission(raw) if raw is not None else None
+
+
 def _map_edge(
     edge: NormalizedEdge, warnings: list[str], *, observed_only: bool = False
 ) -> tuple[RoadCreate, list[UUID]]:
@@ -128,6 +138,12 @@ def _map_edge(
                 direction=LaneDirection.FORWARD,
                 allowed_movements=[] if observed_only else [MovementType.STRAIGHT],
                 speed_limit_kmh=None,
+                allowed_turns=(
+                    [TurnLaneType(t) for t in edge.turn_lanes[index]]
+                    if edge.turn_lanes is not None
+                    else None
+                ),
+                lane_change=_lane_change_for_index(edge, index),
             )
         )
 
@@ -158,6 +174,10 @@ def _map_edge(
         level=edge.level,
         is_bridge=edge.bridge,
         is_tunnel=edge.tunnel,
+        forward_lane_count=edge.lanes_forward_raw,
+        backward_lane_count=edge.lanes_backward_raw,
+        both_ways_lane_count=edge.lanes_both_ways_raw,
+        lane_count_quality=LaneCountQuality(edge.lane_count_quality),
         lanes=lanes,
     )
     return road, lane_ids

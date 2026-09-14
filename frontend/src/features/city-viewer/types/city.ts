@@ -30,6 +30,31 @@ export type ParkingSide = "LEFT" | "RIGHT" | "BOTH";
 
 export type MedianType = "NONE" | "PAINTED" | "PHYSICAL" | "UNKNOWN";
 
+/** Confidence of a Road's own generated lane count -- see backend's
+ * app.city.domain.enums.LaneCountQuality / docs/city-model.md Part 2A. */
+export type LaneCountQuality = "SOURCE" | "INFERRED" | "FALLBACK" | "UNKNOWN";
+
+/** Normalized OSM `turn:lanes=*` per-lane token. */
+export type TurnLaneType =
+  | "LEFT"
+  | "SLIGHT_LEFT"
+  | "THROUGH"
+  | "SLIGHT_RIGHT"
+  | "RIGHT"
+  | "REVERSE"
+  | "MERGE_TO_LEFT"
+  | "MERGE_TO_RIGHT"
+  | "NONE";
+
+/** Normalized OSM `change:lanes=*` per-lane value. */
+export type LaneChangePermission =
+  | "YES"
+  | "NO"
+  | "NOT_LEFT"
+  | "NOT_RIGHT"
+  | "ONLY_LEFT"
+  | "ONLY_RIGHT";
+
 export interface Point {
   x: number;
   y: number;
@@ -47,6 +72,11 @@ export interface Lane {
   allowed_movements: MovementType[];
   lane_type: LaneType;
   speed_limit_kmh: number | null;
+  /** Normalized `turn:lanes=*` groups for this lane. `null`/absent = no
+   * reliable source data (never fabricated); see docs/city-model.md's
+   * Part 2A lane-data audit. Not yet rendered (no lane geometry exists). */
+  allowed_turns?: TurnLaneType[] | null;
+  lane_change?: LaneChangePermission | null;
 }
 
 export interface Road {
@@ -80,6 +110,16 @@ export interface Road {
   level?: number;
   is_bridge?: boolean;
   is_tunnel?: boolean;
+  /** Raw OSM `lanes:forward`/`lanes:backward`/`lanes:both_ways` tag
+   * values for the original way this Road was derived from (regardless
+   * of which direction this Road represents) -- `null`/absent = the tag
+   * was not present, never an inferred split. See docs/city-model.md's
+   * Part 2A lane-data audit. */
+  forward_lane_count?: number | null;
+  backward_lane_count?: number | null;
+  both_ways_lane_count?: number | null;
+  /** Confidence of this Road's own generated lane count (`lanes.length`). */
+  lane_count_quality?: LaneCountQuality;
   lanes: Lane[];
 }
 
