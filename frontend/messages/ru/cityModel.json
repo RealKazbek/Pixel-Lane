@@ -50,7 +50,17 @@
     "laneCount": "Количество полос",
     "speedLimit": "Ограничение скорости",
     "trafficVolume": "Транспортный поток",
-    "capacity": "Пропускная способность"
+    "capacity": "Пропускная способность",
+    "forwardLaneCount": "Полосы прямого направления",
+    "backwardLaneCount": "Полосы встречного направления",
+    "laneCountQuality": "Источник числа полос",
+    "qualitySource": "Данные источника",
+    "qualityInferred": "Выведено",
+    "qualityFallback": "Оценка",
+    "qualityUnknown": "Неизвестно",
+    "busLane": "Полоса для автобусов",
+    "parkingLane": "Парковочная полоса",
+    "cycleway": "Велодорожка"
   },
   "toolbar": {
     "basemapOn": "Подложка вкл.",

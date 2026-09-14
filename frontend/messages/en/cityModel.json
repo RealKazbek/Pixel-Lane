@@ -50,7 +50,17 @@
     "laneCount": "Lane count",
     "speedLimit": "Speed limit",
     "trafficVolume": "Traffic volume",
-    "capacity": "Capacity"
+    "capacity": "Capacity",
+    "forwardLaneCount": "Forward lanes",
+    "backwardLaneCount": "Backward lanes",
+    "laneCountQuality": "Lane count source",
+    "qualitySource": "Source data",
+    "qualityInferred": "Inferred",
+    "qualityFallback": "Estimated",
+    "qualityUnknown": "Unknown",
+    "busLane": "Bus lane",
+    "parkingLane": "Parking lane",
+    "cycleway": "Cycleway"
   },
   "toolbar": {
     "basemapOn": "Basemap on",

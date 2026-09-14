@@ -48,12 +48,15 @@ export type TurnLaneType =
 
 /** Normalized OSM `change:lanes=*` per-lane value. */
 export type LaneChangePermission =
-  | "YES"
-  | "NO"
-  | "NOT_LEFT"
-  | "NOT_RIGHT"
-  | "ONLY_LEFT"
-  | "ONLY_RIGHT";
+  "YES" | "NO" | "NOT_LEFT" | "NOT_RIGHT" | "ONLY_LEFT" | "ONLY_RIGHT";
+
+/** Normalized OSM `parking:lane:*` value -- SOURCE only, never guessed. */
+export type ParkingLaneOrientation =
+  "NONE" | "PARALLEL" | "DIAGONAL" | "PERPENDICULAR" | "MARKED" | "UNKNOWN";
+
+/** Normalized OSM `cycleway*` value. */
+export type CyclewayType =
+  "NONE" | "LANE" | "TRACK" | "SHARED_LANE" | "UNKNOWN";
 
 export interface Point {
   x: number;
@@ -74,7 +77,7 @@ export interface Lane {
   speed_limit_kmh: number | null;
   /** Normalized `turn:lanes=*` groups for this lane. `null`/absent = no
    * reliable source data (never fabricated); see docs/city-model.md's
-   * Part 2A lane-data audit. Not yet rendered (no lane geometry exists). */
+   * Part 2A lane-data audit and the Road+Lane V1 lane-geometry adapter. */
   allowed_turns?: TurnLaneType[] | null;
   lane_change?: LaneChangePermission | null;
 }
@@ -120,6 +123,13 @@ export interface Road {
   both_ways_lane_count?: number | null;
   /** Confidence of this Road's own generated lane count (`lanes.length`). */
   lane_count_quality?: LaneCountQuality;
+  /** Parking/cycleway presence at the road's left/right edge, from OSM
+   * `parking:lane:*`/`cycleway*` -- SOURCE only, never guessed. `UNKNOWN`
+   * (not `NONE`) is the default: an absent tag says nothing about reality. */
+  parking_left?: ParkingLaneOrientation;
+  parking_right?: ParkingLaneOrientation;
+  cycleway_left?: CyclewayType;
+  cycleway_right?: CyclewayType;
   lanes: Lane[];
 }
 
@@ -187,6 +197,16 @@ export interface CitySummary {
   updated_at: string;
 }
 
+/** Lane-level detail for viewport rendering only -- mirrors the backend's
+ * `MapLaneSummary` (deliberately smaller than `Lane`: no id/road_id/
+ * speed_limit/direction). */
+export interface MapLaneSummary {
+  index: number;
+  lane_type: LaneType;
+  allowed_turns?: TurnLaneType[] | null;
+  lane_change?: LaneChangePermission | null;
+}
+
 export type MapRoad = Pick<
   Road,
   | "id"
@@ -200,6 +220,15 @@ export type MapRoad = Pick<
   | "level"
   | "is_bridge"
   | "is_tunnel"
+  | "forward_lane_count"
+  | "backward_lane_count"
+  | "both_ways_lane_count"
+  | "lane_count_quality"
+  | "parking_left"
+  | "parking_right"
+  | "cycleway_left"
+  | "cycleway_right"
 > & {
   lane_count: number;
+  lanes?: MapLaneSummary[];
 };

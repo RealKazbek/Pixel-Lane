@@ -50,7 +50,17 @@
     "laneCount": "Жолақ саны",
     "speedLimit": "Жылдамдық шегі",
     "trafficVolume": "Көлік ағыны",
-    "capacity": "Өткізу қабілеті"
+    "capacity": "Өткізу қабілеті",
+    "forwardLaneCount": "Тура бағыттағы жолақтар",
+    "backwardLaneCount": "Қарсы бағыттағы жолақтар",
+    "laneCountQuality": "Жолақ санының көзі",
+    "qualitySource": "Дереккөз деректері",
+    "qualityInferred": "Қорытылған",
+    "qualityFallback": "Бағаланған",
+    "qualityUnknown": "Белгісіз",
+    "busLane": "Автобус жолағы",
+    "parkingLane": "Тұрақ жолағы",
+    "cycleway": "Веложол"
   },
   "toolbar": {
     "basemapOn": "Негізгі карта қосулы",

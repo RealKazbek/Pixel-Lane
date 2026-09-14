@@ -180,3 +180,104 @@ without a geometric consumer would risk stale/unused data drifting from
 the source. Detecting and linking paired divided-arterial carriageways
 (see Part 1's `carriageway_count`) also remains unimplemented; it needs
 real evidence (e.g. OSM relation tags), not a heuristic.
+
+## Road + Lane Representation V1
+
+Added by migration `7a1e4c9f0b3d`, on top of Part 2A. This is the first
+pass that actually *renders* lane-level detail on the map, derived
+client-side from Part 1/2A's already-normalized data -- no new backend
+geometry is stored. Still explicitly not implemented: individual lane
+entities in the domain model beyond what Part 2A already added, full
+lane-to-lane intersection topology, lane editing, signal phases,
+simulation, 2.5D/3D.
+
+**New source fields.**
+
+- `Road.parking_left` / `parking_right` (`ParkingLaneOrientation`:
+  `NONE`/`PARALLEL`/`DIAGONAL`/`PERPENDICULAR`/`MARKED`/`UNKNOWN`) --
+  from OSM `parking:lane:left`/`:right`/`:both` (the direct-orientation
+  convention only; the separate `:orientation`-suffix convention is not
+  parsed). `UNKNOWN` (not `NONE`) is the default: an absent tag says
+  nothing about whether parking exists in reality.
+- `Road.cycleway_left` / `cycleway_right` (`CyclewayType`:
+  `NONE`/`LANE`/`TRACK`/`SHARED_LANE`/`UNKNOWN`) -- from OSM `cycleway`
+  (applied to both sides when no more specific per-side tag exists) and
+  `cycleway:left`/`:right`.
+- `Lane.lane_type` can now be `BUS`, sourced *only* from OSM
+  `bus:lanes`/`psv:lanes` (same per-lane pipe/direction convention and
+  mismatch-discard safety as `turn:lanes` -- see
+  `normalization.parse_bus_lanes`). Lane position, road class, and every
+  other heuristic are never used to infer a bus lane.
+- `City.import_source` / `imported_at` / `import_query` -- data
+  provenance: `import_source` is a fixed descriptive string
+  (`"OpenStreetMap (via Overpass API / OSMnx)"`), `imported_at` is this
+  import run's own wall-clock time, and `import_query` records the
+  fetch parameters (bbox/relation/provider, or center/radius for the
+  small demo import). **OSMnx/Overpass do not expose a reliable
+  per-query OSM data snapshot timestamp** -- `imported_at` is the import
+  run's time, never fabricated as if it were the source data's own
+  timestamp. All three are `NULL` for cities imported before this
+  migration and for non-import city creation.
+
+**Viewport API.** `GET /cities/{id}/map-roads` (`MapRoad`) now also
+returns `forward_lane_count`/`backward_lane_count`/`both_ways_lane_count`/
+`lane_count_quality`/`parking_left`/`parking_right`/`cycleway_left`/
+`cycleway_right`, plus a `lanes: MapLaneSummary[]` array (`index`,
+`lane_type`, `allowed_turns`, `lane_change` -- deliberately smaller than
+the full `LaneRead`) via a `json_agg` over the `lanes` table in
+`spatial_repository.find_map_roads`. This is the only way the map's
+lane-level rendering gets per-lane data without a second request per
+road; `json_agg` does not itself guarantee row order, so
+`city_service._parse_lane_details` re-sorts by the embedded `index`.
+
+**Client-side lane geometry (`frontend/.../map/adapters/laneGeometry.ts`).**
+Lane surfaces, boundaries, turn arrows, and parking/cycleway markings are
+all derived on the client from a Road's centerline + real-world width
+using `@turf/line-offset`/`@turf/along`/`@turf/bearing` -- schematic, not
+measured: lanes are assumed evenly spaced across the road's known/
+estimated total width, since there is no per-lane position source data.
+This must never be presented as authoritative lane placement.
+
+- Lane index 0 offsets furthest **left** (turf's positive-offset
+  convention), matching Part 2A's `turn:lanes` left-to-right convention.
+- A turn arrow is drawn per lane only when `Lane.allowed_turns` is a
+  non-empty array (an explicit `NONE`-only token draws nothing either --
+  it asserts "no turn indicated", not "draw a marker here").
+- A bus lane is colored and labeled only when `Lane.lane_type === "BUS"`.
+- Parking/cycleway markings are schematic lines offset just outside the
+  driving lanes, drawn only when the corresponding field is a concrete
+  value (`NONE`/`UNKNOWN` draw nothing).
+- Every internal lane boundary renders identically (a plain dashed
+  separator): Pixel Lane has no OSM-backed evidence of individual
+  lane-marking style (solid/double-solid/dashed), so that distinction is
+  never fabricated -- only the two outer road edges get the (different,
+  solid) "edge" treatment.
+- Lane-count changes along a road's length already fall out of the
+  existing OSM import topology for free: `lanes`/`lanes:forward`/etc. are
+  already in `client.py`'s `edge_attrs_differ` list, so OSMnx never
+  merges two segments whose lane count differs into one edge -- a
+  physical lane add/drop already produces two sequential Roads with
+  different lane counts, no additional merge/diverge geometry code
+  needed for the basic case. Smoothly tapered merge/diverge visuals and
+  intersection-approach lane clipping are not implemented (see
+  "Known limitations" below): lanes currently render along a Road's full
+  polyline, stopping wherever the Road itself stops.
+
+**Zoom behavior.** Roads render as a single surface + coarse "multi-lane"
+dashed hint (unchanged from Part 1) below zoom 17. At zoom >= 17
+(`LANE_DETAIL_MIN_ZOOM`), per-lane surfaces/boundaries/bus-lane color and
+parking/cycleway lines appear; text labels (bus "A", parking "P", turn
+arrows) wait until zoom >= 17.5 (`LANE_LABEL_MIN_ZOOM`) to avoid
+cluttering a busy intersection the moment lane detail appears.
+
+**Known limitations.** No smoothed merge/diverge taper geometry; no
+intersection-approach lane clipping (lanes run the Road's full length);
+no stop lines or crosswalk markings (would need real stop-line/crossing
+source geometry, which OSM does not reliably provide at node granularity
+for this network, and a derived placement was judged more likely to
+mislead than help at this pass); `width:lanes` and `parking:lane:*
+:orientation` tag conventions are not parsed. This pass was not visually
+validated against 2GIS in a browser (no browser tool was available in
+that session) -- it was validated via unit tests (offset direction/sign,
+arrow-glyph composition, MapLibre style-spec validation of every new
+layer) and by inspecting real Almaty viewport API responses directly.

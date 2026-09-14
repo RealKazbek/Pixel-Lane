@@ -20,7 +20,13 @@ import {
   buildTrafficLightLayer,
 } from "./pointLayers";
 import { buildRoadLayers } from "./roadLayers";
-import { LAYER_DRAW_ORDER, LAYER_GROUPS, SOURCE_IDS } from "./layerIds";
+import { buildLaneDetailLayers } from "./laneDetailLayers";
+import {
+  LAYER_DRAW_ORDER,
+  LAYER_GROUPS,
+  LAYER_IDS,
+  SOURCE_IDS,
+} from "./layerIds";
 import type { LayerVisibility } from "../types";
 import type {
   IntersectionFeatureCollection,
@@ -28,12 +34,22 @@ import type {
   RoadFeatureCollection,
   TrafficLightFeatureCollection,
 } from "../adapters/cityModelToGeoJson";
+import type {
+  LaneBoundaryFeatureCollection,
+  LaneSurfaceFeatureCollection,
+  LaneUseMarkingFeatureCollection,
+  TurnArrowFeatureCollection,
+} from "../adapters/laneGeometry";
 
 export interface PixelLaneGeoJson {
   roads: RoadFeatureCollection;
   intersections: IntersectionFeatureCollection;
   trafficLights: TrafficLightFeatureCollection;
   labels: LabelFeatureCollection;
+  laneSurfaces: LaneSurfaceFeatureCollection;
+  laneBoundaries: LaneBoundaryFeatureCollection;
+  turnArrows: TurnArrowFeatureCollection;
+  laneUseMarkings: LaneUseMarkingFeatureCollection;
 }
 
 export function addPixelLaneSourcesAndLayers(
@@ -59,9 +75,34 @@ export function addPixelLaneSourcesAndLayers(
   if (!map.getSource(SOURCE_IDS.labels)) {
     map.addSource(SOURCE_IDS.labels, { type: "geojson", data: data.labels });
   }
+  if (!map.getSource(SOURCE_IDS.laneSurfaces)) {
+    map.addSource(SOURCE_IDS.laneSurfaces, {
+      type: "geojson",
+      data: data.laneSurfaces,
+    });
+  }
+  if (!map.getSource(SOURCE_IDS.laneBoundaries)) {
+    map.addSource(SOURCE_IDS.laneBoundaries, {
+      type: "geojson",
+      data: data.laneBoundaries,
+    });
+  }
+  if (!map.getSource(SOURCE_IDS.turnArrows)) {
+    map.addSource(SOURCE_IDS.turnArrows, {
+      type: "geojson",
+      data: data.turnArrows,
+    });
+  }
+  if (!map.getSource(SOURCE_IDS.laneUseMarkings)) {
+    map.addSource(SOURCE_IDS.laneUseMarkings, {
+      type: "geojson",
+      data: data.laneUseMarkings,
+    });
+  }
 
   const layers = [
     ...buildRoadLayers(referenceLatitudeDeg),
+    ...buildLaneDetailLayers(),
     ...buildIntersectionLayers(),
     buildTrafficLightLayer(),
     buildRoadLabelLayer(),
@@ -98,6 +139,22 @@ export function updatePixelLaneData(
 
   const labelsSource = map.getSource(SOURCE_IDS.labels);
   if (labelsSource instanceof GeoJSONSource) labelsSource.setData(data.labels);
+
+  const laneSurfacesSource = map.getSource(SOURCE_IDS.laneSurfaces);
+  if (laneSurfacesSource instanceof GeoJSONSource)
+    laneSurfacesSource.setData(data.laneSurfaces);
+
+  const laneBoundariesSource = map.getSource(SOURCE_IDS.laneBoundaries);
+  if (laneBoundariesSource instanceof GeoJSONSource)
+    laneBoundariesSource.setData(data.laneBoundaries);
+
+  const turnArrowsSource = map.getSource(SOURCE_IDS.turnArrows);
+  if (turnArrowsSource instanceof GeoJSONSource)
+    turnArrowsSource.setData(data.turnArrows);
+
+  const laneUseMarkingsSource = map.getSource(SOURCE_IDS.laneUseMarkings);
+  if (laneUseMarkingsSource instanceof GeoJSONSource)
+    laneUseMarkingsSource.setData(data.laneUseMarkings);
 }
 
 /** Applies the master "Overlay" toggle (a debugging aid for comparing
@@ -154,6 +211,52 @@ export function setSelectedFeature(
   }
 }
 
+/** Base filters for lane-detail layers whose feature property is
+ * `road_id` rather than `id` -- duplicated from laneDetailLayers.ts's
+ * definitions (rather than reading them back off the map) so
+ * `setEditedRoadHidden` can AND in its own exclusion without clobbering
+ * each layer's own `kind`/`is_bus` filter. Keep in sync if those change. */
+const LANE_DETAIL_ROAD_ID_FILTERS: Partial<
+  Record<string, ExpressionSpecification>
+> = {
+  [LAYER_IDS.laneBusSurface]: [
+    "==",
+    ["get", "is_bus"],
+    true,
+  ] as unknown as ExpressionSpecification,
+  [LAYER_IDS.laneBusLabel]: [
+    "==",
+    ["get", "is_bus"],
+    true,
+  ] as unknown as ExpressionSpecification,
+  [LAYER_IDS.laneBoundaryEdge]: [
+    "==",
+    ["get", "kind"],
+    "edge",
+  ] as unknown as ExpressionSpecification,
+  [LAYER_IDS.laneBoundarySeparator]: [
+    "==",
+    ["get", "kind"],
+    "separator",
+  ] as unknown as ExpressionSpecification,
+  [LAYER_IDS.turnArrows]: undefined,
+  [LAYER_IDS.laneParkingLine]: [
+    "==",
+    ["get", "kind"],
+    "parking",
+  ] as unknown as ExpressionSpecification,
+  [LAYER_IDS.laneParkingLabel]: [
+    "==",
+    ["get", "kind"],
+    "parking",
+  ] as unknown as ExpressionSpecification,
+  [LAYER_IDS.laneCyclewayLine]: [
+    "==",
+    ["get", "kind"],
+    "cycleway",
+  ] as unknown as ExpressionSpecification,
+};
+
 /** Hides Pixel Lane's normal road rendering for one road id (used while
  * that road is being edited via Terra Draw, so the same geometry isn't
  * drawn twice). Pass `null` to show everything again. */
@@ -161,7 +264,7 @@ export function setEditedRoadHidden(
   map: MapLibreMap,
   roadId: string | null,
 ): void {
-  const filter: ExpressionSpecification | null = roadId
+  const roadFilter: ExpressionSpecification | null = roadId
     ? (["!=", ["get", "id"], roadId] as ExpressionSpecification)
     : null;
   for (const layerId of [
@@ -170,7 +273,26 @@ export function setEditedRoadHidden(
     "pixel-lane-lane-markings",
   ]) {
     if (map.getLayer(layerId)) {
-      map.setFilter(layerId, filter);
+      map.setFilter(layerId, roadFilter);
     }
+  }
+
+  for (const [layerId, baseFilter] of Object.entries(
+    LANE_DETAIL_ROAD_ID_FILTERS,
+  )) {
+    if (!map.getLayer(layerId)) continue;
+    const roadIdExclusion: ExpressionSpecification | null = roadId
+      ? (["!=", ["get", "road_id"], roadId] as ExpressionSpecification)
+      : null;
+    if (!roadIdExclusion) {
+      map.setFilter(layerId, baseFilter ?? null);
+      continue;
+    }
+    map.setFilter(
+      layerId,
+      (baseFilter
+        ? ["all", baseFilter, roadIdExclusion]
+        : roadIdExclusion) as ExpressionSpecification,
+    );
   }
 }

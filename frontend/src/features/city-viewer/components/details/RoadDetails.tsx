@@ -4,12 +4,38 @@ import { roadLengthMeters } from "../../map/adapters/geometryLength";
 import { congestionToTrafficLevel } from "../../lib/traffic-level";
 import { DetailRow } from "./DetailRow";
 import type { AnalysisLookup } from "../../lib/analysis-lookup";
-import type { CoordinateSystem, Road } from "../../types/city";
+import type {
+  CoordinateSystem,
+  LaneCountQuality,
+  Road,
+} from "../../types/city";
 
 interface RoadDetailsProps {
   road: Road;
   coordinateSystem: CoordinateSystem;
   analysis: AnalysisLookup;
+}
+
+/** i18n key suffix for each `LaneCountQuality` value (see
+ * docs/city-model.md's Part 2A quality tiers). */
+const QUALITY_LABEL_KEY: Record<LaneCountQuality, string> = {
+  SOURCE: "qualitySource",
+  INFERRED: "qualityInferred",
+  FALLBACK: "qualityFallback",
+  UNKNOWN: "qualityUnknown",
+};
+
+/** A road's own generated `lanes` never carries a BUS-typed lane unless
+ * `bus:lanes`/`psv:lanes` source data said so -- never guessed (see
+ * mapper.py's `_lane_type_for_index`). */
+function hasBusLane(road: Road): boolean {
+  return road.lanes.some((lane) => lane.lane_type === "BUS");
+}
+
+/** `NONE`/`UNKNOWN`/absent all mean "nothing to show" -- only a concrete
+ * source-backed value (e.g. `PARALLEL`, `LANE`, `TRACK`) counts as real. */
+function isRealValue(value: string | null | undefined): boolean {
+  return !!value && value !== "NONE" && value !== "UNKNOWN";
 }
 
 export function RoadDetails({
@@ -42,8 +68,36 @@ export function RoadDetails({
         }
       />
       {road.source_lane_count != null && (
-        <DetailRow label={t("sourceLaneCount")} value={road.source_lane_count} />
+        <DetailRow
+          label={t("sourceLaneCount")}
+          value={road.source_lane_count}
+        />
       )}
+      {road.forward_lane_count != null && (
+        <DetailRow
+          label={t("forwardLaneCount")}
+          value={road.forward_lane_count}
+        />
+      )}
+      {road.backward_lane_count != null && (
+        <DetailRow
+          label={t("backwardLaneCount")}
+          value={road.backward_lane_count}
+        />
+      )}
+      {road.lane_count_quality && (
+        <DetailRow
+          label={t("laneCountQuality")}
+          value={t(QUALITY_LABEL_KEY[road.lane_count_quality])}
+        />
+      )}
+      {hasBusLane(road) && <DetailRow label={t("busLane")} value={t("yes")} />}
+      {isRealValue(road.parking_left) || isRealValue(road.parking_right) ? (
+        <DetailRow label={t("parkingLane")} value={t("yes")} />
+      ) : null}
+      {isRealValue(road.cycleway_left) || isRealValue(road.cycleway_right) ? (
+        <DetailRow label={t("cycleway")} value={t("yes")} />
+      ) : null}
       {metric ? (
         <>
           <DetailRow

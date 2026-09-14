@@ -1,6 +1,7 @@
 import type { ExpressionSpecification, LayerSpecification } from "maplibre-gl";
 import { LAYER_IDS, SOURCE_IDS } from "./layerIds";
 import { roadWidthPixelsExpression } from "./roadWidth";
+import { LANE_DETAIL_MIN_ZOOM } from "./zoomThresholds";
 import {
   ROAD_CASING_COLOR,
   ROAD_CASING_MIN_PIXEL_WIDTH,
@@ -10,7 +11,8 @@ import {
 } from "../styles/roadStyle";
 
 const roadVisibility: ExpressionSpecification = [
-  "any", [">=", ["zoom"], 14],
+  "any",
+  [">=", ["zoom"], 14],
   ["in", ["get", "hierarchy"], ["literal", ["HIGHWAY", "ARTERIAL"]]],
   ["all", [">=", ["zoom"], 12], ["==", ["get", "hierarchy"], "COLLECTOR"]],
 ];
@@ -121,6 +123,10 @@ export function buildRoadLayers(
     type: "line",
     source: SOURCE_IDS.roads,
     minzoom: 16,
+    // Real per-lane separators (see laneDetailLayers.ts) take over at
+    // LANE_DETAIL_MIN_ZOOM -- this coarse "multi-lane" hint only needs to
+    // cover the gap between "roads visible" and "lanes fully rendered".
+    maxzoom: LANE_DETAIL_MIN_ZOOM,
     filter: [">", ["get", "lane_count"], 1],
     layout: { "line-cap": "butt", "line-join": "round" },
     paint: {

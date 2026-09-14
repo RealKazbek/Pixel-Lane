@@ -32,6 +32,12 @@ import {
   buildTrafficLightFeatureCollection,
 } from "./adapters/cityModelToGeoJson";
 import {
+  buildLaneBoundaryFeatureCollection,
+  buildLaneSurfaceFeatureCollection,
+  buildLaneUseMarkingFeatureCollection,
+  buildTurnArrowFeatureCollection,
+} from "./adapters/laneGeometry";
+import {
   addPixelLaneSourcesAndLayers,
   setLayerGroupVisibility,
   setSelectedFeature,
@@ -166,6 +172,22 @@ export function PixelLaneMap({
         roads: visibleRoads,
         coordinate_system: city.coordinate_system,
       }),
+      laneSurfaces: buildLaneSurfaceFeatureCollection(
+        visibleRoads,
+        city.coordinate_system,
+      ),
+      laneBoundaries: buildLaneBoundaryFeatureCollection(
+        visibleRoads,
+        city.coordinate_system,
+      ),
+      turnArrows: buildTurnArrowFeatureCollection(
+        visibleRoads,
+        city.coordinate_system,
+      ),
+      laneUseMarkings: buildLaneUseMarkingFeatureCollection(
+        visibleRoads,
+        city.coordinate_system,
+      ),
     };
   }, [visibleRoads, visibleIntersections, city.coordinate_system]);
   const styleKey =
@@ -180,7 +202,8 @@ export function PixelLaneMap({
       const intersectionId =
         selected?.type === "intersection" ? selected.id : null;
       const lightId = intersectionId
-        ? (city.intersections.find((i) => i.id === intersectionId)?.traffic_light_id ?? null)
+        ? (city.intersections.find((i) => i.id === intersectionId)
+            ?.traffic_light_id ?? null)
         : null;
       setSelectedFeature(map, SOURCE_IDS.roads, null, roadId);
       setSelectedFeature(map, SOURCE_IDS.intersections, null, intersectionId);
@@ -340,10 +363,12 @@ export function PixelLaneMap({
     );
 
     const previousLightId = previousIntersectionId
-      ? (city.intersections.find(i => i.id === previousIntersectionId)?.traffic_light_id ?? null)
+      ? (city.intersections.find((i) => i.id === previousIntersectionId)
+          ?.traffic_light_id ?? null)
       : null;
     const nextLightId = nextIntersectionId
-      ? (city.intersections.find(i => i.id === nextIntersectionId)?.traffic_light_id ?? null)
+      ? (city.intersections.find((i) => i.id === nextIntersectionId)
+          ?.traffic_light_id ?? null)
       : null;
     setSelectedFeature(
       map,

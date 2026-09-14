@@ -6,6 +6,10 @@ export const SOURCE_IDS = {
   intersections: "pixel-lane-intersections",
   trafficLights: "pixel-lane-traffic-lights",
   labels: "pixel-lane-labels",
+  laneSurfaces: "pixel-lane-lane-surfaces",
+  laneBoundaries: "pixel-lane-lane-boundaries",
+  turnArrows: "pixel-lane-turn-arrows",
+  laneUseMarkings: "pixel-lane-lane-use-markings",
 } as const;
 
 export const LAYER_IDS = {
@@ -17,14 +21,33 @@ export const LAYER_IDS = {
   intersectionDetails: "pixel-lane-intersection-details",
   trafficLights: "pixel-lane-traffic-lights",
   roadLabels: "pixel-lane-road-labels",
+  laneBusSurface: "pixel-lane-lane-bus-surface",
+  laneBusLabel: "pixel-lane-lane-bus-label",
+  laneBoundaryEdge: "pixel-lane-lane-boundary-edge",
+  laneBoundarySeparator: "pixel-lane-lane-boundary-separator",
+  turnArrows: "pixel-lane-turn-arrows",
+  laneParkingLine: "pixel-lane-lane-parking-line",
+  laneParkingLabel: "pixel-lane-lane-parking-label",
+  laneCyclewayLine: "pixel-lane-lane-cycleway-line",
 } as const;
 
 /** Draw order, back to front (basemap sits below all of these; Terra
- * Draw's own editor layers are added by its adapter and render above). */
+ * Draw's own editor layers are added by its adapter and render above).
+ * The close-zoom lane-detail layers draw above the base road
+ * casing/surface but below selection/points, so a selected road/
+ * intersection still reads clearly through the extra detail. */
 export const LAYER_DRAW_ORDER: readonly string[] = [
   LAYER_IDS.roadCasing,
   LAYER_IDS.roadSurface,
   LAYER_IDS.laneMarkings,
+  LAYER_IDS.laneBusSurface,
+  LAYER_IDS.laneParkingLine,
+  LAYER_IDS.laneParkingLabel,
+  LAYER_IDS.laneCyclewayLine,
+  LAYER_IDS.laneBoundaryEdge,
+  LAYER_IDS.laneBoundarySeparator,
+  LAYER_IDS.laneBusLabel,
+  LAYER_IDS.turnArrows,
   LAYER_IDS.selection,
   LAYER_IDS.intersections,
   LAYER_IDS.intersectionDetails,
@@ -41,6 +64,14 @@ export const LAYER_GROUPS = {
     LAYER_IDS.roadCasing,
     LAYER_IDS.roadSurface,
     LAYER_IDS.laneMarkings,
+    LAYER_IDS.laneBusSurface,
+    LAYER_IDS.laneBusLabel,
+    LAYER_IDS.laneParkingLine,
+    LAYER_IDS.laneParkingLabel,
+    LAYER_IDS.laneCyclewayLine,
+    LAYER_IDS.laneBoundaryEdge,
+    LAYER_IDS.laneBoundarySeparator,
+    LAYER_IDS.turnArrows,
     LAYER_IDS.selection,
     LAYER_IDS.roadLabels,
   ],
