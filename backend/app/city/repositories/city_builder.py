@@ -11,7 +11,9 @@ from geoalchemy2 import WKTElement
 
 from app.city.domain.enums import CoordinateSystem
 from app.city.domain.geometry import WGS84_SRID, point_to_wkt, polyline_to_wkt
+from app.city.models.bus_stop import BusStop
 from app.city.models.city import City
+from app.city.models.crosswalk import Crosswalk
 from app.city.models.intersection import Intersection
 from app.city.models.lane import Lane
 from app.city.models.parking import ParkingZone
@@ -188,6 +190,26 @@ def build_city(payload: CityCreate) -> City:
         for demand_data in payload.traffic_demands
     ]
 
+    bus_stops = [
+        BusStop(
+            id=stop_data.id,
+            road=roads_by_id[stop_data.road_id],
+            position_x=stop_data.position_x,
+            position_y=stop_data.position_y,
+            name=stop_data.name,
+        )
+        for stop_data in payload.bus_stops
+    ]
+
+    crosswalks = [
+        Crosswalk(
+            id=crossing_data.id,
+            road=roads_by_id[crossing_data.road_id],
+            position_ratio=crossing_data.position_ratio,
+        )
+        for crossing_data in payload.crosswalks
+    ]
+
     return City(
         id=payload.id,
         name=payload.name,
@@ -202,4 +224,6 @@ def build_city(payload: CityCreate) -> City:
         traffic_rules=traffic_rules,
         parking_zones=parking_zones,
         traffic_demands=traffic_demands,
+        bus_stops=bus_stops,
+        crosswalks=crosswalks,
     )

@@ -245,6 +245,32 @@ def validate_city(city: CityCreate) -> list[ValidationIssue]:
                     )
                 )
 
+    for si, stop in enumerate(city.bus_stops):
+        path = f"bus_stops[{si}]"
+        register_id(stop.id, f"{path}.id")
+
+        if stop.road_id not in road_ids:
+            issues.append(
+                ValidationIssue(
+                    code="UNKNOWN_ROAD_REFERENCE",
+                    message=f"Bus stop references unknown road {stop.road_id}",
+                    path=f"{path}.road_id",
+                )
+            )
+
+    for ci, crossing in enumerate(city.crosswalks):
+        path = f"crosswalks[{ci}]"
+        register_id(crossing.id, f"{path}.id")
+
+        if crossing.road_id not in road_ids:
+            issues.append(
+                ValidationIssue(
+                    code="UNKNOWN_ROAD_REFERENCE",
+                    message=f"Crosswalk references unknown road {crossing.road_id}",
+                    path=f"{path}.road_id",
+                )
+            )
+
     for di, demand in enumerate(city.traffic_demands):
         path = f"traffic_demands[{di}]"
         register_id(demand.id, f"{path}.id")

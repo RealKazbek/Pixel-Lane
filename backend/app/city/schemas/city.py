@@ -6,6 +6,8 @@ from pydantic import BaseModel, Field
 from app.city.domain.enums import CoordinateSystem
 from app.city.domain.limits import (
     DESCRIPTION_MAX_LENGTH,
+    MAX_BUS_STOPS_PER_CITY,
+    MAX_CROSSWALKS_PER_CITY,
     MAX_INTERSECTIONS_PER_CITY,
     MAX_PARKING_ZONES_PER_CITY,
     MAX_ROADS_PER_CITY,
@@ -14,6 +16,8 @@ from app.city.domain.limits import (
     MAX_TRAFFIC_RULES_PER_CITY,
     NAME_MAX_LENGTH,
 )
+from app.city.schemas.bus_stop import BusStopCreate, BusStopRead
+from app.city.schemas.crosswalk import CrosswalkCreate, CrosswalkRead
 from app.city.schemas.intersection import IntersectionCreate, IntersectionRead
 from app.city.schemas.parking import ParkingZoneCreate, ParkingZoneRead
 from app.city.schemas.road import RoadCreate, RoadRead
@@ -60,6 +64,10 @@ class CityCreate(BaseModel):
     traffic_demands: list[TrafficDemandCreate] = Field(
         default_factory=list, max_length=MAX_TRAFFIC_DEMANDS_PER_CITY
     )
+    bus_stops: list[BusStopCreate] = Field(default_factory=list, max_length=MAX_BUS_STOPS_PER_CITY)
+    crosswalks: list[CrosswalkCreate] = Field(
+        default_factory=list, max_length=MAX_CROSSWALKS_PER_CITY
+    )
 
 
 class CityRead(BaseModel):
@@ -79,6 +87,8 @@ class CityRead(BaseModel):
     traffic_rules: list[TrafficRuleRead]
     parking_zones: list[ParkingZoneRead]
     traffic_demands: list[TrafficDemandRead]
+    bus_stops: list[BusStopRead]
+    crosswalks: list[CrosswalkRead]
 
     model_config = {"from_attributes": True}
 

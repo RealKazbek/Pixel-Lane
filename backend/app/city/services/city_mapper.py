@@ -27,7 +27,9 @@ from app.city.domain.enums import (
     VehicleCategory,
 )
 from app.city.domain.geometry import Point, Polyline
+from app.city.models.bus_stop import BusStop
 from app.city.models.city import City
+from app.city.models.crosswalk import Crosswalk
 from app.city.models.intersection import Intersection
 from app.city.models.lane import Lane
 from app.city.models.parking import ParkingZone
@@ -35,7 +37,9 @@ from app.city.models.road import Road
 from app.city.models.traffic_demand import TrafficDemand
 from app.city.models.traffic_light import Phase, SignalGroup, TrafficLight
 from app.city.models.traffic_rule import TrafficRule
+from app.city.schemas.bus_stop import BusStopRead
 from app.city.schemas.city import CityRead
+from app.city.schemas.crosswalk import CrosswalkRead
 from app.city.schemas.intersection import IntersectionRead
 from app.city.schemas.lane import LaneRead
 from app.city.schemas.parking import ParkingZoneRead
@@ -159,6 +163,26 @@ def _to_parking_zone_read(parking: ParkingZone) -> ParkingZoneRead:
     )
 
 
+def _to_bus_stop_read(stop: BusStop) -> BusStopRead:
+    return BusStopRead(
+        id=stop.id,
+        city_id=stop.city_id,
+        road_id=stop.road_id,
+        position_x=stop.position_x,
+        position_y=stop.position_y,
+        name=stop.name,
+    )
+
+
+def _to_crosswalk_read(crossing: Crosswalk) -> CrosswalkRead:
+    return CrosswalkRead(
+        id=crossing.id,
+        city_id=crossing.city_id,
+        road_id=crossing.road_id,
+        position_ratio=crossing.position_ratio,
+    )
+
+
 def _to_traffic_demand_read(demand: TrafficDemand) -> TrafficDemandRead:
     return TrafficDemandRead(
         id=demand.id,
@@ -196,4 +220,6 @@ def to_city_read(city: City) -> CityRead:
         traffic_rules=[_to_traffic_rule_read(rule) for rule in city.traffic_rules],
         parking_zones=[_to_parking_zone_read(p) for p in city.parking_zones],
         traffic_demands=[_to_traffic_demand_read(d) for d in city.traffic_demands],
+        bus_stops=[_to_bus_stop_read(s) for s in city.bus_stops],
+        crosswalks=[_to_crosswalk_read(c) for c in city.crosswalks],
     )

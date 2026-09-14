@@ -10,6 +10,8 @@ from sqlalchemy.orm import Mapped, mapped_column, relationship
 from app.db.base import Base
 
 if TYPE_CHECKING:
+    from app.city.models.bus_stop import BusStop
+    from app.city.models.crosswalk import Crosswalk
     from app.city.models.intersection import Intersection
     from app.city.models.parking import ParkingZone
     from app.city.models.road import Road
@@ -57,5 +59,11 @@ class City(Base):
         back_populates="city", cascade="all, delete-orphan"
     )
     traffic_demands: Mapped[list["TrafficDemand"]] = relationship(
+        back_populates="city", cascade="all, delete-orphan"
+    )
+    bus_stops: Mapped[list["BusStop"]] = relationship(
+        back_populates="city", cascade="all, delete-orphan"
+    )
+    crosswalks: Mapped[list["Crosswalk"]] = relationship(
         back_populates="city", cascade="all, delete-orphan"
     )
