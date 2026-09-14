@@ -46,7 +46,14 @@ import { toLngLat } from "./coordinates";
 import { toRoadLineString, type AnyRoad } from "./roadLineString";
 import { roadLaneCount, roadWidthMeters } from "../styles/roadStyle";
 import { smoothCenterline } from "../geometry/curveSmoothing";
-import { computeNodeRadius, pointsMatch, trimLine, type LngLat } from "../geometry/nodeGeometry";
+import {
+  computeNodeRadius,
+  outwardBearing,
+  pointsMatch,
+  trimLine,
+  type LngLat,
+} from "../geometry/nodeGeometry";
+import { MERGE_TAPER_LENGTH_M, isMergeCandidate } from "../geometry/mergeTaper";
 import type {
   CoordinateSystem,
   CyclewayType,
@@ -229,16 +236,48 @@ function buildLaneRenderingLines(
       memberIds.map((id) => ({ halfWidthM: widthByRoadId.get(id)! / 2 })),
     );
     const nodePosition = toLngLat(coordinateSystem, intersection.position) as LngLat;
-    for (const id of memberIds) {
-      const road = roadById.get(id);
-      if (!road) continue;
-      const rawLine = toLineStringFeature(coordinateSystem, road);
-      if (!rawLine) continue;
-      const coords = rawLine.geometry.coordinates as LngLat[];
-      if (pointsMatch(coords[coords.length - 1], nodePosition)) {
-        trimEndByRoadId.set(id, Math.max(trimEndByRoadId.get(id) ?? 0, nodeRadius));
-      } else if (pointsMatch(coords[0], nodePosition)) {
-        trimStartByRoadId.set(id, Math.max(trimStartByRoadId.get(id) ?? 0, nodeRadius));
+
+    const memberInfo = memberIds
+      .map((id) => {
+        const road = roadById.get(id);
+        if (!road) return null;
+        const rawLine = toLineStringFeature(coordinateSystem, road);
+        if (!rawLine) return null;
+        const coords = rawLine.geometry.coordinates as LngLat[];
+        const atEnd = pointsMatch(coords[coords.length - 1], nodePosition);
+        const atStart = pointsMatch(coords[0], nodePosition);
+        if (!atEnd && !atStart) return null;
+        return {
+          id,
+          atEnd,
+          halfWidthM: widthByRoadId.get(id)! / 2,
+          outwardBearingDeg: outwardBearing(nodePosition, rawLine, atEnd),
+        };
+      })
+      .filter((m): m is NonNullable<typeof m> => m !== null);
+
+    // Same detection as geometry/junctionSolver.ts: a road tapering into
+    // a much wider one at this node gets its lane markings stopped at
+    // the taper's own start distance instead of the node radius, so
+    // markings never run into the zone where the physical surface is
+    // already narrowing to nothing (see that module's docstring).
+    let mergeRoadId: string | null = null;
+    outer: for (const narrow of memberInfo) {
+      for (const wide of memberInfo) {
+        if (narrow === wide || narrow.halfWidthM >= wide.halfWidthM) continue;
+        if (isMergeCandidate(narrow, wide, narrow.outwardBearingDeg, wide.outwardBearingDeg)) {
+          mergeRoadId = narrow.id;
+          break outer;
+        }
+      }
+    }
+
+    for (const member of memberInfo) {
+      const trim = member.id === mergeRoadId ? MERGE_TAPER_LENGTH_M : nodeRadius;
+      if (member.atEnd) {
+        trimEndByRoadId.set(member.id, Math.max(trimEndByRoadId.get(member.id) ?? 0, trim));
+      } else {
+        trimStartByRoadId.set(member.id, Math.max(trimStartByRoadId.get(member.id) ?? 0, trim));
       }
     }
   }

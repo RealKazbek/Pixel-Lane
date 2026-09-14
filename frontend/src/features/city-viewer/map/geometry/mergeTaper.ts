@@ -26,7 +26,12 @@ import type { PolygonFeature } from "./roadEnvelope";
 
 const MERGE_ANGLE_THRESHOLD_DEG = 70;
 const MERGE_WIDTH_RATIO_THRESHOLD = 0.8;
-const MERGE_TAPER_LENGTH_M = 25;
+/** How far back from the node a merge/slip road's envelope (and, for
+ * consistency, its lane markings -- see `laneGeometry.ts`) tapers from
+ * full width. Exported so lane rendering can stop markings at the same
+ * distance the physical surface starts narrowing, instead of drawing a
+ * constant-width lane into a shrinking taper. */
+export const MERGE_TAPER_LENGTH_M = 25;
 const MIN_TAPER_HALF_WIDTH_M = 0.15;
 const TAPER_SAMPLES = 10;
 

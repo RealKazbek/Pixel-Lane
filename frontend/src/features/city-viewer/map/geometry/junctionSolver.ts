@@ -42,6 +42,7 @@ import destination from "@turf/destination";
 import distance from "@turf/distance";
 import { featureCollection as turfFeatureCollection, point as turfPoint } from "@turf/helpers";
 import length from "@turf/length";
+import lineSliceAlong from "@turf/line-slice-along";
 import union from "@turf/union";
 import { buildMergeTaperEnvelope, isMergeCandidate } from "./mergeTaper";
 import {
@@ -152,21 +153,27 @@ export function solveJunction(
     bearingByRoadId.set(road.roadId, outwardBearing(nodePosition, road.line, road.atEnd));
   }
 
-  // At most one merge approach per (degree-2) node -- see mergeTaper.ts.
+  // At most one merge/slip approach per node -- see mergeTaper.ts. Not
+  // restricted to a degree-2 node: a real merge point is topologically a
+  // 3+-way junction just as often (the "host" road the slip road joins
+  // is itself split there, exactly like a real OSM import would --
+  // see docs/city-model.md/mapper.py). Every pair of incident roads is
+  // checked, not just "the" two roads at the node.
   let mergeRoadId: string | null = null;
-  if (incident.length === 2) {
-    const [a, b] = incident;
-    const [narrow, wide] = a.halfWidthM <= b.halfWidthM ? [a, b] : [b, a];
-    if (
-      narrow.halfWidthM < wide.halfWidthM &&
-      isMergeCandidate(
-        narrow,
-        wide,
-        bearingByRoadId.get(narrow.roadId)!,
-        bearingByRoadId.get(wide.roadId)!,
-      )
-    ) {
-      mergeRoadId = narrow.roadId;
+  outer: for (const narrow of incident) {
+    for (const wide of incident) {
+      if (narrow === wide || narrow.halfWidthM >= wide.halfWidthM) continue;
+      if (
+        isMergeCandidate(
+          narrow,
+          wide,
+          bearingByRoadId.get(narrow.roadId)!,
+          bearingByRoadId.get(wide.roadId)!,
+        )
+      ) {
+        mergeRoadId = narrow.roadId;
+        break outer;
+      }
     }
   }
 
@@ -178,7 +185,26 @@ export function solveJunction(
 
     if (road.roadId === mergeRoadId) {
       const taper = buildMergeTaperEnvelope(road.line, road.halfWidthM, road.atEnd);
-      if (taper) trimmedEnvelopes.push({ roadId: road.roadId, polygon: taper.polygon });
+      if (taper) {
+        // The taper only covers the last `taperStartDistance..end` stretch
+        // near the node -- the rest of this same road (its far portion,
+        // beyond the taper zone) still needs its own constant-width
+        // envelope, or that whole stretch would render with no surface
+        // at all once this road is excluded from the standalone-road
+        // fallback below (see `mergedRoadIds` in roadSurfaceGeometry.ts).
+        const total = length(road.line, { units: "meters" });
+        const farPortion = road.atEnd
+          ? lineSliceAlong(road.line, 0, taper.taperStartDistance, { units: "meters" })
+          : lineSliceAlong(road.line, taper.taperStartDistance, total, { units: "meters" });
+        const farEnvelope =
+          length(farPortion, { units: "meters" }) > 0.01
+            ? buildRoadEnvelope(farPortion, road.halfWidthM)
+            : null;
+        const combined = farEnvelope
+          ? unionAll([taper.polygon, farEnvelope])
+          : taper.polygon;
+        if (combined) trimmedEnvelopes.push({ roadId: road.roadId, polygon: combined });
+      }
       // The taper's node-side stub already reaches the node coordinate at
       // ~zero width, so it needs no separate hull contribution -- the
       // hull plate below (built from the host road + node point) is
