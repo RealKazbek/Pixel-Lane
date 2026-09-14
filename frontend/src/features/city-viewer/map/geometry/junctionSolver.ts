@@ -41,6 +41,7 @@ import convex from "@turf/convex";
 import destination from "@turf/destination";
 import distance from "@turf/distance";
 import { featureCollection as turfFeatureCollection, point as turfPoint } from "@turf/helpers";
+import length from "@turf/length";
 import union from "@turf/union";
 import { buildMergeTaperEnvelope, isMergeCandidate } from "./mergeTaper";
 import {
@@ -120,13 +121,29 @@ function bulgeArc(
   return points;
 }
 
+const MIN_USABLE_LENGTH_M = 0.01;
+
+function hasUsableLength(line: GeoJSON.Feature<GeoJSON.LineString>): boolean {
+  try {
+    return length(line, { units: "meters" }) > MIN_USABLE_LENGTH_M;
+  } catch {
+    return false;
+  }
+}
+
 /** Builds one unified junction surface for a node with 2+ connected
  * roads. Returns `null` if fewer than 2 usable road envelopes could be
  * built (caller falls back to standalone road rendering for the rest). */
 export function solveJunction(
   nodePosition: LngLat,
-  incident: IncidentRoad[],
+  incidentInput: IncidentRoad[],
 ): JunctionResult | null {
+  // A zero/near-zero-length line (two coincident points) has no usable
+  // tangent direction -- turf's bearing/lineSliceAlong throw on it rather
+  // than returning a sentinel, so it must be filtered out before any
+  // geometry runs, the same "skip rather than crash on one bad road"
+  // policy every other builder in this module follows.
+  const incident = incidentInput.filter((road) => hasUsableLength(road.line));
   if (incident.length < 2) return null;
 
   const nodeRadius = computeNodeRadius(incident);

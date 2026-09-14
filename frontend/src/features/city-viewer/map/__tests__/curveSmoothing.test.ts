@@ -71,4 +71,29 @@ describe("smoothCenterline", () => {
     ];
     expect(smoothCenterline(input)).toEqual(smoothCenterline(input));
   });
+
+  it("keeps a near-collinear vertex chain close to straight (no bulge from tiny noise)", () => {
+    const input: LngLat[] = [
+      [0, 0],
+      [0.0005, 0.0000001],
+      [0.001, -0.0000001],
+      [0.0015, 0],
+    ];
+    const smoothed = smoothCenterline(input);
+    expect(isFinitePoints(smoothed)).toBe(true);
+    for (const [, y] of smoothed) {
+      expect(Math.abs(y)).toBeLessThan(0.0002);
+    }
+  });
+
+  it("handles a very acute zig-zag vertex without producing NaN", () => {
+    const input: LngLat[] = [
+      [0, 0],
+      [0.001, 0.00001],
+      [0.0005, 0.00002],
+      [0.0015, 0.00003],
+    ];
+    const smoothed = smoothCenterline(input);
+    expect(isFinitePoints(smoothed)).toBe(true);
+  });
 });

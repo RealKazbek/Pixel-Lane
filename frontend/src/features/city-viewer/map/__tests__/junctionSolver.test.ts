@@ -170,4 +170,45 @@ describe("solveJunction", () => {
     expect(result).not.toBeNull();
     expect(isFinitePolygon(result!.polygon.geometry)).toBe(true);
   });
+
+  it("handles two nearly-collinear roads (a near-180-degree continuation) without spikes", () => {
+    const n = node(0, 40);
+    const incident = [
+      incidentRoad({ roadId: "south", line: road([[0, 0], [0, 40]]), atEnd: true }),
+      // 2 degrees off from a perfectly straight continuation.
+      incidentRoad({
+        roadId: "north",
+        line: road([[0, 40], [1.4, 79.98]]),
+        atEnd: false,
+      }),
+    ];
+    const result = solveJunction(n, incident);
+    expect(result).not.toBeNull();
+    expect(isFinitePolygon(result!.polygon.geometry)).toBe(true);
+  });
+
+  it("handles a very acute (near-zero-degree) angle between two roads without self-intersection", () => {
+    const n = node(0, 40);
+    const incident = [
+      incidentRoad({ roadId: "stem", line: road([[0, 0], [0, 40]]), atEnd: true }),
+      // Branches off at only ~5 degrees from the stem's own direction.
+      incidentRoad({
+        roadId: "sliver",
+        line: road([[0, 40], [3.5, 79.9]]),
+        atEnd: false,
+      }),
+    ];
+    const result = solveJunction(n, incident);
+    expect(result).not.toBeNull();
+    expect(isFinitePolygon(result!.polygon.geometry)).toBe(true);
+  });
+
+  it("returns null rather than throwing when every incident line is degenerate (zero-length)", () => {
+    const n = node(0, 40);
+    const incident = [
+      incidentRoad({ roadId: "a", line: road([[0, 40], [0, 40]]), atEnd: false }),
+      incidentRoad({ roadId: "b", line: road([[0, 40], [0, 40]]), atEnd: false }),
+    ];
+    expect(() => solveJunction(n, incident)).not.toThrow();
+  });
 });
