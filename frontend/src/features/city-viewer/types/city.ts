@@ -28,6 +28,8 @@ export type IntersectionControlType =
 
 export type ParkingSide = "LEFT" | "RIGHT" | "BOTH";
 
+export type MedianType = "NONE" | "PAINTED" | "PHYSICAL" | "UNKNOWN";
+
 export interface Point {
   x: number;
   y: number;
@@ -58,6 +60,26 @@ export interface Road {
   source_road_type?: string | null;
   one_way?: boolean | null;
   source_lane_count?: number | null;
+  /** Physical carriageway width in meters -- explicit source value if
+   * known, otherwise a centrally-computed fallback (see backend's
+   * app.city.domain.road_geometry). Optional/nullable for backward
+   * compatibility with roads imported before this field existed. */
+  width_m?: number | null;
+  /** True when `width_m` is a fallback estimate rather than a real
+   * source measurement. Defaults to true (unknown/legacy data should not
+   * be presented as measured). */
+  is_width_estimated?: boolean;
+  /** 1 = single shared surface for both directions, 2 = this Road is one
+   * of a pair of physically separated carriageways (e.g. divided
+   * arterial). Individual lanes are a later roadmap part. */
+  carriageway_count?: number;
+  median?: MedianType;
+  /** Vertical level relative to ground: 0 = ground, positive = overpass/
+   * bridge, negative = underpass/tunnel. A geometric crossing between
+   * roads at different levels is never assumed to be an intersection. */
+  level?: number;
+  is_bridge?: boolean;
+  is_tunnel?: boolean;
   lanes: Lane[];
 }
 
@@ -125,6 +147,19 @@ export interface CitySummary {
   updated_at: string;
 }
 
-export type MapRoad = Pick<Road, "id" | "name" | "road_type" | "geometry"> & {
+export type MapRoad = Pick<
+  Road,
+  | "id"
+  | "name"
+  | "road_type"
+  | "geometry"
+  | "width_m"
+  | "is_width_estimated"
+  | "carriageway_count"
+  | "median"
+  | "level"
+  | "is_bridge"
+  | "is_tunnel"
+> & {
   lane_count: number;
 };

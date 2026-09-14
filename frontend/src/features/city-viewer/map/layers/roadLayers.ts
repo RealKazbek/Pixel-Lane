@@ -68,6 +68,15 @@ export function buildRoadLayers(
     false,
   ] as unknown as ExpressionSpecification;
 
+  // Bridge/tunnel/level metadata (`is_bridge`, `is_tunnel`, `level` on
+  // each feature) is preserved end-to-end for future rendering passes
+  // (2.5D is a later roadmap part) but deliberately not used for a
+  // visual treatment here: MapLibre's `line-dasharray` does not support
+  // per-feature (data-driven) expressions, only zoom expressions, so a
+  // per-road dashed style is not safely achievable without a second,
+  // filtered layer -- not worth the added layer-stack complexity for
+  // Part 1.
+
   const casing: LayerSpecification = {
     filter: roadVisibility,
     id: LAYER_IDS.roadCasing,

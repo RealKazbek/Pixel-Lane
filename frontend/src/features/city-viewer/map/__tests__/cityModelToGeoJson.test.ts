@@ -72,6 +72,51 @@ describe("buildRoadFeatureCollection", () => {
       feature.properties.width_m,
     );
   });
+
+  it("prefers an explicit backend-provided width_m over the lane-count estimate", () => {
+    const withExplicitWidth = makeRoad({ width_m: 42, is_width_estimated: false });
+    const withoutExplicitWidth = makeRoad({ width_m: null });
+
+    const fc = buildRoadFeatureCollection({
+      roads: [withExplicitWidth, withoutExplicitWidth],
+      coordinate_system: "WGS84",
+    });
+
+    expect(fc.features[0].properties.width_m).toBe(42);
+    expect(fc.features[0].properties.is_width_estimated).toBe(false);
+    expect(fc.features[1].properties.width_m).not.toBe(42);
+    expect(fc.features[1].properties.is_width_estimated).toBe(true);
+  });
+
+  it("passes through carriageway/median/level/bridge/tunnel metadata with safe defaults", () => {
+    const divided = makeRoad({
+      carriageway_count: 2,
+      median: "UNKNOWN",
+      level: 1,
+      is_bridge: true,
+    });
+    const legacy = makeRoad(); // no Part 1 fields at all -- backward compatibility
+
+    const fc = buildRoadFeatureCollection({
+      roads: [divided, legacy],
+      coordinate_system: "WGS84",
+    });
+
+    expect(fc.features[0].properties).toMatchObject({
+      carriageway_count: 2,
+      median: "UNKNOWN",
+      level: 1,
+      is_bridge: true,
+      is_tunnel: false,
+    });
+    expect(fc.features[1].properties).toMatchObject({
+      carriageway_count: 1,
+      median: "NONE",
+      level: 0,
+      is_bridge: false,
+      is_tunnel: false,
+    });
+  });
 });
 
 describe("buildIntersectionFeatureCollection", () => {

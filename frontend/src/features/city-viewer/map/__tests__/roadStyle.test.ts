@@ -43,6 +43,35 @@ describe("roadWidthMeters", () => {
     const residential = roadWidthMeters({ lanes, road_type: "RESIDENTIAL" });
     expect(highway).toBeGreaterThan(residential);
   });
+
+  it("prefers an explicit width_m from the backend over the lane-count estimate", () => {
+    const explicit = roadWidthMeters({
+      lanes: makeLanes(1),
+      road_type: "RESIDENTIAL",
+      width_m: 30,
+    });
+    expect(explicit).toBe(30);
+  });
+
+  it("falls back to the lane-count estimate when width_m is absent (backward compatibility)", () => {
+    const withoutWidth = roadWidthMeters({
+      lanes: makeLanes(2),
+      road_type: "RESIDENTIAL",
+      width_m: null,
+    });
+    const legacy = roadWidthMeters({ lanes: makeLanes(2), road_type: "RESIDENTIAL" });
+    expect(withoutWidth).toBe(legacy);
+  });
+
+  it("ignores a non-positive width_m rather than trusting bad data", () => {
+    const zeroWidth = roadWidthMeters({
+      lanes: makeLanes(2),
+      road_type: "RESIDENTIAL",
+      width_m: 0,
+    });
+    const legacy = roadWidthMeters({ lanes: makeLanes(2), road_type: "RESIDENTIAL" });
+    expect(zeroWidth).toBe(legacy);
+  });
 });
 
 describe("roadCasingWidthMeters", () => {

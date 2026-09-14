@@ -54,21 +54,28 @@ const HIERARCHY_WIDTH_BONUS_M: Record<RoadHierarchy, number> = {
   OTHER: 0,
 };
 
-/** roadWidth = laneCount * laneWidth + separator + shoulder + a
- * hierarchy bonus. Meters are not calibrated to real-world Almaty
- * measurements -- the goal is consistent, class-legible width, not exact
- * accuracy. */
-export function roadWidthMeters(
-  road: Pick<Road, "lanes" | "road_type"> | Pick<MapRoad, "lane_count" | "road_type">,
-): number {
+type WidthInput =
+  | (Pick<Road, "lanes" | "road_type"> & Partial<Pick<Road, "width_m">>)
+  | (Pick<MapRoad, "lane_count" | "road_type"> & Partial<Pick<MapRoad, "width_m">>);
+
+/** Real-world road width in meters. Prefers `width_m` from the backend
+ * (see `app.city.domain.road_geometry` -- an explicit source width, or a
+ * centrally-computed fallback keyed off road class/lane count) when
+ * present. Falls back to a local lane-count-derived estimate for roads
+ * imported before that field existed (backward compatibility) --
+ * roadWidth = laneCount * laneWidth + separator + shoulder + a hierarchy
+ * bonus. Neither path is calibrated to real-world Almaty measurements;
+ * the goal is consistent, class-legible width, not exact accuracy. */
+export function roadWidthMeters(road: WidthInput): number {
+  if (typeof road.width_m === "number" && road.width_m > 0) {
+    return road.width_m;
+  }
   const laneCount = Math.max(1, roadLaneCount(road));
   const base = laneCount * LANE_WIDTH_M + SEPARATOR_WIDTH_M + SHOULDER_WIDTH_M;
   return base + HIERARCHY_WIDTH_BONUS_M[roadHierarchy(road.road_type)];
 }
 
-export function roadCasingWidthMeters(
-  road: Pick<Road, "lanes" | "road_type"> | Pick<MapRoad, "lane_count" | "road_type">,
-): number {
+export function roadCasingWidthMeters(road: WidthInput): number {
   return roadWidthMeters(road) + CASING_EXTRA_M;
 }
 

@@ -17,6 +17,7 @@ import type {
   City,
   CoordinateSystem,
   Intersection,
+  MedianType,
   Road,
   MapRoad,
   TrafficLight,
@@ -37,6 +38,19 @@ export interface RoadFeatureProperties {
   lane_count: number;
   width_m: number;
   casing_width_m: number;
+  /** Whether `width_m` is a fallback estimate rather than a real
+   * source-provided measurement -- see roadStyle.ts's roadWidthMeters. */
+  is_width_estimated: boolean;
+  /** 1 = single shared surface, 2 = one of a pair of physically
+   * separated carriageways. See Road.carriageway_count. */
+  carriageway_count: number;
+  median: MedianType;
+  /** 0 = ground, positive = overpass/bridge, negative = underpass/
+   * tunnel. A crossing between roads at different levels is never
+   * assumed to be an intersection. */
+  level: number;
+  is_bridge: boolean;
+  is_tunnel: boolean;
 }
 
 export interface IntersectionFeatureProperties {
@@ -112,6 +126,12 @@ export function buildRoadFeatureCollection(
           lane_count: roadLaneCount(road),
           width_m: roadWidthMeters(road),
           casing_width_m: roadCasingWidthMeters(road),
+          is_width_estimated: road.is_width_estimated ?? true,
+          carriageway_count: road.carriageway_count ?? 1,
+          median: road.median ?? "NONE",
+          level: road.level ?? 0,
+          is_bridge: road.is_bridge ?? false,
+          is_tunnel: road.is_tunnel ?? false,
         },
       };
     }),
