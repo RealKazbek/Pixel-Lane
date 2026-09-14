@@ -1,39 +1,41 @@
 /**
- * Real road-surface polygons, generated from each Road's centerline +
- * real-world width via `@turf/buffer`, with roads sharing an
- * `Intersection` unioned (`@turf/union`) into one seamless junction
- * polygon instead of independently overlapping strokes.
+ * Real road-surface polygons: each Road's centerline buffered into a
+ * true-to-scale envelope, with roads sharing an `Intersection` unified
+ * into one seamless junction surface via `geometry/junctionSolver.ts`
+ * instead of independently overlapping strokes -- or, at a plain
+ * 2-road/no-intersection point, a plain per-road envelope.
  *
- * This is the fix for roads rendering as "several disconnected strips
- * crossing each other" (see docs/city-model.md's road-network topology
- * note): a plain per-road `line-width` stroke draws each road as an
- * independent object with its own casing, so at any junction you see N
- * overlapping rectangle borders instead of one paved area. Buffering the
- * centerline into an actual polygon, then unioning every road that
- * shares an `Intersection`, produces one continuous shape whose internal
- * borders are gone -- because they're the same polygon.
- *
- * Unlike the schematic per-lane offset rendering in `laneGeometry.ts`,
- * this is NOT gated to `LOCAL_CARTESIAN` only: buffering a single
- * centerline by a single width is a much lower-risk operation than
- * stacking N per-lane offsets (no compounding/self-intersection failure
- * mode from adjacent offset lines), so it is safe to run on real,
- * uncurated OSM geometry too -- this is what actually fixes Real
- * Almaty's disconnected-strip appearance, not just Demo City's.
+ * This adapter is now a thin assembler: all the actual geometry (trim,
+ * envelope, fillet, merge taper) lives in `../geometry/`, which has no
+ * MapLibre/React dependency and is unit-tested on its own (see
+ * `../geometry/README.md`). This file's only job is walking the City
+ * Model to build `IncidentRoad`s per intersection and shaping the result
+ * into the `RoadSurfaceFeatureCollection` this module has always
+ * exposed, so `roadSurfaceLayers.ts`/`setupLayers.ts` are unaffected.
  *
  * IMPORTANT -- this is still visual-only geometry. `Intersection` is the
  * real topology (an explicit domain object with `connected_road_ids`,
  * never derived from a geometric crossing -- see
  * app.city.importers.osm.mapper's module docstring); this adapter reads
- * that topology to decide WHICH road polygons to merge, but does not
+ * that topology to decide WHICH road envelopes to merge, but does not
  * itself define or infer connectivity. A geometric crossing with no
  * shared `Intersection` is never merged, matching "visual connection
  * implies topological connection", never the reverse.
+ *
+ * Runs on **both** coordinate systems: buffering/trimming/filleting a
+ * single centerline by a single width is a much lower-risk operation
+ * than the schematic per-lane offsetting in `laneGeometry.ts` (no
+ * compounding/self-intersection failure mode from stacked adjacent
+ * offsets), so it is safe on real, uncurated OSM geometry too -- this is
+ * what fixes Real Almaty's junction rendering, not just Demo City's.
+ *
+ * Centerline curve smoothing (`geometry/curveSmoothing.ts`), however,
+ * stays `LOCAL_CARTESIAN`-only for now, same gate/reason as
+ * `laneGeometry.ts`'s per-lane offsetting -- real OSM polylines aren't
+ * curated for it yet.
  */
 
-import buffer from "@turf/buffer";
-import { featureCollection as turfFeatureCollection } from "@turf/helpers";
-import union from "@turf/union";
+import { toLngLat } from "./coordinates";
 import { toRoadLineString, type AnyRoad } from "./roadLineString";
 import {
   HIERARCHY_LABEL_RANK,
@@ -41,6 +43,10 @@ import {
   roadWidthMeters,
   type RoadHierarchy,
 } from "../styles/roadStyle";
+import { pointsMatch, type IncidentRoad, type LngLat } from "../geometry/nodeGeometry";
+import { solveJunction } from "../geometry/junctionSolver";
+import { buildRoadEnvelope, type PolygonFeature } from "../geometry/roadEnvelope";
+import { smoothCenterline } from "../geometry/curveSmoothing";
 import type { CoordinateSystem, Intersection } from "../../types/city";
 
 export interface RoadSurfaceProperties {
@@ -61,8 +67,6 @@ export type RoadSurfaceFeatureCollection = GeoJSON.FeatureCollection<
   RoadSurfaceProperties
 >;
 
-type PolygonFeature = GeoJSON.Feature<GeoJSON.Polygon | GeoJSON.MultiPolygon>;
-
 /** Picks the most visually important hierarchy among a junction's
  * constituent roads (lower `HIERARCHY_LABEL_RANK` = more important) so a
  * highway/residential junction reads as the highway's color, not an
@@ -75,25 +79,33 @@ function dominantHierarchy(hierarchies: RoadHierarchy[]): RoadHierarchy {
 
 export function buildRoadSurfaceFeatureCollection(
   roads: AnyRoad[],
-  intersections: Pick<Intersection, "id" | "connected_road_ids">[],
+  intersections: Pick<Intersection, "id" | "position" | "connected_road_ids">[],
   coordinateSystem: CoordinateSystem,
 ): RoadSurfaceFeatureCollection {
-  const polygonByRoadId = new Map<string, PolygonFeature>();
+  const lineByRoadId = new Map<string, GeoJSON.Feature<GeoJSON.LineString>>();
+  const halfWidthByRoadId = new Map<string, number>();
   const hierarchyByRoadId = new Map<string, RoadHierarchy>();
 
   for (const road of roads) {
-    const line = toRoadLineString(coordinateSystem, road);
-    if (!line) continue;
+    const rawLine = toRoadLineString(coordinateSystem, road);
+    if (!rawLine) continue;
     const widthM = roadWidthMeters(road);
     if (!(widthM > 0)) continue;
-    let polygon: PolygonFeature | undefined;
-    try {
-      polygon = buffer(line, widthM / 2, { units: "meters", steps: 6 });
-    } catch {
-      polygon = undefined;
-    }
-    if (!polygon) continue;
-    polygonByRoadId.set(road.id, polygon);
+    const line: GeoJSON.Feature<GeoJSON.LineString> =
+      coordinateSystem === "LOCAL_CARTESIAN"
+        ? {
+            type: "Feature",
+            properties: {},
+            geometry: {
+              type: "LineString",
+              coordinates: smoothCenterline(
+                rawLine.geometry.coordinates as LngLat[],
+              ),
+            },
+          }
+        : rawLine;
+    lineByRoadId.set(road.id, line);
+    halfWidthByRoadId.set(road.id, widthM / 2);
     hierarchyByRoadId.set(road.id, roadHierarchy(road.road_type));
   }
 
@@ -102,35 +114,43 @@ export function buildRoadSurfaceFeatureCollection(
 
   for (const intersection of intersections) {
     const memberIds = intersection.connected_road_ids.filter((id) =>
-      polygonByRoadId.has(id),
+      lineByRoadId.has(id),
     );
     if (memberIds.length < 2) continue;
 
-    let merged: PolygonFeature | null =
-      polygonByRoadId.get(memberIds[0]) ?? null;
-    let ok = merged !== null;
-    for (let i = 1; ok && i < memberIds.length; i++) {
-      const next = polygonByRoadId.get(memberIds[i]);
-      if (!next || !merged) {
-        ok = false;
-        break;
-      }
-      try {
-        merged = union(turfFeatureCollection([merged, next]));
-      } catch {
-        merged = null;
-      }
-      if (!merged) ok = false;
+    const nodePosition = toLngLat(coordinateSystem, intersection.position) as LngLat;
+    const incident: IncidentRoad[] = [];
+    for (const id of memberIds) {
+      const line = lineByRoadId.get(id)!;
+      const coords = line.geometry.coordinates as LngLat[];
+      const atEnd = pointsMatch(coords[coords.length - 1], nodePosition);
+      const atStart = pointsMatch(coords[0], nodePosition);
+      // Should always be one or the other given the domain invariant
+      // "two roads sharing an endpoint share an Intersection" -- if
+      // neither matches, this Intersection's position has drifted from
+      // the road's actual geometry, and guessing which end is wrong is
+      // worse than skipping this road for this junction only.
+      if (!atEnd && !atStart) continue;
+      incident.push({
+        roadId: id,
+        halfWidthM: halfWidthByRoadId.get(id)!,
+        hierarchy: hierarchyByRoadId.get(id)!,
+        line,
+        atEnd,
+      });
     }
-    if (!ok || !merged) continue;
+    if (incident.length < 2) continue;
 
-    for (const id of memberIds) mergedRoadIds.add(id);
+    const result = solveJunction(nodePosition, incident);
+    if (!result) continue;
+
+    for (const id of result.memberRoadIds) mergedRoadIds.add(id);
     features.push({
       type: "Feature",
-      geometry: merged.geometry,
+      geometry: result.polygon.geometry,
       properties: {
         hierarchy: dominantHierarchy(
-          memberIds.map((id) => hierarchyByRoadId.get(id)!),
+          result.memberRoadIds.map((id) => hierarchyByRoadId.get(id)!),
         ),
         is_junction: true,
       },
@@ -139,7 +159,10 @@ export function buildRoadSurfaceFeatureCollection(
 
   for (const road of roads) {
     if (mergedRoadIds.has(road.id)) continue;
-    const polygon = polygonByRoadId.get(road.id);
+    const line = lineByRoadId.get(road.id);
+    const halfWidth = halfWidthByRoadId.get(road.id);
+    if (!line || halfWidth === undefined) continue;
+    const polygon: PolygonFeature | null = buildRoadEnvelope(line, halfWidth);
     if (!polygon) continue;
     features.push({
       type: "Feature",

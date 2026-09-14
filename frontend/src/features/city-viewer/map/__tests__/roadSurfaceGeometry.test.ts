@@ -11,7 +11,7 @@ function makeRoad(overrides: Partial<Road> = {}): Road {
     geometry: {
       points: [
         { x: 0, y: 0 },
-        { x: 0, y: 0.01 },
+        { x: 0, y: 40 },
       ],
     },
     default_speed_limit_kmh: 50,
@@ -25,7 +25,7 @@ function makeIntersection(overrides: Partial<Intersection> = {}): Intersection {
   return {
     id: "int-1",
     city_id: "city-1",
-    position: { x: 0, y: 0.01 },
+    position: { x: 0, y: 40 },
     connected_road_ids: [],
     connected_lane_ids: [],
     control_type: "UNCONTROLLED",
@@ -75,7 +75,7 @@ describe("buildRoadSurfaceFeatureCollection", () => {
       geometry: {
         points: [
           { x: 0, y: 0 },
-          { x: 0, y: 0.01 },
+          { x: 0, y: 40 },
         ],
       },
     });
@@ -83,8 +83,8 @@ describe("buildRoadSurfaceFeatureCollection", () => {
       id: "road-b",
       geometry: {
         points: [
-          { x: 0, y: 0.01 },
-          { x: 0.01, y: 0.01 },
+          { x: 0, y: 40 },
+          { x: 40, y: 40 },
         ],
       },
     });
@@ -107,13 +107,13 @@ describe("buildRoadSurfaceFeatureCollection", () => {
   it("does NOT merge two roads that merely cross in space without a shared Intersection", () => {
     // Regression for "visual connection must never silently become
     // topological connection": these two roads geometrically cross at
-    // (0, 0.01) but no Intersection references both of them.
+    // (0, 40) but no Intersection references both of them.
     const roadA = makeRoad({
       id: "road-a",
       geometry: {
         points: [
-          { x: -0.01, y: 0.01 },
-          { x: 0.01, y: 0.01 },
+          { x: -40, y: 40 },
+          { x: 40, y: 40 },
         ],
       },
     });
@@ -122,7 +122,7 @@ describe("buildRoadSurfaceFeatureCollection", () => {
       geometry: {
         points: [
           { x: 0, y: 0 },
-          { x: 0, y: 0.02 },
+          { x: 0, y: 80 },
         ],
       },
     });
@@ -175,8 +175,8 @@ describe("buildRoadSurfaceFeatureCollection", () => {
       id: "north",
       geometry: {
         points: [
-          { x: 0, y: 0.02 },
-          { x: 0, y: 0.01 },
+          { x: 0, y: 80 },
+          { x: 0, y: 40 },
         ],
       },
     });
@@ -184,8 +184,8 @@ describe("buildRoadSurfaceFeatureCollection", () => {
       id: "east",
       geometry: {
         points: [
-          { x: 0, y: 0.01 },
-          { x: 0.02, y: 0.01 },
+          { x: 0, y: 40 },
+          { x: 80, y: 40 },
         ],
       },
     });
@@ -193,8 +193,8 @@ describe("buildRoadSurfaceFeatureCollection", () => {
       id: "west",
       geometry: {
         points: [
-          { x: -0.02, y: 0.01 },
-          { x: 0, y: 0.01 },
+          { x: -80, y: 40 },
+          { x: 0, y: 40 },
         ],
       },
     });

@@ -28,20 +28,40 @@
  * example cities already use (see `app/city/examples/`), so this gate is
  * "controlled/synthetic fixture" vs. "real import", not a demo-specific
  * special case -- see docs/city-model.md's Demo City section.
+ *
+ * Centerlines are Catmull-Rom smoothed (`geometry/curveSmoothing.ts`,
+ * same `LOCAL_CARTESIAN`-only gate) before any offsetting, and trimmed
+ * back at every real junction end by that junction's node radius
+ * (`geometry/nodeGeometry.ts`'s `computeNodeRadius`/`trimLine`, the same
+ * calculation `roadSurfaceGeometry.ts`'s junction solver uses) so lane
+ * markings follow curved roads and stop before the junction surface
+ * instead of running straight through it.
  */
 
 import along from "@turf/along";
 import bearing from "@turf/bearing";
 import lineOffset from "@turf/line-offset";
 import { roadLengthMeters } from "./geometryLength";
+import { toLngLat } from "./coordinates";
 import { toRoadLineString, type AnyRoad } from "./roadLineString";
 import { roadLaneCount, roadWidthMeters } from "../styles/roadStyle";
+import { smoothCenterline } from "../geometry/curveSmoothing";
+import { computeNodeRadius, pointsMatch, trimLine, type LngLat } from "../geometry/nodeGeometry";
 import type {
   CoordinateSystem,
   CyclewayType,
+  Intersection,
   ParkingLaneOrientation,
   TurnLaneType,
 } from "../../types/city";
+
+/** Roads' Intersections, restricted to the fields this module needs --
+ * matches what `roadSurfaceGeometry.ts` requires so both adapters can be
+ * fed the same `City`/viewport intersection list. */
+export type LaneJunctionIntersection = Pick<
+  Intersection,
+  "position" | "connected_road_ids"
+>;
 
 export interface LaneSurfaceProperties {
   road_id: string;
@@ -178,19 +198,86 @@ function supportsLaneDetailRendering(
   return coordinateSystem === "LOCAL_CARTESIAN";
 }
 
+/** Builds each road's rendering centerline: Catmull-Rom smoothed, then
+ * trimmed back at any end that's a real (2+ road) junction by that
+ * junction's node radius -- the same radius
+ * `geometry/junctionSolver.ts` trims road envelopes by, so lane markings
+ * stop exactly where the junction surface begins instead of drifting
+ * through it or stopping short of it. Empty for `WGS84` (see this file's
+ * top-level docstring). */
+function buildLaneRenderingLines(
+  roads: AnyRoad[],
+  intersections: LaneJunctionIntersection[],
+  coordinateSystem: CoordinateSystem,
+): Map<string, GeoJSON.Feature<GeoJSON.LineString>> {
+  const result = new Map<string, GeoJSON.Feature<GeoJSON.LineString>>();
+  if (!supportsLaneDetailRendering(coordinateSystem)) return result;
+
+  const roadById = new Map(roads.map((r) => [r.id, r]));
+  const widthByRoadId = new Map<string, number>();
+  for (const road of roads) widthByRoadId.set(road.id, roadWidthMeters(road));
+
+  const trimStartByRoadId = new Map<string, number>();
+  const trimEndByRoadId = new Map<string, number>();
+
+  for (const intersection of intersections) {
+    const memberIds = intersection.connected_road_ids.filter((id) =>
+      widthByRoadId.has(id),
+    );
+    if (memberIds.length < 2) continue;
+    const nodeRadius = computeNodeRadius(
+      memberIds.map((id) => ({ halfWidthM: widthByRoadId.get(id)! / 2 })),
+    );
+    const nodePosition = toLngLat(coordinateSystem, intersection.position) as LngLat;
+    for (const id of memberIds) {
+      const road = roadById.get(id);
+      if (!road) continue;
+      const rawLine = toLineStringFeature(coordinateSystem, road);
+      if (!rawLine) continue;
+      const coords = rawLine.geometry.coordinates as LngLat[];
+      if (pointsMatch(coords[coords.length - 1], nodePosition)) {
+        trimEndByRoadId.set(id, Math.max(trimEndByRoadId.get(id) ?? 0, nodeRadius));
+      } else if (pointsMatch(coords[0], nodePosition)) {
+        trimStartByRoadId.set(id, Math.max(trimStartByRoadId.get(id) ?? 0, nodeRadius));
+      }
+    }
+  }
+
+  for (const road of roads) {
+    const rawLine = toLineStringFeature(coordinateSystem, road);
+    if (!rawLine) continue;
+    const smoothedCoords = smoothCenterline(
+      rawLine.geometry.coordinates as LngLat[],
+    );
+    const smoothedLine: GeoJSON.Feature<GeoJSON.LineString> = {
+      type: "Feature",
+      properties: {},
+      geometry: { type: "LineString", coordinates: smoothedCoords },
+    };
+    const start = trimStartByRoadId.get(road.id) ?? 0;
+    const end = trimEndByRoadId.get(road.id) ?? 0;
+    const trimmed =
+      start > 0 || end > 0 ? trimLine(smoothedLine, start, end) : smoothedLine;
+    result.set(road.id, trimmed);
+  }
+  return result;
+}
+
 export function buildLaneSurfaceFeatureCollection(
   roads: AnyRoad[],
   coordinateSystem: CoordinateSystem,
+  intersections: LaneJunctionIntersection[] = [],
 ): LaneSurfaceFeatureCollection {
   if (!supportsLaneDetailRendering(coordinateSystem)) {
     return { type: "FeatureCollection", features: [] };
   }
+  const renderingLines = buildLaneRenderingLines(roads, intersections, coordinateSystem);
   const features: LaneSurfaceFeatureCollection["features"] = [];
   for (const road of roads) {
     const laneCount = roadLaneCount(road);
     const lanes = "lanes" in road ? road.lanes : undefined;
     if (laneCount < 1) continue;
-    const line = toLineStringFeature(coordinateSystem, road);
+    const line = renderingLines.get(road.id);
     if (!line) continue;
     const roadWidthM = roadWidthMeters(road);
     const laneWidthM = roadWidthM / laneCount;
@@ -220,15 +307,17 @@ export function buildLaneSurfaceFeatureCollection(
 export function buildLaneBoundaryFeatureCollection(
   roads: AnyRoad[],
   coordinateSystem: CoordinateSystem,
+  intersections: LaneJunctionIntersection[] = [],
 ): LaneBoundaryFeatureCollection {
   if (!supportsLaneDetailRendering(coordinateSystem)) {
     return { type: "FeatureCollection", features: [] };
   }
+  const renderingLines = buildLaneRenderingLines(roads, intersections, coordinateSystem);
   const features: LaneBoundaryFeatureCollection["features"] = [];
   for (const road of roads) {
     const laneCount = roadLaneCount(road);
     if (laneCount < 1) continue;
-    const line = toLineStringFeature(coordinateSystem, road);
+    const line = renderingLines.get(road.id);
     if (!line) continue;
     const roadWidthM = roadWidthMeters(road);
     const laneWidthM = roadWidthM / laneCount;
@@ -256,17 +345,19 @@ export function buildLaneBoundaryFeatureCollection(
 export function buildTurnArrowFeatureCollection(
   roads: AnyRoad[],
   coordinateSystem: CoordinateSystem,
+  intersections: LaneJunctionIntersection[] = [],
 ): TurnArrowFeatureCollection {
   if (!supportsLaneDetailRendering(coordinateSystem)) {
     return { type: "FeatureCollection", features: [] };
   }
+  const renderingLines = buildLaneRenderingLines(roads, intersections, coordinateSystem);
   const features: TurnArrowFeatureCollection["features"] = [];
   for (const road of roads) {
     const lanes = "lanes" in road ? road.lanes : undefined;
     if (!lanes || lanes.length === 0) continue;
     const laneCount = roadLaneCount(road);
     if (laneCount < 1) continue;
-    const line = toLineStringFeature(coordinateSystem, road);
+    const line = renderingLines.get(road.id);
     if (!line) continue;
     const lengthM = roadLengthMeters(road, coordinateSystem);
     if (lengthM <= 0) continue;
@@ -315,15 +406,17 @@ export function buildTurnArrowFeatureCollection(
 export function buildLaneUseMarkingFeatureCollection(
   roads: AnyRoad[],
   coordinateSystem: CoordinateSystem,
+  intersections: LaneJunctionIntersection[] = [],
 ): LaneUseMarkingFeatureCollection {
   if (!supportsLaneDetailRendering(coordinateSystem)) {
     return { type: "FeatureCollection", features: [] };
   }
+  const renderingLines = buildLaneRenderingLines(roads, intersections, coordinateSystem);
   const features: LaneUseMarkingFeatureCollection["features"] = [];
   for (const road of roads) {
     const laneCount = roadLaneCount(road);
     if (laneCount < 1) continue;
-    const line = toLineStringFeature(coordinateSystem, road);
+    const line = renderingLines.get(road.id);
     if (!line) continue;
     const roadWidthM = roadWidthMeters(road);
     const halfWidthM = roadWidthM / 2;

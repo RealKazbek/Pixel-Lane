@@ -176,18 +176,22 @@ export function PixelLaneMap({
       laneSurfaces: buildLaneSurfaceFeatureCollection(
         visibleRoads,
         city.coordinate_system,
+        visibleIntersections,
       ),
       laneBoundaries: buildLaneBoundaryFeatureCollection(
         visibleRoads,
         city.coordinate_system,
+        visibleIntersections,
       ),
       turnArrows: buildTurnArrowFeatureCollection(
         visibleRoads,
         city.coordinate_system,
+        visibleIntersections,
       ),
       laneUseMarkings: buildLaneUseMarkingFeatureCollection(
         visibleRoads,
         city.coordinate_system,
+        visibleIntersections,
       ),
       roadSurfaces: buildRoadSurfaceFeatureCollection(
         visibleRoads,
