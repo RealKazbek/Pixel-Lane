@@ -9,14 +9,67 @@
 
 import { useMemo, useState } from "react";
 import { useTheme } from "next-themes";
+import type { LngLatBoundsLike } from "maplibre-gl";
 import { PixelLaneMap } from "../../map/PixelLaneMap";
 import { buildRoadLabCity } from "./fixtures";
+import { toLngLat } from "../../map/adapters/coordinates";
 import { DEFAULT_LAYER_VISIBILITY } from "../../map/types";
+
+const FOCUS_MARGIN_M = 25;
 
 export function RoadLabApp() {
   const { city, cells } = useMemo(() => buildRoadLabCity(), []);
   const [fitSignal, setFitSignal] = useState(0);
+  const [focusBounds, setFocusBounds] = useState<{
+    bounds: LngLatBoundsLike;
+    token: number;
+  } | null>(null);
   const { resolvedTheme, setTheme } = useTheme();
+
+  // Per-fixture bounds, computed from just that fixture's own roads
+  // (ids are prefixed `t<cellId>-`) -- a tight fit so "jump to fixture"
+  // actually zooms in close enough to see real (not coarse-zoom-
+  // fallback) geometry.
+  const cellBounds = useMemo(() => {
+    const result = new Map<string, LngLatBoundsLike>();
+    for (const cell of cells) {
+      const prefix = `t${cell.id}-`;
+      const roads = city.roads.filter((r) => r.id.startsWith(prefix));
+      let minLng = Infinity;
+      let minLat = Infinity;
+      let maxLng = -Infinity;
+      let maxLat = -Infinity;
+      for (const road of roads) {
+        for (const point of road.geometry.points) {
+          const [lng, lat] = toLngLat(city.coordinate_system, {
+            x: point.x - FOCUS_MARGIN_M,
+            y: point.y - FOCUS_MARGIN_M,
+          });
+          const [lng2, lat2] = toLngLat(city.coordinate_system, {
+            x: point.x + FOCUS_MARGIN_M,
+            y: point.y + FOCUS_MARGIN_M,
+          });
+          minLng = Math.min(minLng, lng, lng2);
+          minLat = Math.min(minLat, lat, lat2);
+          maxLng = Math.max(maxLng, lng, lng2);
+          maxLat = Math.max(maxLat, lat, lat2);
+        }
+      }
+      if (Number.isFinite(minLng)) {
+        result.set(cell.id, [
+          [minLng, minLat],
+          [maxLng, maxLat],
+        ]);
+      }
+    }
+    return result;
+  }, [city, cells]);
+
+  function focusOn(cellId: string) {
+    const bounds = cellBounds.get(cellId);
+    if (!bounds) return;
+    setFocusBounds((prev) => ({ bounds, token: (prev?.token ?? 0) + 1 }));
+  }
 
   return (
     <div className="flex h-full flex-col">
@@ -43,7 +96,11 @@ export function RoadLabApp() {
             }
             className="rounded-md border border-border-subtle bg-surface-elevated px-2.5 py-1 text-xs font-medium hover:bg-surface"
           >
-            Toggle theme ({resolvedTheme ?? "system"})
+            {/* Never render `resolvedTheme` as text here -- it's
+                undefined during server rendering and resolves on the
+                client, so including it in the label would be a
+                guaranteed hydration mismatch. */}
+            Toggle theme
           </button>
         </div>
       </header>
@@ -54,8 +111,14 @@ export function RoadLabApp() {
           </h2>
           <ul className="space-y-1 text-xs">
             {cells.map((cell) => (
-              <li key={cell.id} className="text-text-muted">
-                {cell.label}
+              <li key={cell.id}>
+                <button
+                  type="button"
+                  onClick={() => focusOn(cell.id)}
+                  className="w-full rounded px-1.5 py-1 text-left text-text-muted hover:bg-surface-elevated hover:text-foreground"
+                >
+                  {cell.label}
+                </button>
               </li>
             ))}
           </ul>
@@ -70,6 +133,7 @@ export function RoadLabApp() {
             overlayVisible={true}
             layerVisibility={DEFAULT_LAYER_VISIBILITY}
             fitSignal={fitSignal}
+            focusBounds={focusBounds}
             mode="view"
             editorAction={null}
             onEditorStatusChange={() => {}}

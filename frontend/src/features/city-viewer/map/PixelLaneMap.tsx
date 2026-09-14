@@ -11,7 +11,11 @@
 
 import { useCallback, useEffect, useMemo, useRef } from "react";
 import { useTheme } from "next-themes";
-import type { Map as MapLibreMap, MapLayerMouseEvent } from "maplibre-gl";
+import type {
+  LngLatBoundsLike,
+  Map as MapLibreMap,
+  MapLayerMouseEvent,
+} from "maplibre-gl";
 import { useMapLibreMap } from "./hooks/useMapLibreMap";
 import {
   useViewportCityData,
@@ -73,6 +77,11 @@ interface PixelLaneMapProps {
   /** Bumped by the parent to request a re-fit (e.g. a "Fit to view"
    * button, or switching to a new city). */
   fitSignal: number;
+  /** Optional camera focus request independent of `fitSignal`'s
+   * whole-city fit -- e.g. the Road Geometry Lab's "jump to fixture"
+   * list. Only acts when `token` changes, so re-passing the same bounds
+   * doesn't re-trigger the fly. */
+  focusBounds?: { bounds: LngLatBoundsLike; token: number } | null;
   mode: MapMode;
   editorAction: EditorAction | null;
   onEditorStatusChange: (
@@ -95,6 +104,7 @@ export function PixelLaneMap({
   overlayVisible,
   layerVisibility,
   fitSignal,
+  focusBounds,
   mode,
   editorAction,
   onEditorStatusChange,
@@ -364,6 +374,16 @@ export function PixelLaneMap({
     map.fitBounds(bounds, { padding: 48, duration: 0 });
     // eslint-disable-next-line react-hooks/exhaustive-deps -- fitSignal is a manual trigger
   }, [isLoaded, bounds, fitSignal]);
+
+  // Independent "jump to a specific area" camera request -- e.g. the
+  // Road Geometry Lab's fixture list. Only reacts to `token` changing,
+  // not to `bounds` being re-passed with the same value.
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map || !isLoaded || !focusBounds) return;
+    map.fitBounds(focusBounds.bounds, { padding: 80, maxZoom: 19, duration: 0 });
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- token is the manual trigger
+  }, [isLoaded, focusBounds?.token]);
 
   // Selection via click -- roads, intersections, and traffic lights are
   // separate layers; clicking a traffic light selects its parent

@@ -170,7 +170,7 @@ function buildTest03TJunction(b: LabCityBuilder, origin: Point): void {
     road_type: "ARTERIAL",
     points: [
       [0, 80],
-      [0, 10],
+      [0, 0],
     ],
     lanes: [{ index: 0 }],
   });
@@ -196,18 +196,24 @@ function buildTest03TJunction(b: LabCityBuilder, origin: Point): void {
 }
 
 function buildTest04FourWay(b: LabCityBuilder, origin: Point): void {
+  // Every incident road's stored centerline must reach exactly to the
+  // node position -- the junction solver does its own internal visual
+  // trimming (node radius) from that real endpoint; the stored/domain
+  // geometry itself must never be pre-trimmed, or the road never
+  // registers as incident to the Intersection at all (see
+  // roadSurfaceGeometry.ts's endpoint-matching).
   const south = b.addRoad("t04-south", "04 Four-Way", origin, {
     road_type: "ARTERIAL",
     points: [
       [0, 80],
-      [0, 10],
+      [0, 0],
     ],
     lanes: [{ index: 0 }],
   });
   const north = b.addRoad("t04-north", "04 Four-Way", origin, {
     road_type: "ARTERIAL",
     points: [
-      [0, -10],
+      [0, 0],
       [0, -80],
     ],
     lanes: [{ index: 0 }],
@@ -215,7 +221,7 @@ function buildTest04FourWay(b: LabCityBuilder, origin: Point): void {
   const east = b.addRoad("t04-east", "04 Four-Way", origin, {
     road_type: "ARTERIAL",
     points: [
-      [10, 0],
+      [0, 0],
       [80, 0],
     ],
     lanes: [{ index: 0 }],
@@ -224,7 +230,7 @@ function buildTest04FourWay(b: LabCityBuilder, origin: Point): void {
     road_type: "ARTERIAL",
     points: [
       [-80, 0],
-      [-10, 0],
+      [0, 0],
     ],
     lanes: [{ index: 0 }],
   });
@@ -273,10 +279,21 @@ function buildTest05YJunction(b: LabCityBuilder, origin: Point): void {
 function buildTest06Merge(b: LabCityBuilder, origin: Point): void {
   // A narrow slip road merging into a wide host road at a shallow angle
   // -- exercises geometry/mergeTaper.ts's `isMergeCandidate` heuristic.
-  const host = b.addRoad("t06-host", "06 Merge", origin, {
+  // The host is a real graph node here too (split into an approach and a
+  // continuation segment, like any other junction -- a merge point is
+  // topologically a 3-way junction, not an exception to "every road must
+  // actually terminate at the node it connects to").
+  const hostApproach = b.addRoad("t06-host-approach", "06 Merge", origin, {
     road_type: "ARTERIAL",
     points: [
       [-80, 10],
+      [0, 0],
+    ],
+    lanes: [{ index: 0 }, { index: 1 }],
+  });
+  const hostContinuation = b.addRoad("t06-host-continuation", "06 Merge", origin, {
+    road_type: "ARTERIAL",
+    points: [
       [0, 0],
       [80, 0],
     ],
@@ -290,7 +307,12 @@ function buildTest06Merge(b: LabCityBuilder, origin: Point): void {
     ],
     lanes: [{ index: 0 }],
   });
-  b.addIntersection("t06-node", origin, [0, 0], [host, slip]);
+  b.addIntersection(
+    "t06-node",
+    origin,
+    [0, 0],
+    [hostApproach, hostContinuation, slip],
+  );
 }
 
 function buildTest07Split(b: LabCityBuilder, origin: Point): void {

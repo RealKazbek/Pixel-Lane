@@ -5,10 +5,20 @@ import {
   buildLaneBoundaryFeatureCollection,
   buildLaneSurfaceFeatureCollection,
 } from "../../../map/adapters/laneGeometry";
+import destination from "@turf/destination";
+import { point as turfPoint } from "@turf/helpers";
 import { toLngLat } from "../../../map/adapters/coordinates";
 import { toRoadLineString } from "../../../map/adapters/roadLineString";
 import { buildLaneConnectorCurve } from "../../../map/geometry/laneConnection";
 import { outwardBearing, pointsMatch, type LngLat } from "../../../map/geometry/nodeGeometry";
+
+/** Real lane-connector endpoints sit at the junction's edge (roughly
+ * where a lane crosses into the junction plate), not at the shared node
+ * coordinate itself -- every incident road's stored endpoint is
+ * literally the same point at the node (see roadSurfaceGeometry.ts's
+ * endpoint-matching invariant), so connecting "node to node" would
+ * always be a zero-length span. */
+const CONNECTOR_ENDPOINT_OFFSET_M = 8;
 
 function isFiniteRing(coords: number[][]): boolean {
   return coords.every(([x, y]) => Number.isFinite(x) && Number.isFinite(y));
@@ -118,11 +128,14 @@ describe("buildRoadLabCity", () => {
       const line = toRoadLineString(city.coordinate_system, road)!;
       const coords = line.geometry.coordinates as LngLat[];
       const atEnd = pointsMatch(coords[coords.length - 1], nodePosition);
-      const point = atEnd ? coords[coords.length - 1] : coords[0];
-      return {
-        point,
-        outwardBearingDeg: outwardBearing(nodePosition, line, atEnd),
-      };
+      const outwardBearingDeg = outwardBearing(nodePosition, line, atEnd);
+      const point = destination(
+        turfPoint(nodePosition),
+        CONNECTOR_ENDPOINT_OFFSET_M,
+        outwardBearingDeg,
+        { units: "meters" },
+      ).geometry.coordinates as LngLat;
+      return { point, outwardBearingDeg };
     });
 
     expect(endpoints).toHaveLength(4);
