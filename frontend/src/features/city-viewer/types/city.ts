@@ -174,6 +174,23 @@ export interface ParkingZone {
   capacity: number | null;
 }
 
+export interface BusStop {
+  id: string;
+  city_id: string;
+  road_id: string;
+  position_x: number;
+  position_y: number;
+  name: string | null;
+}
+
+export interface Crosswalk {
+  id: string;
+  city_id: string;
+  road_id: string;
+  /** Position along the road's centerline, 0 (first point) to 1 (last). */
+  position_ratio: number;
+}
+
 export interface City {
   bounds?: [number, number, number, number] | null;
   road_count?: number;
@@ -187,6 +204,8 @@ export interface City {
   intersections: Intersection[];
   traffic_lights: TrafficLight[];
   parking_zones: ParkingZone[];
+  bus_stops: BusStop[];
+  crosswalks: Crosswalk[];
 }
 
 export interface CitySummary {

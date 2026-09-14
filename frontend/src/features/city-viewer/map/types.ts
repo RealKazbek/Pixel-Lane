@@ -11,10 +11,12 @@ export interface LayerVisibility {
   roads: boolean;
   intersections: boolean;
   trafficLights: boolean;
+  amenities: boolean;
 }
 
 export const DEFAULT_LAYER_VISIBILITY: LayerVisibility = {
   roads: true,
   intersections: true,
   trafficLights: true,
+  amenities: true,
 };

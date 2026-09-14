@@ -40,6 +40,10 @@ import {
 } from "./adapters/laneGeometry";
 import { buildRoadSurfaceFeatureCollection } from "./adapters/roadSurfaceGeometry";
 import {
+  buildBusStopFeatureCollection,
+  buildCrosswalkFeatureCollection,
+} from "./adapters/cityAmenitiesToGeoJson";
+import {
   addPixelLaneSourcesAndLayers,
   setLayerGroupVisibility,
   setSelectedFeature,
@@ -212,8 +216,25 @@ export function PixelLaneMap({
         visibleIntersections,
         city.coordinate_system,
       ),
+      // Not yet bbox/viewport-scoped (see docs/city-model.md) -- `city`
+      // itself, not `visibleRoads`/`visibleIntersections`, since a WGS84
+      // city's own bus_stops/crosswalks are always [] until that follow-up
+      // exists, and a LOCAL_CARTESIAN city's full list is already `city`.
+      busStops: buildBusStopFeatureCollection(city.bus_stops, city.coordinate_system),
+      crosswalks: buildCrosswalkFeatureCollection(
+        city.crosswalks,
+        city.roads,
+        city.coordinate_system,
+      ),
     };
-  }, [visibleRoads, visibleIntersections, city.coordinate_system]);
+  }, [
+    visibleRoads,
+    visibleIntersections,
+    city.coordinate_system,
+    city.bus_stops,
+    city.crosswalks,
+    city.roads,
+  ]);
   const styleKey =
     basemapEnabled && mapStyleUrl ? mapStyleUrl : "pixel-lane-empty";
 

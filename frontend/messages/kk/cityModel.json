@@ -94,6 +94,8 @@
     "intersections": "Қиылыстар",
     "intersectionsTooltip": "Қиылыстарды көрсету немесе жасыру",
     "trafficLights": "Бағдаршамдар",
-    "trafficLightsTooltip": "Бағдаршамдарды көрсету немесе жасыру"
+    "trafficLightsTooltip": "Бағдаршамдарды көрсету немесе жасыру",
+    "amenities": "Инфрақұрылым",
+    "amenitiesTooltip": "Автобус аялдамалары мен жаяу жүргіншілер өткелдерін көрсету немесе жасыру"
   }
 }

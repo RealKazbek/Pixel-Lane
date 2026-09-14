@@ -94,6 +94,8 @@
     "intersections": "Перекрёстки",
     "intersectionsTooltip": "Показать или скрыть перекрёстки",
     "trafficLights": "Светофоры",
-    "trafficLightsTooltip": "Показать или скрыть светофоры"
+    "trafficLightsTooltip": "Показать или скрыть светофоры",
+    "amenities": "Инфраструктура",
+    "amenitiesTooltip": "Показать или скрыть автобусные остановки и пешеходные переходы"
   }
 }

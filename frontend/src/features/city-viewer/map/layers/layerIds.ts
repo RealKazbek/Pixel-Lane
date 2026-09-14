@@ -11,6 +11,8 @@ export const SOURCE_IDS = {
   turnArrows: "pixel-lane-turn-arrows",
   laneUseMarkings: "pixel-lane-lane-use-markings",
   roadSurfaces: "pixel-lane-road-surfaces",
+  busStops: "pixel-lane-bus-stops",
+  crosswalks: "pixel-lane-crosswalks",
 } as const;
 
 export const LAYER_IDS = {
@@ -32,6 +34,8 @@ export const LAYER_IDS = {
   laneParkingLine: "pixel-lane-lane-parking-line",
   laneParkingLabel: "pixel-lane-lane-parking-label",
   laneCyclewayLine: "pixel-lane-lane-cycleway-line",
+  busStops: "pixel-lane-bus-stops",
+  crosswalks: "pixel-lane-crosswalks",
 } as const;
 
 /** Draw order, back to front (basemap sits below all of these; Terra
@@ -49,6 +53,7 @@ export const LAYER_DRAW_ORDER: readonly string[] = [
   LAYER_IDS.laneParkingLine,
   LAYER_IDS.laneParkingLabel,
   LAYER_IDS.laneCyclewayLine,
+  LAYER_IDS.crosswalks,
   LAYER_IDS.laneBoundaryEdge,
   LAYER_IDS.laneBoundarySeparator,
   LAYER_IDS.laneBusLabel,
@@ -57,6 +62,7 @@ export const LAYER_DRAW_ORDER: readonly string[] = [
   LAYER_IDS.intersections,
   LAYER_IDS.intersectionDetails,
   LAYER_IDS.trafficLights,
+  LAYER_IDS.busStops,
   LAYER_IDS.roadLabels,
 ];
 
@@ -84,6 +90,7 @@ export const LAYER_GROUPS = {
   ],
   intersections: [LAYER_IDS.intersections, LAYER_IDS.intersectionDetails],
   trafficLights: [LAYER_IDS.trafficLights],
+  amenities: [LAYER_IDS.busStops, LAYER_IDS.crosswalks],
 } as const;
 
 export type LayerGroupId = keyof typeof LAYER_GROUPS;

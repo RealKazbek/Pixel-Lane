@@ -22,6 +22,7 @@ import {
 import { buildRoadLayers } from "./roadLayers";
 import { buildRoadSurfaceLayers } from "./roadSurfaceLayers";
 import { buildLaneDetailLayers } from "./laneDetailLayers";
+import { buildAmenityLayers } from "./amenityLayers";
 import { ensurePixelLaneIcons } from "./icons";
 import {
   LAYER_DRAW_ORDER,
@@ -44,6 +45,10 @@ import type {
   TurnArrowFeatureCollection,
 } from "../adapters/laneGeometry";
 import type { RoadSurfaceFeatureCollection } from "../adapters/roadSurfaceGeometry";
+import type {
+  BusStopFeatureCollection,
+  CrosswalkFeatureCollection,
+} from "../adapters/cityAmenitiesToGeoJson";
 
 export interface PixelLaneGeoJson {
   roads: RoadFeatureCollection;
@@ -55,6 +60,8 @@ export interface PixelLaneGeoJson {
   turnArrows: TurnArrowFeatureCollection;
   laneUseMarkings: LaneUseMarkingFeatureCollection;
   roadSurfaces: RoadSurfaceFeatureCollection;
+  busStops: BusStopFeatureCollection;
+  crosswalks: CrosswalkFeatureCollection;
 }
 
 function buildAllLayers(
@@ -65,6 +72,7 @@ function buildAllLayers(
     ...buildRoadLayers(referenceLatitudeDeg, theme),
     ...buildRoadSurfaceLayers(theme),
     ...buildLaneDetailLayers(theme),
+    ...buildAmenityLayers(theme),
     ...buildIntersectionLayers(theme),
     buildTrafficLightLayer(theme),
     buildRoadLabelLayer(theme),
@@ -77,7 +85,10 @@ export function addPixelLaneSourcesAndLayers(
   referenceLatitudeDeg: number,
   theme: MapThemeColors,
 ): void {
-  ensurePixelLaneIcons(map, theme.busBadge, theme.parkingBadge);
+  ensurePixelLaneIcons(map, theme.busBadge, theme.parkingBadge, [
+    theme.roadLabel,
+    theme.roadLabelHalo,
+  ]);
   if (!map.getSource(SOURCE_IDS.roads)) {
     map.addSource(SOURCE_IDS.roads, { type: "geojson", data: data.roads });
   }
@@ -126,6 +137,15 @@ export function addPixelLaneSourcesAndLayers(
       data: data.roadSurfaces,
     });
   }
+  if (!map.getSource(SOURCE_IDS.busStops)) {
+    map.addSource(SOURCE_IDS.busStops, { type: "geojson", data: data.busStops });
+  }
+  if (!map.getSource(SOURCE_IDS.crosswalks)) {
+    map.addSource(SOURCE_IDS.crosswalks, {
+      type: "geojson",
+      data: data.crosswalks,
+    });
+  }
 
   const layers = buildAllLayers(referenceLatitudeDeg, theme);
   for (const layer of layers) {
@@ -156,7 +176,10 @@ export function updatePixelLaneTheme(
   referenceLatitudeDeg: number,
   theme: MapThemeColors,
 ): void {
-  ensurePixelLaneIcons(map, theme.busBadge, theme.parkingBadge);
+  ensurePixelLaneIcons(map, theme.busBadge, theme.parkingBadge, [
+    theme.roadLabel,
+    theme.roadLabelHalo,
+  ]);
   for (const layerId of LAYER_DRAW_ORDER) {
     if (map.getLayer(layerId)) map.removeLayer(layerId);
   }
@@ -205,6 +228,13 @@ export function updatePixelLaneData(
   const roadSurfacesSource = map.getSource(SOURCE_IDS.roadSurfaces);
   if (roadSurfacesSource instanceof GeoJSONSource)
     roadSurfacesSource.setData(data.roadSurfaces);
+
+  const busStopsSource = map.getSource(SOURCE_IDS.busStops);
+  if (busStopsSource instanceof GeoJSONSource) busStopsSource.setData(data.busStops);
+
+  const crosswalksSource = map.getSource(SOURCE_IDS.crosswalks);
+  if (crosswalksSource instanceof GeoJSONSource)
+    crosswalksSource.setData(data.crosswalks);
 }
 
 /** Applies the master "Overlay" toggle (a debugging aid for comparing

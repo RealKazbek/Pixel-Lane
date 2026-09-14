@@ -14,10 +14,15 @@ const chipOn =
 const chipOff =
   "border-border-subtle bg-surface/60 text-zinc-500 hover:bg-surface";
 
-const LAYER_ORDER: LayerGroupId[] = ["roads", "intersections", "trafficLights"];
+const LAYER_ORDER: LayerGroupId[] = [
+  "roads",
+  "intersections",
+  "trafficLights",
+  "amenities",
+];
 
-/** The three real, independently-toggleable entity layers Pixel Lane
- * currently renders (see `layers/layerIds.ts`'s `LAYER_GROUPS`). Kept as
+/** The independently-toggleable entity layers Pixel Lane currently
+ * renders (see `layers/layerIds.ts`'s `LAYER_GROUPS`). Kept as
  * its own small component so the toolbar itself stays a thin container
  * (see map/README.md's scope notes) -- this is the one place layer *ids*
  * meet layer *labels*. */

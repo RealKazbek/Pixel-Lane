@@ -8,6 +8,7 @@ import {
 import { buildRoadLayers } from "../layers/roadLayers";
 import { buildRoadSurfaceLayers } from "../layers/roadSurfaceLayers";
 import { buildLaneDetailLayers } from "../layers/laneDetailLayers";
+import { buildAmenityLayers } from "../layers/amenityLayers";
 import { SOURCE_IDS } from "../layers/layerIds";
 import { DARK_MAP_THEME, LIGHT_MAP_THEME } from "../styles/mapTheme";
 
@@ -32,6 +33,7 @@ describe("Pixel Lane layer expressions", () => {
         ...buildRoadLayers(43.24, theme),
         ...buildRoadSurfaceLayers(theme),
         ...buildLaneDetailLayers(theme),
+        ...buildAmenityLayers(theme),
         ...buildIntersectionLayers(theme),
         buildTrafficLightLayer(theme),
         buildRoadLabelLayer(theme),

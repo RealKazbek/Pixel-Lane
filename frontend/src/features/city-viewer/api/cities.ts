@@ -20,7 +20,15 @@ export function getCity(cityId: string): Promise<City> {
 
 export async function getCityForMap(cityId: string): Promise<City> {
   const metadata = await apiRequest<
-    Omit<City, "roads" | "intersections" | "traffic_lights" | "parking_zones">
+    Omit<
+      City,
+      | "roads"
+      | "intersections"
+      | "traffic_lights"
+      | "parking_zones"
+      | "bus_stops"
+      | "crosswalks"
+    >
   >(`/api/v1/cities/${cityId}/metadata`);
   if (metadata.coordinate_system === "LOCAL_CARTESIAN") return getCity(cityId);
   return {
@@ -29,6 +37,11 @@ export async function getCityForMap(cityId: string): Promise<City> {
     intersections: [],
     traffic_lights: [],
     parking_zones: [],
+    // Not yet bbox-scoped like roads/intersections -- see
+    // docs/city-model.md's "Bus stops and pedestrian crossings" note.
+    // WGS84/viewport cities show none until that follow-up exists.
+    bus_stops: [],
+    crosswalks: [],
   };
 }
 
