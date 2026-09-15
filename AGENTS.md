@@ -374,6 +374,16 @@ Claude Code and Codex may work on the same repository.
 - Do not overwrite unfamiliar modifications.
 - Avoid broad formatting changes or mass file rewrites unrelated to the
   task. Keep changes scoped; prefer targeted patches.
+- An audit/research subagent must not mutate repository state (write
+  files, run migrations, commit, push, or edit external systems like
+  Notion) unless the task explicitly grants it write permission — treat
+  "investigate/audit X" as read-only by default.
+- A research-only agent must not commit or push. If its output implies a
+  change, that change is a separate, explicitly-scoped follow-up task, not
+  something the research agent does itself.
+
+See `docs/development/project-management.md` for how this applies to the
+team's task workflow (self-pick, branch/PR, Notion/GitHub split).
 
 ## 16. Skill routing
 
