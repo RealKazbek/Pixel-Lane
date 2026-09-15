@@ -530,6 +530,41 @@ Authentication and user/session management. Must not become coupled to the
 core traffic engine — the traffic domain should function and be testable
 without any auth dependency.
 
+### Future module boundaries (not implemented, named for planning only)
+
+These do not exist in the codebase today. They are named here so future
+work has an agreed home instead of landing ad hoc — see
+`docs/product/vision.md` and `docs/roadmap.md` for what phase introduces
+each one. Do not add a package/module for any of these before its roadmap
+phase actually starts.
+
+- **Simulation Engine** (v0.2+) — vehicle-level/timestep simulation,
+  distinct from the already-implemented static Traffic Engine v1. Likely
+  home: `simulation/pixel_lane_simulation/` alongside the existing
+  `traffic/` package, or a new sibling package if the two need materially
+  different lifecycles.
+- **Control Engine** (v0.3+) — adaptive signal-phase selection, corridor
+  coordination, downstream-capacity-aware control logic. Must sit behind
+  the same adapter/service boundary discipline as the SUMO integration
+  (AGENTS.md §1): control logic must be independently testable without a
+  live network or hardware.
+- **Forecasting / Optimization** (v0.2–v0.4) — demand prediction and
+  scenario/recommendation optimization. Must not become the same module as
+  Control Engine — forecasting produces inputs a human or the Control
+  Engine consumes, it does not itself decide.
+- **Emergency Module** (v0.5) — emergency-vehicle priority and
+  multi-intersection green-corridor logic. Depends on Control Engine
+  existing first.
+- **Transit Module** (v2.0, future) — public transport intelligence. Not
+  scoped in detail; do not build ahead of need.
+- **Vision Module** (v3.0, future) — city camera/vision intelligence. Not
+  scoped in detail; do not build ahead of need.
+
+Per `AGENTS.md`'s AI-usage principle, none of these modules may use an LLM
+as the safety-critical decision-maker — deterministic algorithms,
+simulation, optimization, constraints, human override, and audit logs are
+the required approach for anything control- or safety-relevant.
+
 ## Architectural boundaries (hard rules)
 
 - Core traffic logic must not depend directly on the UI.
