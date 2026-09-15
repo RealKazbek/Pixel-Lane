@@ -5,6 +5,7 @@ New to the repository? Start with
 through everything below.
 
 - [Developer onboarding](developer-onboarding.md) — start here for Git access, setup, and collaboration rules.
+- [Product vision](product/vision.md) — long-term direction, North Star, operating loop, scope and non-goals.
 - [Architecture](architecture.md) — implemented boundaries and planned systems.
 - [Project structure](project-structure.md) — directory ownership.
 - [Development](development.md) — local workflow and Docker commands.

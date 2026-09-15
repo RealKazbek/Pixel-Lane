@@ -2,6 +2,8 @@
 
 Pixel Lane is an early-stage smart-city and urban traffic-management platform for modelling road networks, inspecting infrastructure, and running static traffic analysis. Its persistent City Model, map/editor workflow, and simulation-ready boundaries support future municipal traffic-engineering work without claiming live control features today.
 
+**Long-term direction.** Pixel Lane's target is a transport digital-twin platform for government/city administration: model a real network, simulate proposed changes before building them, and compare measured Before/After outcomes, working toward network-wide adaptive signal control and (eventually, under human supervision) live control. See [docs/product/vision.md](docs/product/vision.md) for the full vision and non-goals, and [docs/roadmap.md](docs/roadmap.md) for what's implemented today versus planned. Nothing in this section describes a current capability — see the status table below for that.
+
 ## Status
 
 | Capability | Status |
@@ -53,6 +55,8 @@ Install the isolated OSM extra in `backend/.venv`, then run `make start` and `ma
 ## Development and documentation
 
 - [Documentation index](docs/README.md)
+- [Product vision](docs/product/vision.md)
+- [Roadmap](docs/roadmap.md)
 - [Development guide](docs/development.md)
 - [Configuration](docs/configuration.md)
 - [Testing](docs/testing.md)
