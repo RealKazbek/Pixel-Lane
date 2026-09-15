@@ -17,6 +17,14 @@ status table (implemented / pending / planned) and
 verbal descriptions of "what Pixel Lane will do" over these two documents —
 they're kept accurate as the source of truth.
 
+Pixel Lane's long-term target is a transport digital-twin platform for
+government/city administration — see [docs/product/vision.md](product/vision.md)
+for the North Star, problem statement, and use cases, and its **Scope**
+and **Non-goals** sections in particular for what is explicitly not being
+built yet (city-wide autonomous control, an LLM as the control decision-
+maker, etc.). Building ahead of the current roadmap phase is out of scope
+even if it matches the long-term vision.
+
 ## 2. Architecture and repository layout
 
 Read [docs/architecture.md](architecture.md) (subsystem table, dependency
@@ -184,7 +192,28 @@ Ground rules regardless of which agent you use:
   of an isolated `TEST_DATABASE_URL` (see [docs/testing.md](testing.md)) —
   it can truncate the local Almaty demo city.
 
-## 10. Where to read next
+## 10. Definition of Done
+
+A change is done when, not before:
+
+- It implements exactly the requested scope — no unrelated refactors, and
+  nothing from a later roadmap phase pulled forward (see
+  [docs/product/vision.md](product/vision.md)'s Scope/Non-goals).
+- Every new/changed user-facing string has `kk`/`ru`/`en` translations and
+  `make frontend-check-i18n` passes (§5).
+- Every new/changed user-facing UI is verified correct in both Light and
+  Dark appearance (§5b).
+- The relevant checks in §6 pass locally (there is no CI to catch this for
+  you).
+- Docs affected by the change are updated in the same change — an outdated
+  `docs/architecture.md`, `docs/roadmap.md`, or API doc is a bug, not a
+  follow-up (AGENTS.md §17).
+- `git diff`/`git status` were reviewed for accidental files, secrets, or
+  unrelated changes before committing.
+- The commit(s) are small, Conventional-Commits-styled, and pushed (AGENTS.md
+  §14) unless the user said not to.
+
+## 11. Where to read next
 
 - [Architecture](architecture.md), [City Model](city-model.md), [Traffic Engine](traffic-engine.md), [Map and editor](map-editor.md), [OSM import](osm-import.md), [API](api.md)
 - [Configuration](configuration.md), [Testing](testing.md), [Troubleshooting](troubleshooting.md), [Roadmap](roadmap.md)

@@ -2,6 +2,8 @@
 
 Pixel Lane is an early-stage smart-city and urban traffic-management platform for modelling road networks, inspecting infrastructure, and running static traffic analysis. Its persistent City Model, map/editor workflow, and simulation-ready boundaries support future municipal traffic-engineering work without claiming live control features today.
 
+**Primary goal.** Reduce urban congestion and the amount of time people lose in traffic, by giving city administrations a shared, authoritative model of the road network to observe, simulate, and (eventually, under human supervision) control.
+
 **Long-term direction.** Pixel Lane's target is a transport digital-twin platform for government/city administration: model a real network, simulate proposed changes before building them, and compare measured Before/After outcomes, working toward network-wide adaptive signal control and (eventually, under human supervision) live control. See [docs/product/vision.md](docs/product/vision.md) for the full vision and non-goals, and [docs/roadmap.md](docs/roadmap.md) for what's implemented today versus planned. Nothing in this section describes a current capability — see the status table below for that.
 
 ## Status
@@ -51,6 +53,17 @@ Open `http://localhost:3000`; API docs are at `http://localhost:8000/docs`. `mak
 ## Almaty demo
 
 Install the isolated OSM extra in `backend/.venv`, then run `make start` and `make import-almaty`. The deterministic import is idempotent. OSM provides network attributes and signal presence, not demand volumes or signal timing. See [OSM import](docs/osm-import.md).
+
+## Roadmap summary
+
+Pixel Lane is currently in **Phase 0 / v0.1 (City Model)**: the persisted
+City Model, Demo City, Real Almaty import, and map/editor above are
+implemented; **v0.2 (Traffic Simulation Core)** — vehicle-level simulation
+on top of today's static Traffic Engine — is next. Network-wide adaptive
+signal control (v0.3), scenario comparison (v0.4), emergency priority
+(v0.5), dynamic rules (v0.6), and a government pilot (v1.0) are later,
+unimplemented phases. See [docs/roadmap.md](docs/roadmap.md) for the full,
+per-item Implemented/In progress/Next/Planned/Future breakdown.
 
 ## Development and documentation
 
