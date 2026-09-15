@@ -123,10 +123,21 @@ development database (a wrong setup can truncate your local demo city).
 
 ## 7. Git and collaboration workflow
 
-There's no formal branch-protection or PR-review tooling configured in this
-repository today (no `.github/` workflows) — the process below is a
-lightweight recommendation consistent with how the project already works,
-not an invented heavyweight process:
+Team task tracking, ownership, and the self-pick task lifecycle live in
+Notion (Development Workspace); the process and Notion/GitHub canonical
+split are documented once, in
+[docs/development/project-management.md](development/project-management.md)
+— read that before opening your first PR. Short version: self-pick a
+`Ready` task, branch as `feat|fix|docs|refactor/PL-XXX-short-description`,
+open a PR against `main` using `.github/pull_request_template.md`, get
+maintainer review. **No one pushes directly to `main`.**
+
+There's no automated branch-protection enforcement configured in this
+repository yet (see the `Developer Platform / CI` epic in Notion) — the
+rules above are enforced by convention and maintainer review today, not by
+tooling. That doesn't make them optional.
+
+Git mechanics not covered by the workflow doc:
 
 - **Before starting work**, pull the latest `main` and check `git status` —
   don't build on top of stale state, and don't overwrite another
@@ -144,8 +155,8 @@ not an invented heavyweight process:
 - **Conflicts**: resolve them by re-reading both sides' intent, not by
   blindly taking "ours"/"theirs" — for a schema or City Model conflict,
   re-run `make migrate` after resolving to confirm the result is valid.
-- Since there's no CI, treat "I ran the checks locally and they passed" as
-  a real commitment, not a formality.
+- Since there's no CI yet, treat "I ran the checks locally and they passed"
+  as a real commitment, not a formality.
 
 ## 8. AI-assisted development
 
@@ -217,6 +228,8 @@ A change is done when, not before:
 
 - [Architecture](architecture.md), [City Model](city-model.md), [Traffic Engine](traffic-engine.md), [Map and editor](map-editor.md), [OSM import](osm-import.md), [API](api.md)
 - [Configuration](configuration.md), [Testing](testing.md), [Troubleshooting](troubleshooting.md), [Roadmap](roadmap.md)
+- [Project management (task lifecycle, Notion ↔ GitHub split)](development/project-management.md), [Task template](development/task-template.md)
 - [AI development workflow](ai-development.md), [AI agent audit](ai-agent-audit.md), [AI prompting standard](ai-prompting.md)
 - `AGENTS.md` (repo root) — canonical policy for humans and AI agents alike
 - [CONTRIBUTING.md](../CONTRIBUTING.md) — the short version of this page
+- [Pixel Lane — Project Guide](https://app.notion.com/p/3dc56325f84081c79e59ece0a7be12d4) (Notion) — product vision, users, roadmap narrative, and the **Development Workspace** (Tasks/Epics/Team/Decisions)

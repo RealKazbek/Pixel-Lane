@@ -17,7 +17,7 @@ direction this roadmap serves.
 | Demo City | Implemented (Demo District, `make seed-demo-city`) |
 | Real Almaty baseline | Implemented (full-city import, see `docs/full-almaty-verification.md`) |
 | Developer workflow | Implemented (`docs/development.md`, Makefile targets) |
-| Tests / CI expectations | In progress — test commands and database-safety rules exist and run locally (`docs/testing.md`); no automated CI pipeline exists yet (`.github/` is absent) |
+| Tests / CI expectations | In progress — test commands and database-safety rules exist and run locally (`docs/testing.md`); `.github/` has a PR template and issue template, but no automated CI workflow (`.github/workflows/`) exists yet — see the `Developer Platform / CI` epic |
 
 ## v0.1 — City Model
 
