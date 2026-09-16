@@ -308,9 +308,19 @@ patterns. Do not build massive page components that mix all logic and UI.
 
 ## 12. Git rules
 
+- **Work happens on a task branch, never on `main`.** If you find yourself
+  checked out on `main` at the start of a task, create or switch to the
+  appropriate task branch (see `docs/development/project-management.md`'s
+  branch-naming convention, e.g. `feat/PL-XXX-short-description`) *before*
+  editing or committing anything — do not edit/commit on `main` intending
+  to push it or move it to a branch later.
 - Inspect `git status` before making changes; before any destructive
   operation (`checkout`/`restore`/`reset`/`clean`, `rm -rf`), stash or commit
-  anything present first.
+  anything present first. If `main` already has uncommitted changes when
+  you arrive (yours from an earlier step, or someone else's), stash them
+  (`git stash -u` if untracked files are involved) or move them onto the
+  correct task branch — never discard them, and never commit them to
+  `main`.
 - Do not blindly `git add .` when unrelated changes exist — stage only
   relevant files.
 - Verify before committing: no accidental generated files, no secrets
@@ -351,13 +361,22 @@ file — `untracked ≠ temporary`, `ignored ≠ disposable`.
 
 After completing a user-requested task: run relevant validation, review the
 diff, ensure no secrets/accidental files are included, create appropriately
-small commit(s), then **push to the configured remote branch**.
+small commit(s) **on the task's branch** (see § 12 — never on `main`), then
+**push that branch to the configured remote**, and open (or update) a Pull
+Request targeting `main` using `.github/pull_request_template.md` — see
+`docs/development/project-management.md` for the full task lifecycle.
 
 Do not accumulate multiple finished tasks locally without pushing. Push
 after each completed task unless: there is no configured remote,
 authentication fails, the user explicitly said not to push, repository
 permissions block it, or the task was explicitly exploratory with an
 instruction not to commit.
+
+**Never push directly to `main`, and never merge a Pull Request into
+`main`.** Every change lands on `main` only through a Pull Request the
+maintainer reviews and merges — this applies to every human contributor
+and every AI agent, without exception, regardless of how trivial the
+change seems.
 
 If a push fails, report the exact reason. Never force-push, rewrite
 published history, or delete remote branches unless the user explicitly
@@ -420,8 +439,11 @@ Before declaring a task complete:
    explicitly.
 5. `git status` and diff reviewed; no secrets, no accidental files, no
    unrelated edits.
-6. Changes committed in small, logical, well-described commits.
-7. Completed work pushed to the remote per the push rules above.
+6. Changes committed in small, logical, well-described commits, on the
+   task's branch (never `main` — see § 12).
+7. Completed work pushed to the remote per the push rules above, and a
+   Pull Request opened or updated targeting `main` (never merged by the
+   agent — see § 14).
 8. Before changing a public contract (API schema, domain model, DB schema,
    engine result, frontend contract), its consumers/callers/tests/docs
    were found and updated — not just the definition — and a
@@ -434,14 +456,19 @@ Before declaring a task complete:
 **Mandatory completion gate (including Codex).** A development task is not
 complete, and must not be described as done, until implementation, relevant
 checks, diff review, and status review are complete; focused logical commits
-are created; those commits are pushed; and the remote state is verified. On
-`main`, run `git rev-parse HEAD` and `git rev-parse origin/main` after the
-push and ensure they match. Never claim a push succeeded without this check.
+are created on the task's own branch (never `main` — § 12); those commits
+are pushed to that branch's remote; a Pull Request targeting `main` is
+opened or updated (never merged by the agent — § 14); and the remote state
+is verified. Run `git rev-parse HEAD` and `git rev-parse origin/<task-branch>`
+(the actual branch you pushed, **not** `origin/main`) after the push and
+ensure they match. Never claim a push succeeded without this check, and
+never claim the task is merged unless the maintainer actually merged it.
 Preserve unrelated user changes; inspect every untracked file and report
 whether it is intentional, generated, or should be ignored. The final report
 must state changed modules, architecture/data-flow impact, checks actually
-run and results, final git status, commit SHA(s), push/remote verification,
-remaining limitations, and a recommended next task.
+run and results, final git status, commit SHA(s), push/remote verification
+(against the task branch), remaining limitations, and a recommended next
+task.
 
 ## 18. Library-first engineering
 
