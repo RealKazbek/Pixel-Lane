@@ -58,6 +58,53 @@ Notes:
   actually reads or obeys them at runtime — see the audit doc for that
   distinction.
 
+## Startup protocol (required before implementing a non-trivial task)
+
+Before writing any code, an agent must:
+
+1. Read `AGENTS.md`.
+2. Read its own agent-specific entry point if one exists (`CLAUDE.md`,
+   `GEMINI.md`; Codex reads `AGENTS.md` natively — no separate file).
+3. Read the relevant `.agents/skills/` checklist(s) for the task type.
+4. Identify the Task ID if the task originates from Notion (e.g. `PL-042`).
+5. Read the actual Notion task (Goal, Module, Acceptance Criteria,
+   Dependencies) when Notion MCP access exists — see
+   [docs/development/notion-mcp.md](development/notion-mcp.md). If MCP
+   access is unavailable, use the fields the human pasted from
+   [docs/development/task-template.md](development/task-template.md)
+   instead of guessing at scope.
+6. Read only the relevant architecture/product docs for the area in scope
+   — not the whole repository (AGENTS.md § 2, § 19).
+7. Inspect the actual current implementation of that area.
+8. If changing a shared/public boundary, inspect its callers/consumers
+   first (AGENTS.md § 19).
+9. Read the tests covering the affected behavior.
+10. Compare the prompt's/task's assumptions against what steps 4–9 actually
+    found.
+11. Explicitly report any meaningful mismatch — a task description that
+    assumes something is broken/missing/present when the repo shows
+    otherwise — instead of silently working around it or silently trusting
+    the description.
+12. Only then implement.
+
+An agent must never blindly trust: the user's own description of the
+current state, an AI-generated plan, a stale prompt, Notion text that
+contradicts the current implementation, or a previous agent's summary —
+the actual repository and canonical docs are what's verified against.
+
+## Task-scoped behavior
+
+Treat the task (a Notion Task ID, or an explicit user request) as a
+contract, per AGENTS.md § 17's completion checklist ("task scope matched
+the actual change — no unrequested scope creep"). Concretely, do not:
+redesign unrelated modules, rewrite working architecture, "clean up"
+unrelated code, change unrelated UI, upgrade dependencies without need,
+change the database schema unnecessarily, add speculative features,
+implement a later roadmap item, or otherwise silently expand scope. If a
+separate problem is discovered during the work, report it — don't solve it
+unless it actually blocks the requested task or the user explicitly
+approves the expanded scope.
+
 ## Context efficiency workflow
 
 Before touching code:
