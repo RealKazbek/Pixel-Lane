@@ -3,7 +3,7 @@
 	frontend-dev frontend-lint frontend-typecheck frontend-build frontend-test \
 	frontend-check-i18n check-agents \
 	backend-dev backend-lint backend-typecheck backend-test migrate migration \
-	simulation-test import-almaty seed-demo-city
+	simulation-lint simulation-typecheck simulation-test import-almaty seed-demo-city
 
 help:
 	@echo "Pixel Lane development commands"
@@ -38,6 +38,8 @@ help:
 	@echo "make backend-test        - run backend tests"
 	@echo "make migrate             - apply backend database migrations"
 	@echo "make migration msg=...   - create a new backend migration"
+	@echo "make simulation-lint      - lint + format-check simulation"
+	@echo "make simulation-typecheck - typecheck simulation"
 	@echo "make simulation-test     - run simulation package tests"
 	@echo "make import-almaty       - import the Almaty, Kazakhstan OSM demo city"
 	@echo "make seed-demo-city      - seed the synthetic Demo District (renderer showcase)"
@@ -164,6 +166,12 @@ migrate:
 
 migration:
 	cd backend && . .venv/bin/activate && alembic revision --autogenerate -m "$(msg)"
+
+simulation-lint:
+	cd simulation && . .venv/bin/activate && ruff check . && ruff format --check .
+
+simulation-typecheck:
+	cd simulation && . .venv/bin/activate && mypy pixel_lane_simulation
 
 simulation-test:
 	cd simulation && . .venv/bin/activate && pytest

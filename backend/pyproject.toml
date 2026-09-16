@@ -31,6 +31,14 @@ dev = [
   "httpx>=0.27,<1.0",
   "ruff>=0.7,<1.0",
   "mypy>=1.13,<2.0",
+  # Stub-only package for `requests` (see the `osm` group below):
+  # app/city/importers/osm/client.py imports `requests.exceptions` directly,
+  # and mypy type-checks that import even when the `osm` extra itself isn't
+  # installed. Without this, mypy fails with "Library stubs not installed
+  # for requests.exceptions [import-untyped]" regardless of
+  # ignore_missing_imports, which only covers imports mypy can't resolve at
+  # all -- not a known-but-unstubbed package like requests.
+  "types-requests>=2.30,<3.0",
 ]
 # Isolated, optional: only `app/city/importers/osm/client.py` imports
 # osmnx/networkx, and only when the OSM import CLI is actually run. The
@@ -39,6 +47,10 @@ dev = [
 osm = [
   "osmnx>=2.0,<3.0",
   "osmium>=4.3,<5.0",
+  # client.py imports `requests.exceptions` directly (not just through
+  # osmnx's own internals) -- declare it explicitly instead of relying on
+  # it arriving only as a transitive dependency of osmnx/osmium.
+  "requests>=2.30,<3.0",
 ]
 
 [tool.ruff]
