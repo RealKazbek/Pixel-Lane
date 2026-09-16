@@ -1,0 +1,138 @@
+name: CI
+
+# Validates every Pull Request into main. See docs/testing.md for what each
+# job runs and how to reproduce it locally, and
+# docs/development/project-management.md for the branch/PR workflow this
+# gates. Kept deliberately simple: one job per subsystem, no deployment.
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main]
+
+# Cancel a stale run when a PR gets new commits, instead of letting
+# superseded runs keep burning minutes.
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  NODE_VERSION: "22"
+  PYTHON_VERSION: "3.12"
+
+jobs:
+  check-agents:
+    name: Agent & Repository Policy Checks
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+      # scripts/check-agents.mjs uses only Node's standard library --
+      # no npm install needed.
+      - name: check:agents (instruction-file integrity)
+        run: node scripts/check-agents.mjs
+
+  frontend:
+    name: Frontend
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: frontend
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+      - name: Install dependencies
+        run: npm ci
+      - name: Lint
+        run: npm run lint
+      - name: Typecheck
+        run: npm run typecheck
+      - name: i18n key-parity check
+        run: npm run check:i18n
+      - name: Unit tests
+        run: npm run test
+      - name: Production build
+        run: npm run build
+
+  backend:
+    name: Backend
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: backend
+    services:
+      # PostGIS-enabled image, matching docker-compose.yml -- plain
+      # postgres:16 lacks the PostGIS extension the City Model migrations
+      # require. POSTGRES_DB is named with the required "_test" suffix
+      # (see backend/tests/conftest.py) so it's usable directly as the
+      # isolated test database; it is never the shared development
+      # database and only exists for the lifetime of this job.
+      postgres:
+        image: postgis/postgis:16-3.4
+        env:
+          POSTGRES_DB: pixel_lane_test
+          POSTGRES_USER: pixel_lane_ci
+          POSTGRES_PASSWORD: pixel_lane_ci
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U pixel_lane_ci -d pixel_lane_test"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      # Deliberately CI-only, non-secret values -- never a real credential,
+      # never the shared development database (AGENTS.md § 8's database
+      # safety rule). Used for both the app's own DATABASE_URL (so Alembic
+      # migrates the right database) and pytest's isolated TEST_DATABASE_URL.
+      DATABASE_URL: postgresql+psycopg://pixel_lane_ci:pixel_lane_ci@localhost:5432/pixel_lane_test
+      TEST_DATABASE_URL: postgresql+psycopg://pixel_lane_ci:pixel_lane_ci@localhost:5432/pixel_lane_test
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+          cache: pip
+          cache-dependency-path: backend/pyproject.toml
+      - name: Install dependencies
+        run: pip install -e ".[dev]"
+      - name: Lint (ruff check)
+        run: ruff check .
+      - name: Format check (ruff format)
+        run: ruff format --check .
+      - name: Typecheck (mypy)
+        run: mypy app
+      - name: Apply database migrations
+        run: alembic upgrade head
+      - name: Tests
+        run: pytest
+
+  simulation:
+    name: Simulation
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: simulation
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+          cache: pip
+          cache-dependency-path: simulation/pyproject.toml
+      - name: Install dependencies
+        run: pip install -e ".[dev]"
+      - name: Lint (ruff check)
+        run: ruff check .
+      - name: Format check (ruff format)
+        run: ruff format --check .
+      - name: Typecheck (mypy)
+        run: mypy pixel_lane_simulation
+      - name: Tests
+        run: pytest
