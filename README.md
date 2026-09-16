@@ -4,6 +4,10 @@ Pixel Lane is an early-stage smart-city and urban traffic-management platform fo
 
 **Primary goal.** Reduce urban congestion and the amount of time people lose in traffic, by giving city administrations a shared, authoritative model of the road network to observe, simulate, and (eventually, under human supervision) control.
 
+**Primary customer.** Government / city administration (initial focus: Almaty). See [docs/product/vision.md](docs/product/vision.md) for the full customer/user breakdown.
+
+**Current priority.** Phase 0 foundation and v0.1 City Model (see Status below and [docs/roadmap.md](docs/roadmap.md)). The project's first major proof milestone is later, at v0.3: demonstrate, on a reproducible multi-intersection scenario, that coordinated adaptive signal control measurably reduces congestion relative to fixed timing.
+
 **Long-term direction.** Pixel Lane's target is a transport digital-twin platform for government/city administration: model a real network, simulate proposed changes before building them, and compare measured Before/After outcomes, working toward network-wide adaptive signal control and (eventually, under human supervision) live control. See [docs/product/vision.md](docs/product/vision.md) for the full vision and non-goals, and [docs/roadmap.md](docs/roadmap.md) for what's implemented today versus planned. Nothing in this section describes a current capability — see the status table below for that.
 
 ## Status
@@ -66,6 +70,11 @@ unimplemented phases. See [docs/roadmap.md](docs/roadmap.md) for the full,
 per-item Implemented/In progress/Next/Planned/Future breakdown.
 
 ## Development and documentation
+
+**New developer or AI agent?** Start at
+[docs/developer-onboarding.md](docs/developer-onboarding.md) — a single,
+ordered path through setup, task-picking, workflow, AI use, and Definition
+of Done. Everything below is reachable from there too.
 
 - [Documentation index](docs/README.md)
 - [Product vision](docs/product/vision.md)

@@ -58,6 +58,88 @@ Notes:
   actually reads or obeys them at runtime — see the audit doc for that
   distinction.
 
+## Startup protocol (required before implementing a non-trivial task)
+
+Before writing any code, an agent must:
+
+1. Read `AGENTS.md`.
+2. Read its own agent-specific entry point if one exists (`CLAUDE.md`,
+   `GEMINI.md`; Codex reads `AGENTS.md` natively — no separate file).
+3. Read the relevant `.agents/skills/` checklist(s) for the task type.
+4. **Resolve the task**, in this order:
+   a. If the agent has working Notion MCP access, fetch the actual task
+      (Task ID, Goal, Module, Scope, Acceptance Criteria, Dependencies)
+      from the Development Workspace — see
+      [docs/development/notion-mcp.md](development/notion-mcp.md). This is
+      the preferred path when available, for any agent (Claude Code,
+      Codex, Gemini CLI, or another compatible agent) — Notion MCP access
+      is not Claude-specific.
+   b. Otherwise, use the task content the human provided directly in the
+      prompt (see [docs/ai-prompting.md](ai-prompting.md)'s Form B) or
+      copied from [docs/development/task-template.md](development/task-template.md).
+5. **Verify** the Task ID, scope, and acceptance criteria are actually
+   present from step 4 — not inferred.
+   **If task context cannot be resolved by either path — STOP before
+   implementing anything and ask for the task content or the specific
+   missing fields.** Never infer a goal, scope, acceptance criteria, or
+   dependencies from a Task ID, a task title, or the product roadmap alone;
+   a title like "PL-042" or "fix junction rendering" is not a substitute
+   for the actual Goal/Scope/Acceptance Criteria fields.
+6. Read only the relevant architecture/product docs for the area in scope
+   — not the whole repository (AGENTS.md § 2, § 19).
+7. Inspect the actual current implementation of that area.
+8. If changing a shared/public boundary, inspect its callers/consumers
+   first (AGENTS.md § 19).
+9. Read the tests covering the affected behavior.
+10. Compare the resolved task's assumptions against what steps 6–9 actually
+    found.
+11. Explicitly report any meaningful mismatch — a task description that
+    assumes something is broken/missing/present when the repo shows
+    otherwise — instead of silently working around it or silently trusting
+    the description.
+12. Only then implement, validate, and prepare the change for review.
+
+An agent must never blindly trust: the user's own description of the
+current state, an AI-generated plan, a stale prompt, Notion text that
+contradicts the current implementation, or a previous agent's summary —
+the actual repository and canonical docs are what's verified against.
+
+## Agent capability matrix
+
+Every agent below follows the same canonical policy and the same
+Notion-access model (MCP when configured, human-provided task content
+otherwise) — none of this is Claude-specific. Only discovery mechanics
+differ, and only where explicitly marked has this session verified the
+behavior directly (see `docs/ai-agent-audit.md` for what's VERIFIED vs.
+LIKELY/UNVERIFIED for Codex/Gemini discovery specifically).
+
+| Capability | Claude Code | Codex | Gemini CLI |
+|---|---|---|---|
+| Canonical policy | `AGENTS.md` via `CLAUDE.md` | `AGENTS.md` directly (native discovery) | `AGENTS.md` via `GEMINI.md` |
+| Skills | `.agents/skills/` | `.agents/skills/` | `.agents/skills/` |
+| Notion task access | MCP when configured (verified setup, § above) | MCP when configured / fallback (setup exists; exact remote-server flags are version-dependent — see notion-mcp.md) | MCP when configured / fallback (setup exists; exact config JSON is version-dependent — see notion-mcp.md) |
+| No-MCP behavior | Task content supplied by the human (Form B) | Task content supplied by the human (Form B) | Task content supplied by the human (Form B) |
+| Notion task-state writes | Only if MCP write access is authorized | Only if MCP write access is authorized | Only if MCP write access is authorized |
+| Git rules | `AGENTS.md` | `AGENTS.md` | `AGENTS.md` |
+| Commit attribution | Claude-specific rule in `CLAUDE.md` | No repo-level rule — use the agent's own default (see `docs/ai-agent-audit.md`'s "Silent weaknesses") | No repo-level rule — use the agent's own default |
+
+Do not claim a capability in this table beyond what's been verified against
+current official documentation — see notion-mcp.md's per-agent sections for
+exactly what is and isn't verified for Codex and Gemini CLI's MCP setup.
+
+## Task-scoped behavior
+
+Treat the task (a Notion Task ID, or an explicit user request) as a
+contract, per AGENTS.md § 17's completion checklist ("task scope matched
+the actual change — no unrequested scope creep"). Concretely, do not:
+redesign unrelated modules, rewrite working architecture, "clean up"
+unrelated code, change unrelated UI, upgrade dependencies without need,
+change the database schema unnecessarily, add speculative features,
+implement a later roadmap item, or otherwise silently expand scope. If a
+separate problem is discovered during the work, report it — don't solve it
+unless it actually blocks the requested task or the user explicitly
+approves the expanded scope.
+
 ## Context efficiency workflow
 
 Before touching code:

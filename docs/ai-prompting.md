@@ -44,14 +44,26 @@ before writing code:
 1. Read `AGENTS.md` (and its own entry point: `CLAUDE.md`/`GEMINI.md`/none
    for Codex).
 2. Read the relevant `.agents/skills/` checklist(s) for the task type.
-3. Audit the *actual current implementation* of the area being touched —
+3. If the task has a Notion Task ID, resolve it: retrieve the actual task
+   via Notion MCP if the agent has a working connection (any agent —
+   Claude Code, Codex, Gemini CLI, or another compatible agent — see
+   [docs/development/notion-mcp.md](development/notion-mcp.md)), otherwise
+   from the fields the human pasted (Form B below). **If neither is
+   available, stop and ask for the task content instead of guessing** —
+   never infer a goal, scope, or acceptance criteria from the Task ID or
+   title alone.
+4. Audit the *actual current implementation* of the area being touched —
    never assume a feature is missing/present because a UI button exists or
    a doc implies it. This repo has repeatedly turned out to be
    further along than a task description assumed; the correct response is
    to verify, narrow scope to real gaps, and say so — not to rebuild
    working code.
-4. Report anything the instructions assume that turns out to be false,
-   rather than silently working around it.
+5. Report anything the instructions (or the Notion task) assume that turns
+   out to be false, rather than silently working around it.
+
+The full, numbered startup protocol this maps to lives in
+[docs/ai-development.md](ai-development.md)'s "Startup protocol" section —
+this list is the prompt-writer's summary of it.
 
 ## Mandatory base rules a prompt must never contradict
 
@@ -129,7 +141,243 @@ Adapt to task size; every phase still applies even for small tasks.
    `origin/<branch>` (`AGENTS.md` § 17's mandatory completion gate).
 7. **Report** — see "Final report standard" below.
 
-## The canonical prompt template
+## Working from a Notion task: two standard forms
+
+The task source is always Notion — but **access method depends on the
+agent environment**, and Notion MCP is not assumed or required. This
+applies identically to Claude Code, Codex, Gemini CLI, or another
+compatible coding agent; none of them is the "default" or mandatory one —
+see [docs/ai-development.md](ai-development.md)'s agent capability matrix.
+
+### Form A — Notion MCP available (preferred)
+
+When the agent has a working Notion MCP connection (see
+[docs/development/notion-mcp.md](development/notion-mcp.md)), don't
+manually copy the whole task into the prompt — let the agent retrieve it:
+
+```
+Work on PL-042 from the Pixel Lane Development Workspace.
+
+Read the Notion task through your connected Notion MCP.
+Follow AGENTS.md and relevant skills.
+Audit the current implementation before editing.
+Do not expand scope.
+Implement, validate, and prepare the branch/PR.
+```
+
+### Form B — Notion MCP not available (fallback)
+
+If MCP isn't configured, isn't supported by the agent/version, or isn't
+authenticated in this session, the human supplies the required fields
+directly — copy them from the task using
+[task-template.md](development/task-template.md)'s field list:
+
+```
+Work on PL-042.
+
+Notion MCP is not available in this session.
+
+Task details:
+- Goal:
+- Module:
+- Scope:
+- Out of scope:
+- Acceptance criteria:
+- Dependencies:
+
+Follow AGENTS.md and relevant skills.
+Audit the current implementation before editing.
+Do not expand scope.
+Implement, validate, and prepare the branch/PR.
+```
+
+### The agent must never invent what it can't resolve
+
+If the prompt says "work on PL-042" but the agent has neither MCP access
+nor the pasted fields above, it must say so and ask for the task content
+or the specific missing fields — never guess the goal, scope, acceptance
+criteria, dependencies, or module from the Task ID or a task title alone.
+See [docs/ai-development.md](ai-development.md)'s startup protocol, step 5.
+
+With either form, the agent is still required to run the full startup
+protocol (`docs/ai-development.md`) — reading `AGENTS.md`, resolving the
+real task, auditing the implementation, reporting mismatches; these short
+prompts rely on that being standing policy, not on repeating it every
+time.
+
+**Notion write access is separate from task access.** Even with Form A, an
+agent may have read-only Notion MCP access. If it cannot write the task's
+`Status`/`Assignee`/`Pull Request` fields itself, the human updates them
+manually in Notion — see
+[docs/development/notion-mcp.md](development/notion-mcp.md#no-mcp-fallback).
+
+### Short-form template (most tasks)
+
+Use this when the task is already well-scoped (in Notion or pasted from
+the task template) and doesn't need the extended template's architecture/
+security/database sections. Every field maps directly to a Tasks-database
+column.
+
+```markdown
+Task ID: PL-XXX
+
+Goal:
+[One or two sentences — what outcome defines success.]
+
+Context:
+[What you already know is true right now — point at files, don't paste them.]
+
+Expected behavior:
+[What the system should do after this change.]
+
+Scope:
+[The module(s)/area(s) this touches.]
+
+Out of scope:
+[What must not change as a side effect.]
+
+Acceptance criteria:
+[Concrete, checkable conditions.]
+
+Relevant module:
+[City Model | Map / Renderer / Editor | Road Geometry | Simulation |
+Traffic Control | Data Platform | Backend / API |
+Frontend / Operations UI | Platform / CI | Emergency | Documentation]
+
+Known files/areas:
+[Where to start looking, if known — optional.]
+
+Validation:
+[Which checks apply — frontend/backend/simulation, per docs/development.md.]
+
+Delivery:
+Branch, PR, Notion task status update, per docs/development/project-management.md.
+```
+
+#### Example — frontend/UI task
+
+```markdown
+Task ID: PL-042
+
+Goal:
+Fix disconnected junction rendering in Demo City.
+
+Context:
+The map/editor (frontend/src/features/city-viewer/map/) renders roads by
+lane count; Demo City has known junctions where two roads visually don't
+meet cleanly.
+
+Expected behavior:
+Road surfaces must join cleanly at intersections without sharp caps/spikes
+at normal zoom levels.
+
+Scope:
+Map/Renderer only (frontend/src/features/city-viewer/map/).
+
+Out of scope:
+Do not redesign City Model road/intersection topology or touch simulation.
+
+Acceptance criteria:
+- Demo City's known problem junctions render without visible gaps/spikes.
+- No regression in road width/casing styling at other junctions.
+- Verified in both Light and Dark.
+
+Relevant module:
+Map / Renderer / Editor
+
+Validation:
+make frontend-lint frontend-typecheck frontend-test frontend-build; manual
+visual check of Demo City in both themes.
+
+Delivery:
+Branch fix/PL-042-junction-rendering, PR against main, Notion task moved
+through Review → Done per project-management.md.
+```
+
+#### Example — backend/domain task
+
+```markdown
+Task ID: PL-051
+
+Goal:
+Add a `speed_limit_kmh` default fallback when OSM import omits it.
+
+Context:
+backend/app/city/importers/osm/defaults.py already documents fallback
+behavior for missing lane/one-way tags; speed limit currently has none.
+
+Expected behavior:
+An imported road with no OSM speed tag gets a documented default instead
+of a null that later breaks Traffic Engine free-flow-time calculations.
+
+Scope:
+backend/app/city/importers/osm/ only.
+
+Out of scope:
+Do not change the Traffic Engine's own handling of a null speed limit —
+that fallback already exists there for manually-created cities.
+
+Acceptance criteria:
+- Missing OSM speed tag resolves to the documented default, not null.
+- Existing importer tests still pass; a new test covers the missing-tag case.
+
+Relevant module:
+Data Platform
+
+Validation:
+make backend-lint backend-typecheck backend-test.
+
+Delivery:
+Branch fix/PL-051-osm-speed-default, PR against main, Notion task updated.
+```
+
+#### Example — architecture/research task
+
+```markdown
+Task ID: PL-060
+
+Goal:
+Determine whether bbox-scoped loading is actually needed yet for the
+current Almaty import size, before proposing any implementation.
+
+Context:
+docs/architecture.md documents PostGIS/bbox loading as deferred until a
+concrete spatial-query need exists.
+
+Expected behavior:
+A short written finding: is the trigger condition met today, and if not,
+what would meet it.
+
+Scope:
+Research only — inspect current dataset size, existing query patterns,
+and the documented trigger condition. Do not implement anything.
+
+Out of scope:
+No code changes, no migrations, no Notion edits beyond reporting the
+finding back in this task's Notes field (this is a read-only research
+task — see AGENTS.md §15 on subagent write permission).
+
+Acceptance criteria:
+A finding with evidence (actual road/intersection counts, actual query
+patterns observed) and an explicit recommendation.
+
+Relevant module:
+Documentation
+
+Validation:
+N/A — no code changed.
+
+Delivery:
+Report only; no branch/PR unless the finding leads to a separate,
+explicitly-scoped follow-up task.
+```
+
+## The canonical prompt template (extended)
+
+Use the shorter Notion-task template above for most tasks. Reach for this
+longer version when a task needs explicit architecture, security, database,
+or performance sections spelled out — e.g. a new module boundary, a schema
+change, or anything security-sensitive.
 
 Not every section is needed for every task — use judgment, but always keep
 1–3, 13, 15, and 16.
