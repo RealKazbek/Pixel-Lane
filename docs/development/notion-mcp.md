@@ -40,12 +40,24 @@ install or use Claude Code specifically to work on Pixel Lane.
 
 Verified against Notion's current official docs (`developers.notion.com`).
 
-1. Register the server:
+1. Register the server, **run from the Pixel-Line repository root**:
    ```bash
    claude mcp add --transport http notion https://mcp.notion.com/mcp
    ```
-   Use the default `--scope local` or `--scope user` — **not**
-   `--scope project`, which would commit connection config to the repo.
+   This uses the default `--scope local` — registration is tied to your
+   current working directory, so it only takes effect for *this* project
+   if you run it from the repo root; running it elsewhere registers the
+   server for whatever project you happen to be in instead.
+
+   If you want this connection available in every project regardless of
+   which repository you're in, use `--scope user` instead (an officially
+   documented, verified alternative — not project-specific):
+   ```bash
+   claude mcp add --transport http --scope user notion https://mcp.notion.com/mcp
+   ```
+   **Do not use `--scope project`** for either case — that scope shares
+   its config via a `.mcp.json` file committed to the repo, which would
+   commit Notion connection configuration into the repository.
 2. Restart Claude Code (new MCP servers are only picked up on startup).
 3. Run `/mcp` and follow the OAuth flow in your browser.
 4. Run `/mcp` again to confirm `notion` is listed as connected.
