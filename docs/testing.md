@@ -54,10 +54,9 @@ make frontend-lint frontend-typecheck frontend-check-i18n frontend-test frontend
 
 make start-db                      # or any reachable PostgreSQL matching the
                                     # image/credentials above
-TEST_DATABASE_URL=postgresql+psycopg://<user>:<pass>@localhost:5432/<name>_test \
-DATABASE_URL=$TEST_DATABASE_URL \
-  make migrate
-TEST_DATABASE_URL=$TEST_DATABASE_URL make backend-lint backend-typecheck backend-test
+export TEST_DATABASE_URL=postgresql+psycopg://<user>:<pass>@localhost:5432/<name>_test
+DATABASE_URL="$TEST_DATABASE_URL" make migrate
+make backend-lint backend-typecheck backend-test
 
 make simulation-lint simulation-typecheck simulation-test
 ```
