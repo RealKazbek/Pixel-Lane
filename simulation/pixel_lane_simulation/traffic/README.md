@@ -12,6 +12,7 @@ documented v1 limitations (static assignment, no SUMO, no signal timing).
 
 ```python
 from pixel_lane_simulation.traffic.analysis.engine import analyze_city
+
 result = analyze_city(city_input)  # CityInput -> TrafficAnalysisResult
 ```
 
