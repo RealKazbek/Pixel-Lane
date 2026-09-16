@@ -157,10 +157,10 @@ temporary (e.g. a `# TODO(temporary):` comment or an explicit note in the
 PR/commit) so it isn't mistaken for the real architecture.
 
 **Never present unfinished work as real.** Do not invent API responses,
-backend behavior, or datasets that don't exist (including fabricated
-traffic/government/sensor data — see § 7's "Right and privacy" concerns
-under `docs/product/vision.md`'s non-goals). Do not claim a planned/future
-module (§ 19) is implemented. Do not hardcode city/domain data as if it
+backend behavior, or datasets that don't exist — including fabricated
+traffic/government/sensor data attributed to a real source that doesn't
+actually provide it. Do not claim a planned/future module (§ 19) is
+implemented. Do not hardcode city/domain data as if it
 were final architecture (see "disposable architecture" above). Measured,
 estimated, predicted, and simulated data must stay distinguishable in any
 UI/API surface — never blended together as if equally certain
