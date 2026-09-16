@@ -33,8 +33,11 @@ AGENTS.md                 canonical, cross-agent policy — the single source of
 start — it is framework convention noise, never project policy. Do not
 cite it in a prompt as a rules source. See `docs/ai-development.md` for
 the full diagram and `docs/ai-agent-audit.md` for verified vs. assumed
-agent behavior (e.g. no CI currently enforces any of this; several rules
-are documented-only, not automatically checked).
+agent behavior. CI (`.github/workflows/ci.yml`) now runs lint/typecheck/
+test/build/i18n mechanically, but it is not a required status check yet
+(see `docs/testing.md`), and most of this file's judgment-based rules
+(no fabricated data, no scope creep, architecture boundaries, etc.) have
+no automated check at all — several rules remain documented-only.
 
 ## Required audit behavior (every prompt must trigger this)
 
@@ -124,13 +127,15 @@ Adapt to task size; every phase still applies even for small tasks.
    - Backend (`backend/`): `ruff` lint/format, `mypy`, `pytest` (via
      `make backend-lint` / `backend-typecheck` / `backend-test`, or
      `make migrate` / `make migration msg=...` for schema changes).
-   - Simulation: `make simulation-test`.
+   - Simulation: `make simulation-lint` / `simulation-typecheck` /
+     `simulation-test`.
    - Cross-cutting: `node scripts/check-agents.mjs` (`make check-agents`)
      if agent-instruction files were touched.
-   - There is **no CI** in this repo today — validation is only as good as
-     what the agent actually runs and reports; never claim a check passed
-     without running it, and say plainly if a check can't be run in the
-     current environment.
+   - CI (`.github/workflows/ci.yml`, see `docs/testing.md`) runs these same
+     checks on every PR, but is **not yet a required status check** — it
+     does not replace running them yourself. Never claim a check passed
+     without actually running it, and say plainly if a check can't be run
+     in the current environment.
 5. **Review** — `git status` and `git diff`; confirm no secrets, no
    generated/junk files, no unrelated edits, nothing that overwrites
    another agent's or developer's in-progress work.

@@ -126,16 +126,20 @@ you consider something done:
 ```
 make frontend-lint frontend-typecheck frontend-test frontend-build frontend-check-i18n
 make backend-lint backend-typecheck backend-test
-make simulation-test
+make simulation-lint simulation-typecheck simulation-test
 make check-agents   # instruction-file integrity, if you touched AGENTS.md/CLAUDE.md/etc.
 ```
 
-There is currently no CI pipeline — these checks are not enforced
-automatically on push or PR. Running them yourself before pushing is the
-only thing that catches a regression. Read
-[docs/testing.md](testing.md) before running backend `pytest` locally: it
-must run against an isolated `TEST_DATABASE_URL`, never the shared
-development database (a wrong setup can truncate your local demo city).
+Every Pull Request against `main` also runs these same checks automatically
+in GitHub Actions (`.github/workflows/ci.yml`) — see
+[docs/testing.md](testing.md)'s Continuous Integration section for exactly
+what each job runs and how it maps to the `make` targets above. CI doesn't
+replace running checks locally first: it's not yet a required status check
+(see §8), and it only tells you something's wrong after you've already
+pushed. Read [docs/testing.md](testing.md) before running backend `pytest`
+locally: it must run against an isolated `TEST_DATABASE_URL`, never the
+shared development database (a wrong setup can truncate your local demo
+city).
 
 ## 7. Where tasks live and the Notion workspace
 
@@ -193,11 +197,14 @@ pushes directly to `main`.**
 `main` has an active branch-protection ruleset enforcing this: a Pull
 Request is required before merging, conversation resolution is required,
 only squash merges are allowed, force pushes are blocked, and branch
-deletion is restricted. Required approvals are currently set to 0, and
-status checks aren't required yet since no CI pipeline exists (see the
-`Developer Platform / CI` epic in Notion) — so tooling blocks a direct
-push or an unreviewed merge, but doesn't yet block a merge on failing
-checks. Run the checks in §6 yourself until that changes.
+deletion is restricted. Required approvals are currently set to 0. CI
+(`.github/workflows/ci.yml`, see [docs/testing.md](testing.md)) now runs
+automatically on every PR, but its checks are **not yet required status
+checks** — that's intentionally deferred until the workflow has proven
+stable on real PRs (see the `Developer Platform / CI` epic in Notion), so
+today tooling blocks a direct push or an unreviewed merge, but doesn't yet
+block a merge on a failing or still-running CI run. Run the checks in §6
+yourself and don't rely on CI alone until that changes.
 
 Git mechanics not covered by the workflow doc:
 
@@ -217,8 +224,9 @@ Git mechanics not covered by the workflow doc:
 - **Conflicts**: resolve them by re-reading both sides' intent, not by
   blindly taking "ours"/"theirs" — for a schema or City Model conflict,
   re-run `make migrate` after resolving to confirm the result is valid.
-- Since there's no CI yet, treat "I ran the checks locally and they passed"
-  as a real commitment, not a formality.
+- CI isn't a required status check yet, so treat "I ran the checks locally
+  and they passed" as a real commitment, not a formality — don't rely on a
+  green CI run alone to catch what you didn't check yourself.
 
 ## 9. AI-assisted development
 
@@ -298,8 +306,9 @@ A change is done when, not before:
   `make frontend-check-i18n` passes (§5).
 - Every new/changed user-facing UI is verified correct in both Light and
   Dark appearance (§5b).
-- The relevant checks in §6 pass locally (there is no CI to catch this for
-  you).
+- The relevant checks in §6 pass locally — CI (§8) runs the same checks on
+  the PR, but isn't a required status check yet, so it doesn't catch this
+  for you before merge.
 - Docs affected by the change are updated in the same change — an outdated
   `docs/architecture.md`, `docs/roadmap.md`, or API doc is a bug, not a
   follow-up (AGENTS.md §17).
