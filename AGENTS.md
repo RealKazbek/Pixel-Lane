@@ -105,6 +105,8 @@ instead of grepping/reading everything or opening every file:
 - Keep API/domain logic separated from presentation logic.
 - Avoid duplicate logic.
 - Comments explain WHY, not WHAT. Do not restate code in prose.
+- Fix the root cause of an error; do not suppress, swallow, or silently
+  catch-and-ignore it to make a symptom disappear.
 
 **File size guidance:** a file reaching roughly 300–500 lines should trigger
 a review of whether it should be split by responsibility/domain boundary.
@@ -153,6 +155,16 @@ repository/service layer, or framework-specific code standing in for domain
 logic. If temporary/demo code is genuinely needed, mark it clearly as
 temporary (e.g. a `# TODO(temporary):` comment or an explicit note in the
 PR/commit) so it isn't mistaken for the real architecture.
+
+**Never present unfinished work as real.** Do not invent API responses,
+backend behavior, or datasets that don't exist (including fabricated
+traffic/government/sensor data — see § 7's "Right and privacy" concerns
+under `docs/product/vision.md`'s non-goals). Do not claim a planned/future
+module (§ 19) is implemented. Do not hardcode city/domain data as if it
+were final architecture (see "disposable architecture" above). Measured,
+estimated, predicted, and simulated data must stay distinguishable in any
+UI/API surface — never blended together as if equally certain
+(`docs/product/vision.md`'s non-goals).
 
 ## 5. Scalability and technology choices
 
@@ -243,6 +255,11 @@ appropriate tests (unit, integration, API, component, or regression) that
 validate actual behavior — not tests written only to inflate coverage. Keep
 test layers distinct where useful: unit tests for pure logic, integration
 tests for database behavior, API tests for transport behavior.
+
+**Never delete or disable a test to make a check pass.** A failing test
+means either the code or the test is wrong — fix the actual defect (or fix
+a genuinely incorrect test's assertion), don't remove/skip/comment it out
+to get a green run.
 
 **Tests must reflect the real architecture.** Do not make a test pass by
 replacing important infrastructure with a behaviorally different
@@ -382,24 +399,44 @@ If a push fails, report the exact reason. Never force-push, rewrite
 published history, or delete remote branches unless the user explicitly
 requests it.
 
+**Never merge a Pull Request into `main`.** Push a branch and open a PR;
+only the maintainer merges — see
+`docs/development/project-management.md` for the full task lifecycle and
+who is authorized to merge.
+
 ## 15. Multi-agent compatibility
 
-Claude Code and Codex may work on the same repository.
+Claude Code, Codex, Gemini, and humans may work on the same repository
+around the same time.
 
 - Respect existing work; do not revert another agent's changes unless the
   user requires it.
 - Inspect `git status` before making changes; preserve unrelated
-  uncommitted work you find.
-- Do not overwrite unfamiliar modifications.
+  uncommitted work you find. Never assume a dirty/untracked file you
+  didn't create belongs to you or is safe to discard.
+- Do not overwrite unfamiliar modifications; do not `reset`/`restore`/
+  discard changes that aren't part of your current task.
 - Avoid broad formatting changes or mass file rewrites unrelated to the
   task. Keep changes scoped; prefer targeted patches.
+- One focused task per working branch where practical (see
+  `docs/development/project-management.md`) — don't fold a second,
+  unrelated task into a branch already in progress.
 - An audit/research subagent must not mutate repository state (write
   files, run migrations, commit, push, or edit external systems like
   Notion) unless the task explicitly grants it write permission — treat
-  "investigate/audit X" as read-only by default.
+  "investigate/audit X" as read-only by default. A subagent must not
+  commit/push merely because its parent agent has write access.
 - A research-only agent must not commit or push. If its output implies a
   change, that change is a separate, explicitly-scoped follow-up task, not
   something the research agent does itself.
+- If you discover a conflict with another agent's or developer's
+  in-progress work, report it — do not silently "fix" it by overwriting or
+  reconciling on your own judgment.
+- Do not modify Notion content outside the current task's explicit scope
+  (see `docs/development/notion-mcp.md`'s "what to edit" section), and do
+  not create a new Notion page/database for task tracking when the
+  existing Development Workspace (Tasks/Epics/Team/Decisions) should be
+  used instead.
 
 See `docs/development/project-management.md` for how this applies to the
 team's task workflow (self-pick, branch/PR, Notion/GitHub split).
