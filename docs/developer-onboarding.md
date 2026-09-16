@@ -132,10 +132,14 @@ split are documented once, in
 open a PR against `main` using `.github/pull_request_template.md`, get
 maintainer review. **No one pushes directly to `main`.**
 
-There's no automated branch-protection enforcement configured in this
-repository yet (see the `Developer Platform / CI` epic in Notion) — the
-rules above are enforced by convention and maintainer review today, not by
-tooling. That doesn't make them optional.
+`main` has an active branch-protection ruleset enforcing this: a Pull
+Request is required before merging, conversation resolution is required,
+only squash merges are allowed, force pushes are blocked, and branch
+deletion is restricted. Required approvals are currently set to 0, and
+status checks aren't required yet since no CI pipeline exists (see the
+`Developer Platform / CI` epic in Notion) — so tooling blocks a direct
+push or an unreviewed merge, but doesn't yet block a merge on failing
+checks. Run the checks in §6 yourself until that changes.
 
 Git mechanics not covered by the workflow doc:
 
