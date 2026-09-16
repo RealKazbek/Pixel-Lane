@@ -1,9 +1,25 @@
 # Developer onboarding
 
-Start here if you just got Git access to Pixel Lane. This page is a guided
-path through the existing docs, plus the collaboration rules that don't
-live anywhere else yet. It intentionally does not repeat what those docs
-already say — follow the links.
+**Start here if you just got access to Pixel Lane** — this is the one
+obvious entry point for a new developer or AI agent, human or otherwise.
+This page is a guided path through the existing docs, plus the
+collaboration rules that don't live anywhere else yet. It intentionally
+does not repeat what those docs already say — follow the links.
+
+Read it in order the first time:
+
+1. [What Pixel Lane is](#1-what-pixel-lane-is)
+2. [Architecture and repository layout](#2-architecture-and-repository-layout)
+3. [Local setup](#3-local-setup)
+4. [Database and migrations](#4-database-and-migrations)
+5. [Internationalization](#5-internationalization) / [Theming](#5b-theming)
+6. [Testing and validation](#6-testing-and-validation)
+7. [Where tasks live and the Notion workspace](#7-where-tasks-live-and-the-notion-workspace)
+8. [Git and collaboration workflow](#8-git-and-collaboration-workflow)
+9. [AI-assisted development](#9-ai-assisted-development)
+10. [Common pitfalls](#10-common-pitfalls)
+11. [Definition of Done](#11-definition-of-done)
+12. [Where to read next](#12-where-to-read-next)
 
 ## 1. What Pixel Lane is
 
@@ -121,16 +137,50 @@ only thing that catches a regression. Read
 must run against an isolated `TEST_DATABASE_URL`, never the shared
 development database (a wrong setup can truncate your local demo city).
 
-## 7. Git and collaboration workflow
+## 7. Where tasks live and the Notion workspace
 
-Team task tracking, ownership, and the self-pick task lifecycle live in
-Notion (Development Workspace); the process and Notion/GitHub canonical
-split are documented once, in
+Task tracking, ownership, epics, and product decisions live in Notion, not
+GitHub Issues — see
+[docs/development/project-management.md](development/project-management.md)
+for the full Notion ↔ GitHub source-of-truth split.
+
+1. **Connect once**: if your AI agent doesn't already have Notion access,
+   follow [docs/development/notion-mcp.md](development/notion-mcp.md) to
+   add the official Notion MCP server and authorize it. This is a one-time
+   setup, not something you redo per task.
+2. **Open the workspace**: [Pixel Lane — Project Guide](https://app.notion.com/p/3dc56325f84081c79e59ece0a7be12d4)
+   → **Development Workspace** → **Tasks**.
+3. **Self-pick only `Ready` tasks.** A task in `Backlog` isn't ready to be
+   picked — its acceptance criteria aren't settled yet.
+4. **Read the entire task** before starting, specifically its Goal, Module,
+   Acceptance Criteria, and Dependencies (see
+   [task-template.md](development/task-template.md) for what each field
+   means).
+5. **Assign yourself** in the task's `Assignee` field; move `Status` to
+   `In Progress`.
+6. Create your branch, implement, validate, push, open the PR, and move the
+   task through `Review` → (`Changes Requested` if needed) → `Approved` →
+   `Done` — the full mechanics are in
+   [project-management.md](development/project-management.md), summarized
+   again in §8 below.
+7. **`Blocked`** is a separate status for a task stuck on something outside
+   your control (an external dependency, a decision pending from the
+   maintainer, etc.) — move it there and say why in `Notes` rather than
+   leaving it silently stalled in `In Progress`.
+8. **Do not silently expand a task's scope.** If you discover unrelated
+   work that's genuinely needed, report it and propose a separate task
+   (Backlog, with its own acceptance criteria) — don't fold it into the
+   task you're already on.
+
+## 8. Git and collaboration workflow
+
+The process and Notion/GitHub canonical split are documented once, in
 [docs/development/project-management.md](development/project-management.md)
 — read that before opening your first PR. Short version: self-pick a
-`Ready` task, branch as `feat|fix|docs|refactor/PL-XXX-short-description`,
-open a PR against `main` using `.github/pull_request_template.md`, get
-maintainer review. **No one pushes directly to `main`.**
+`Ready` task (§7 above), branch as
+`feat|fix|docs|refactor/PL-XXX-short-description`, open a PR against `main`
+using `.github/pull_request_template.md`, get maintainer review. **No one
+pushes directly to `main`.**
 
 `main` has an active branch-protection ruleset enforcing this: a Pull
 Request is required before merging, conversation resolution is required,
@@ -162,14 +212,16 @@ Git mechanics not covered by the workflow doc:
 - Since there's no CI yet, treat "I ran the checks locally and they passed"
   as a real commitment, not a formality.
 
-## 8. AI-assisted development
+## 9. AI-assisted development
 
 You may use Claude Code, Codex, ChatGPT, or Gemini on this repository.
 `AGENTS.md` is the canonical policy for all of them — agent-specific files
 (`CLAUDE.md`, `GEMINI.md`) are thin entry points, not separate rules. See
 [docs/ai-development.md](ai-development.md) for exactly what each agent
-discovers, and [docs/ai-prompting.md](ai-prompting.md) for how to write a
-good task prompt (a reusable template, required sections, examples).
+discovers (including the required pre-implementation startup protocol) and
+[docs/ai-prompting.md](ai-prompting.md) for how to write a good task
+prompt — including how to hand an agent a Notion Task ID directly instead
+of retyping the task.
 
 Ground rules regardless of which agent you use:
 
@@ -179,12 +231,16 @@ Ground rules regardless of which agent you use:
   stays labeled as such (the app already does this consistently — see any
   "Planned"/"In development" badge in `frontend/src/app/[locale]/app/`) —
   never presented as live or backed by real data it doesn't have.
+- It must treat the task it was given as a contract: implement exactly that
+  scope, and report (rather than silently fix) anything else it notices.
 - Its output is not a substitute for your review — read the diff before
   committing it.
 - Its changes face the exact same tests/security/i18n/Git bar as a human's
   — "the AI wrote it" is not an exemption from any rule in `AGENTS.md`.
+- A research/audit-only agent run must not commit, push, or edit Notion —
+  see `AGENTS.md` §15.
 
-## 9. Common pitfalls
+## 10. Common pitfalls
 
 - Overwriting or deleting your own or someone else's `.env` — it's
   persistent local config, not a temporary file; `make reset`/`clean`/`stop`
@@ -207,7 +263,7 @@ Ground rules regardless of which agent you use:
   of an isolated `TEST_DATABASE_URL` (see [docs/testing.md](testing.md)) —
   it can truncate the local Almaty demo city.
 
-## 10. Definition of Done
+## 11. Definition of Done
 
 A change is done when, not before:
 
@@ -227,12 +283,14 @@ A change is done when, not before:
   unrelated changes before committing.
 - The commit(s) are small, Conventional-Commits-styled, and pushed (AGENTS.md
   §14) unless the user said not to.
+- The Notion task (§7) is moved to `Review` with its Pull Request linked —
+  `Done` is set only after merge and verification, not at PR-open time.
 
-## 11. Where to read next
+## 12. Where to read next
 
 - [Architecture](architecture.md), [City Model](city-model.md), [Traffic Engine](traffic-engine.md), [Map and editor](map-editor.md), [OSM import](osm-import.md), [API](api.md)
 - [Configuration](configuration.md), [Testing](testing.md), [Troubleshooting](troubleshooting.md), [Roadmap](roadmap.md)
-- [Project management (task lifecycle, Notion ↔ GitHub split)](development/project-management.md), [Task template](development/task-template.md)
+- [Project management (task lifecycle, Notion ↔ GitHub split)](development/project-management.md), [Task template](development/task-template.md), [Notion MCP setup](development/notion-mcp.md)
 - [AI development workflow](ai-development.md), [AI agent audit](ai-agent-audit.md), [AI prompting standard](ai-prompting.md)
 - `AGENTS.md` (repo root) — canonical policy for humans and AI agents alike
 - [CONTRIBUTING.md](../CONTRIBUTING.md) — the short version of this page
