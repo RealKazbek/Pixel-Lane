@@ -8,9 +8,12 @@ New contributors should also read [docs/developer-onboarding.md](docs/developer-
 Task planning and ownership live in Notion (Tasks/Epics/Team/Decisions in
 the **Development Workspace**, linked from
 [docs/development/project-management.md](docs/development/project-management.md));
-implementation lives here. If your AI agent doesn't have Notion access yet,
-see [docs/development/notion-mcp.md](docs/development/notion-mcp.md) for
-the one-time setup. In short:
+implementation lives here. If your AI agent (Claude Code, Codex, Gemini
+CLI, or another compatible agent) doesn't have Notion access, that's fine
+— it's optional, not required — see
+[docs/development/notion-mcp.md](docs/development/notion-mcp.md) for the
+one-time setup or the no-MCP fallback (pasting task fields directly). In
+short:
 
 - Self-pick only tasks marked **Ready**; assign yourself before starting.
 - One dedicated branch per task, named `feat|fix|docs|refactor/PL-XXX-short-description`.

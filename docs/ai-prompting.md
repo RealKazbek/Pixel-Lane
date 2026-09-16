@@ -44,10 +44,14 @@ before writing code:
 1. Read `AGENTS.md` (and its own entry point: `CLAUDE.md`/`GEMINI.md`/none
    for Codex).
 2. Read the relevant `.agents/skills/` checklist(s) for the task type.
-3. If the task has a Notion Task ID, retrieve the actual task (via Notion
-   MCP if connected — see
-   [docs/development/notion-mcp.md](development/notion-mcp.md) — or from
-   the fields the human pasted) instead of working from a paraphrase.
+3. If the task has a Notion Task ID, resolve it: retrieve the actual task
+   via Notion MCP if the agent has a working connection (any agent —
+   Claude Code, Codex, Gemini CLI, or another compatible agent — see
+   [docs/development/notion-mcp.md](development/notion-mcp.md)), otherwise
+   from the fields the human pasted (Form B below). **If neither is
+   available, stop and ask for the task content instead of guessing** —
+   never infer a goal, scope, or acceptance criteria from the Task ID or
+   title alone.
 4. Audit the *actual current implementation* of the area being touched —
    never assume a feature is missing/present because a UI button exists or
    a doc implies it. This repo has repeatedly turned out to be
@@ -137,32 +141,75 @@ Adapt to task size; every phase still applies even for small tasks.
    `origin/<branch>` (`AGENTS.md` § 17's mandatory completion gate).
 7. **Report** — see "Final report standard" below.
 
-## Working from a Notion task (preferred, when the agent has Notion MCP)
+## Working from a Notion task: two standard forms
 
-When the task already exists in the Notion **Tasks** database and the
-agent has a working Notion MCP connection (see
+The task source is always Notion — but **access method depends on the
+agent environment**, and Notion MCP is not assumed or required. This
+applies identically to Claude Code, Codex, Gemini CLI, or another
+compatible coding agent; none of them is the "default" or mandatory one —
+see [docs/ai-development.md](ai-development.md)'s agent capability matrix.
+
+### Form A — Notion MCP available (preferred)
+
+When the agent has a working Notion MCP connection (see
 [docs/development/notion-mcp.md](development/notion-mcp.md)), don't
-manually copy the whole task into the prompt — let the agent retrieve it.
-A short prompt is enough:
+manually copy the whole task into the prompt — let the agent retrieve it:
 
 ```
-Work on PL-042.
-Read the task from the Pixel Lane Notion Development Workspace.
+Work on PL-042 from the Pixel Lane Development Workspace.
+
+Read the Notion task through your connected Notion MCP.
 Follow AGENTS.md and relevant skills.
-Audit current implementation before editing.
+Audit the current implementation before editing.
 Do not expand scope.
 Implement, validate, and prepare the branch/PR.
 ```
 
-The agent is still required to run the full startup protocol
-(`docs/ai-development.md`) — reading `AGENTS.md`, retrieving the real task,
-auditing the implementation, reporting mismatches — this short prompt
-relies on that being standing policy, not on repeating it every time.
+### Form B — Notion MCP not available (fallback)
 
-**If Notion MCP is unavailable**, don't skip the fields — copy them from
-the task using [task-template.md](development/task-template.md)'s field
-list (Task ID, Goal, Module, Acceptance Criteria, Dependencies, at minimum)
-into the prompt instead, using the short-form template below.
+If MCP isn't configured, isn't supported by the agent/version, or isn't
+authenticated in this session, the human supplies the required fields
+directly — copy them from the task using
+[task-template.md](development/task-template.md)'s field list:
+
+```
+Work on PL-042.
+
+Notion MCP is not available in this session.
+
+Task details:
+- Goal:
+- Module:
+- Scope:
+- Out of scope:
+- Acceptance criteria:
+- Dependencies:
+
+Follow AGENTS.md and relevant skills.
+Audit the current implementation before editing.
+Do not expand scope.
+Implement, validate, and prepare the branch/PR.
+```
+
+### The agent must never invent what it can't resolve
+
+If the prompt says "work on PL-042" but the agent has neither MCP access
+nor the pasted fields above, it must say so and ask for the task content
+or the specific missing fields — never guess the goal, scope, acceptance
+criteria, dependencies, or module from the Task ID or a task title alone.
+See [docs/ai-development.md](ai-development.md)'s startup protocol, step 5.
+
+With either form, the agent is still required to run the full startup
+protocol (`docs/ai-development.md`) — reading `AGENTS.md`, resolving the
+real task, auditing the implementation, reporting mismatches; these short
+prompts rely on that being standing policy, not on repeating it every
+time.
+
+**Notion write access is separate from task access.** Even with Form A, an
+agent may have read-only Notion MCP access. If it cannot write the task's
+`Status`/`Assignee`/`Pull Request` fields itself, the human updates them
+manually in Notion — see
+[docs/development/notion-mcp.md](development/notion-mcp.md#no-mcp-fallback).
 
 ### Short-form template (most tasks)
 

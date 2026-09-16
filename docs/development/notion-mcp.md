@@ -1,75 +1,115 @@
-# Connecting Claude Code to Notion (MCP)
+# Connecting an AI agent to Notion (MCP)
 
 Pixel Lane's task tracking, epics, team roster, and product decisions live
 in Notion — see [project-management.md](project-management.md) for the
-canonical source-of-truth split. This page is the one-time setup so your
-AI agent (Claude Code, or any other MCP-capable agent) can read and, within
-task scope, update that workspace directly instead of you copy-pasting
-Notion content into prompts by hand.
+canonical source-of-truth split. This page is the one-time setup so an AI
+coding agent can read (and, within task scope, update) that workspace
+directly instead of a human copy-pasting Notion content into every prompt.
 
-This uses Notion's **official, Notion-hosted** MCP server — not a
-third-party/community server. If a search turns up an alternative Notion
-MCP package, prefer the official one described here unless you have a
-specific reason not to.
+**This is optional, not mandatory.** Pixel Lane supports Claude Code,
+Codex, Gemini CLI, and other compatible coding agents equally — see
+[docs/ai-development.md](../ai-development.md)'s agent capability matrix.
+None of them requires Notion MCP to contribute: if it isn't configured (or
+isn't supported by your agent/version yet), use the
+[No-MCP fallback](#no-mcp-fallback) below. A developer is never required to
+install or use Claude Code specifically to work on Pixel Lane.
 
-## You do not need the Notion desktop app
+## Common concept (applies to every agent)
 
-Claude Code talks to Notion over MCP (Model Context Protocol), a direct
-API-level connection authorized per-user via OAuth in your browser. The
-Notion desktop/web app is where a human browses pages; it is not required
-for Claude Code's access and installing it changes nothing about this setup.
+- **Endpoint.** Notion's official, Notion-hosted MCP server:
+  `https://mcp.notion.com/mcp`. This is the **official** server — if a
+  search turns up a third-party/community Notion MCP package, prefer this
+  one unless you have a specific reason not to.
+- **You do not need the Notion desktop app.** MCP is a direct, per-user,
+  OAuth-authorized API connection. The desktop/web app is where a human
+  browses pages; it's irrelevant to an agent's access.
+- **OAuth, not a pasted secret.** Every setup below ends in a browser-based
+  OAuth approval. No token, key, or credential is ever typed into a
+  terminal, a prompt, or a repository file — the resulting authorization is
+  held by your coding agent's own local configuration (e.g. `~/.claude/`,
+  `~/.codex/`, `~/.gemini/`), outside this repository, and must stay that
+  way.
+- **Permissions.** OAuth approval is scoped to your own Notion account and
+  whatever workspace access you already have — it does not grant the agent
+  anything you couldn't already do yourself in Notion.
+- **No secrets in the repo, ever.** Don't add a project-scoped MCP config
+  file that embeds a token, and don't commit anything from `~/.claude/`,
+  `~/.codex/`, or `~/.gemini/`.
 
-## 1. Add the official Notion MCP server
+## Claude Code
 
-Run once, from anywhere (this registers the server for Claude Code, it is
-not repository-specific):
+Verified against Notion's current official docs (`developers.notion.com`).
 
-```bash
-claude mcp add --transport http notion https://mcp.notion.com/mcp
-```
+1. Register the server:
+   ```bash
+   claude mcp add --transport http notion https://mcp.notion.com/mcp
+   ```
+   Use the default `--scope local` or `--scope user` — **not**
+   `--scope project`, which would commit connection config to the repo.
+2. Restart Claude Code (new MCP servers are only picked up on startup).
+3. Run `/mcp` and follow the OAuth flow in your browser.
+4. Run `/mcp` again to confirm `notion` is listed as connected.
 
-This is Notion's official hosted endpoint (`https://mcp.notion.com/mcp`),
-using HTTP transport — the recommended transport for a remote MCP server.
-No token, key, or credential is typed into this command; nothing here goes
-into the repository.
+## Codex
 
-`--scope` controls where this registration applies (`local` is the
-default — current project only; `project` shares it via a `.mcp.json` file
-committed to the repo; `user` makes it available across all your projects).
-**Do not use `--scope project`** for this server — that would commit
-Notion connection configuration into the repository. Use the default
-(`local`) or `--scope user`.
+Codex CLI supports MCP servers, configured in `~/.codex/config.toml` (or a
+trusted project-local `.codex/config.toml`) under `[mcp_servers.<name>]`
+blocks, and an interactive `codex mcp add` command exists for adding one.
+Configured servers are verified inside a Codex session with `/mcp`, or from
+the shell with `codex mcp list`.
 
-## 2. Authorize with OAuth
+The exact flags `codex mcp add` accepts for a **remote, OAuth-authenticated**
+server (as opposed to a local command-based server) are version-dependent
+and were not consistently documented at the time of writing — run
+`codex mcp add --help` in your installed version, or follow OpenAI's current
+official guide, rather than trusting a copied command here:
+<https://developers.openai.com/codex/mcp>.
 
-Claude Code only picks up newly registered MCP servers on startup — restart
-your session if you just ran the command above. Then:
+If your Codex CLI version doesn't support a remote OAuth MCP server yet, or
+you haven't set it up, use the [No-MCP fallback](#no-mcp-fallback).
 
-1. Run `/mcp` inside Claude Code.
-2. Follow the OAuth flow that opens in your browser.
-3. Approve access for your Notion account/workspace.
+## Gemini CLI
 
-No secret ever needs to be pasted into the terminal, a prompt, or a repo
-file — the authorization token is held by Claude Code's own MCP client
-configuration outside this repository.
+Gemini CLI supports MCP servers via a `mcpServers` object in `settings.json`
+(`~/.gemini/settings.json` for all projects, or `.gemini/settings.json`
+project-scoped). As of this writing there is no `gemini mcp add` CLI
+command — servers are added by editing `settings.json` directly. Connected
+servers are verified inside a Gemini CLI session with `/mcp`.
 
-## 3. Verify the connection
+The exact JSON shape for a remote, OAuth-authenticated server varies across
+recent Gemini CLI versions/docs sources (field names like `httpUrl` vs.
+`url`, and how much of the OAuth flow is auto-discovered, differ by
+version) — follow Google's current official docs for the exact syntax
+rather than a copied snippet here: <https://geminicli.com/docs/tools/mcp-server/>.
 
-Run `/mcp` again. You should see `notion` listed as a connected server with
-its tool count. This confirms the connection without touching any Notion
-content yet.
+If your Gemini CLI version doesn't support this yet, or you haven't set it
+up, use the [No-MCP fallback](#no-mcp-fallback).
 
-## 4. Test read access safely
+## No-MCP fallback
 
-Ask your agent to do a **read-only** check before ever asking it to write
-anything, e.g.:
+If Notion MCP is unavailable, unsupported, not authenticated, or simply not
+configured in your session, the workflow still works — a human copies the
+**required task fields** into the prompt instead of the agent fetching them:
 
-> Use the Notion MCP connection. Find the page "Pixel Lane — Project
-> Guide". Do not modify anything. Report whether you can access it, its
-> exact title, its child pages, and whether you have read/write access.
+- Copy exactly the fields in
+  [task-template.md](task-template.md) (Task ID, Goal, Module, Acceptance
+  Criteria, Dependencies, at minimum) — see the Form B prompt example in
+  [ai-prompting.md](../ai-prompting.md).
+- **Do not** copy unrelated Notion content into the prompt "just in case"
+  — not other tasks, not Epics/Team/Decisions records, not private
+  workspace content beyond what this one task needs.
+- An agent that was told to work on a Task ID but has neither MCP access
+  nor pasted task fields **must stop and ask** for the task content — it
+  must never invent a goal, scope, acceptance criteria, dependencies, or
+  module from the Task ID or title alone. See
+  [docs/ai-development.md](../ai-development.md)'s startup protocol.
+- Task status transitions (`Ready` → `In Progress` → `Review` → `Done`,
+  etc.) are then a **manual, human responsibility** in Notion — an agent
+  without write access to Notion cannot and must not claim to have updated
+  task status.
 
-This confirms access without risking an accidental edit. Only after this
-succeeds should you ask the agent to act on a specific task.
+The absence of Notion MCP must never block code work once the task has
+been fully specified some other way.
 
 ## Where things live
 
@@ -87,7 +127,7 @@ recreate it.
 
 ## What developers (and their AI agents) should and should not edit
 
-**Safe to edit, within your task's scope:**
+**Safe to edit, within your task's scope, when you have write access:**
 
 - Your own Task's `Status`, `Assignee`, `Branch`, `Pull Request`, and
   `Notes` fields as you move it through the lifecycle.

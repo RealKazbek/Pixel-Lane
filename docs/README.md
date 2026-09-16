@@ -36,7 +36,7 @@ in order, through everything below.
 - [Troubleshooting](troubleshooting.md) — common local issues.
 - [Project management](development/project-management.md) — task lifecycle, branch naming, and the Notion ↔ GitHub canonical source-of-truth split.
 - [Task template](development/task-template.md) — required fields before a task moves to Ready.
-- [Notion MCP setup](development/notion-mcp.md) — connect Claude Code (or another agent) to the Notion workspace.
+- [Notion MCP setup](development/notion-mcp.md) — optional: connect Claude Code, Codex, Gemini CLI, or another compatible agent to the Notion workspace; includes the no-MCP fallback.
 
 ## AI-assisted Development
 

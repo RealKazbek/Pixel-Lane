@@ -144,10 +144,18 @@ GitHub Issues — see
 [docs/development/project-management.md](development/project-management.md)
 for the full Notion ↔ GitHub source-of-truth split.
 
-1. **Connect once**: if your AI agent doesn't already have Notion access,
+1. **Connect once (optional, recommended)**: if your AI agent (Claude Code,
+   Codex, Gemini CLI, or another compatible agent — Claude is not
+   mandatory) supports MCP and you want it to retrieve tasks directly,
    follow [docs/development/notion-mcp.md](development/notion-mcp.md) to
-   add the official Notion MCP server and authorize it. This is a one-time
-   setup, not something you redo per task.
+   add the official Notion MCP server and authorize it — a one-time setup,
+   not something you redo per task. **This is not required to contribute.**
+   If you skip it, or your agent doesn't support it yet, just paste the
+   task's fields into your prompt instead (see
+   [docs/development/notion-mcp.md](development/notion-mcp.md#no-mcp-fallback)
+   and [docs/ai-prompting.md](ai-prompting.md)'s Form B) — the workflow
+   below is identical either way, and an agent must never invent missing
+   task details rather than asking for them.
 2. **Open the workspace**: [Pixel Lane — Project Guide](https://app.notion.com/p/3dc56325f84081c79e59ece0a7be12d4)
    → **Development Workspace** → **Tasks**.
 3. **Self-pick only `Ready` tasks.** A task in `Backlog` isn't ready to be
@@ -214,14 +222,26 @@ Git mechanics not covered by the workflow doc:
 
 ## 9. AI-assisted development
 
-You may use Claude Code, Codex, ChatGPT, or Gemini on this repository.
-`AGENTS.md` is the canonical policy for all of them — agent-specific files
-(`CLAUDE.md`, `GEMINI.md`) are thin entry points, not separate rules. See
-[docs/ai-development.md](ai-development.md) for exactly what each agent
-discovers (including the required pre-implementation startup protocol) and
+You may use Claude Code, Codex, Gemini CLI, ChatGPT, or another compatible
+coding agent on this repository — **none of them is mandatory or the
+"default" one.** `AGENTS.md` is the canonical policy for all of them —
+agent-specific files (`CLAUDE.md`, `GEMINI.md`) are thin entry points, not
+separate rules. See [docs/ai-development.md](ai-development.md) for
+exactly what each agent discovers (including the required
+pre-implementation startup protocol and an agent capability matrix) and
 [docs/ai-prompting.md](ai-prompting.md) for how to write a good task
-prompt — including how to hand an agent a Notion Task ID directly instead
-of retyping the task.
+prompt, including both standard forms: handing an agent a Notion Task ID
+directly when it has MCP access (Form A), or pasting the task's fields
+when it doesn't (Form B).
+
+**What's actually required, regardless of agent:** repository access,
+`AGENTS.md` compliance, access to the task's content (via Notion MCP or
+pasted fields), the branch/PR workflow (§8), and running the relevant
+validation (§6). **Notion MCP is optional but recommended** — see
+[docs/development/notion-mcp.md](development/notion-mcp.md). If you don't
+configure it, or your agent doesn't support it, you can still work by
+copying the assigned task's fields into your prompt; nothing about
+contributing to Pixel Lane requires MCP or any specific agent.
 
 Ground rules regardless of which agent you use:
 
@@ -233,6 +253,10 @@ Ground rules regardless of which agent you use:
   never presented as live or backed by real data it doesn't have.
 - It must treat the task it was given as a contract: implement exactly that
   scope, and report (rather than silently fix) anything else it notices.
+- If it's told to work on a Task ID but has neither Notion MCP access nor
+  the task's fields pasted into the prompt, it must stop and ask for them
+  — never invent a goal, scope, acceptance criteria, or dependencies from
+  the Task ID or a title alone.
 - Its output is not a substitute for your review — read the diff before
   committing it.
 - Its changes face the exact same tests/security/i18n/Git bar as a human's

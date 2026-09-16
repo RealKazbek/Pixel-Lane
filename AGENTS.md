@@ -164,7 +164,13 @@ module (§ 19) is implemented. Do not hardcode city/domain data as if it
 were final architecture (see "disposable architecture" above). Measured,
 estimated, predicted, and simulated data must stay distinguishable in any
 UI/API surface — never blended together as if equally certain
-(`docs/product/vision.md`'s non-goals).
+(`docs/product/vision.md`'s non-goals). This extends to task context
+itself: if a task references a Notion Task ID and the agent can neither
+retrieve it via Notion MCP nor find its fields pasted into the prompt,
+**stop and ask** — never invent a goal, scope, acceptance criteria, or
+dependencies from the Task ID or a title alone (see
+`docs/development/notion-mcp.md` and `docs/ai-development.md`'s startup
+protocol).
 
 ## 5. Scalability and technology choices
 
