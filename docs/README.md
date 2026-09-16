@@ -9,6 +9,8 @@ through everything below.
 - [Architecture](architecture.md) — implemented boundaries and planned systems.
 - [Project structure](project-structure.md) — directory ownership.
 - [Development](development.md) — local workflow and Docker commands.
+- [Project management](development/project-management.md) — task lifecycle, branch naming, and the Notion ↔ GitHub canonical source-of-truth split.
+- [Task template](development/task-template.md) — required fields before a task moves to Ready.
 - [Configuration](configuration.md) — safe environment-variable reference.
 - [City Model](city-model.md) — authoritative road-network domain data.
 - [Traffic Engine](traffic-engine.md) — current static analysis scope.

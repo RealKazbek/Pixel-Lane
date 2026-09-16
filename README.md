@@ -71,8 +71,16 @@ per-item Implemented/In progress/Next/Planned/Future breakdown.
 - [Product vision](docs/product/vision.md)
 - [Roadmap](docs/roadmap.md)
 - [Development guide](docs/development.md)
+- [Project management](docs/development/project-management.md) — task lifecycle, branch naming, Notion ↔ GitHub split
 - [Configuration](docs/configuration.md)
 - [Testing](docs/testing.md)
 - [Contributing](CONTRIBUTING.md)
+
+**Team workspace.** Task tracking, ownership, epics, and product decisions
+are managed in Notion — [Pixel Lane — Project Guide](https://app.notion.com/p/3dc56325f84081c79e59ece0a7be12d4)
+→ Development Workspace. This repository is canonical for code,
+architecture, contracts, and implementation history; see
+[docs/development/project-management.md](docs/development/project-management.md)
+for the full split.
 
 `AGENTS.md` is the authoritative project policy for contributors and AI agents. The project currently has no license file; do not assume reuse rights until one is added.
