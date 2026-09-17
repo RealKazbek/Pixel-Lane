@@ -16,12 +16,12 @@ interaction engine here — it does not own any Pixel Lane data.
 
 ## City Model is the only source of truth
 
-MapLibre's internal GeoJSON sources, and Terra Draw's internal feature
-store used during geometry editing, are **transient UI state only**. Both
-are rebuilt from City Model data on every relevant change and are never
-read back except at the single, explicit moment a user clicks "Apply"
-during editing (see "Editing data flow" below). Nothing in this directory
-persists state independently of the backend.
+MapLibre's internal GeoJSON sources, and any Terra Draw feature store used by
+the generic persistence adapter, are **transient UI state only**. The current
+City Model editor MVP keeps local vertex edits and smoothing values in editor
+state and rebuilds rendering from that state; it does not persist those local
+changes automatically. Nothing in this directory is an alternate
+authoritative domain store.
 
 ## Viewport-driven loading
 
@@ -154,23 +154,18 @@ traffic-light details view yet).
 
 ## Editing data flow
 
-Geometry editing follows one direction only:
+The current local editor follows one direction only:
 
 ```
-user drags a vertex (Terra Draw, in-memory only)
-  -> "Apply" clicked
-  -> geometryEditor.apply() reads Terra Draw's current feature
-  -> fromLngLat() converts each vertex back to a City Model Point
-  -> applyRoadEdit() does a cheap client-side sanity check (>= 2 points)
-  -> PATCH /api/v1/cities/{city_id}/roads/{road_id}/geometry
-  -> backend validates via the Polyline schema and persists
-  -> on success, the city is refetched and the map re-renders from
-     the City Model again (Terra Draw's transient state is discarded)
+editor state changes (vertex insertion/drag or corner smoothing)
+  -> derived centerline and GeoJSON are rebuilt
+  -> MapLibre renders the local City Model view
 ```
 
-If the PATCH fails (network error, backend validation rejection), the
-error is surfaced in the toolbar and the City Model is left untouched —
-there is no optimistic local mutation of the road's geometry.
+The reusable `geometryEditor`/`applyRoadEdit` adapter still supports explicit
+PATCH persistence of source polyline vertices for backend-backed flows. The
+current editor page does not invoke that apply step, so local roads and local
+smoothing metadata do not survive refresh.
 
 ## Explicit non-goals for this iteration
 

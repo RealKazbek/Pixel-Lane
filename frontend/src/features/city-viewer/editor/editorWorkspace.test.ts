@@ -3,7 +3,7 @@ import { buildRoadSurfaceFeatureCollection } from "../map/adapters/roadSurfaceGe
 import { buildEditorWorkspace } from "./editorWorkspace";
 
 describe("buildEditorWorkspace", () => {
-  it("starts clean with one production-backed minimal road", () => {
+  it("starts clean with three production-backed minimal roads", () => {
     const city = buildEditorWorkspace();
     expect(city.id).toBe("editor-workspace");
     expect(city.roads).toHaveLength(3);
