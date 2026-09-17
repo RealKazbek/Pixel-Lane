@@ -1,6 +1,12 @@
 import type { ExpressionSpecification, LayerSpecification } from "maplibre-gl";
 import { LAYER_IDS, SOURCE_IDS } from "./layerIds";
 import type { MapThemeColors } from "../styles/mapTheme";
+import {
+  LABEL_ENDPOINT_PADDING_PX,
+  LABEL_GLYPH_WIDTH_FACTOR,
+  LABEL_MAX_FONT_SIZE,
+  LABEL_MIN_FONT_SIZE,
+} from "../labelSizing";
 
 const isSelected: ExpressionSpecification = [
   "boolean",
@@ -119,6 +125,18 @@ export function buildTrafficLightLayer(
 }
 
 export function buildRoadLabelLayer(theme: MapThemeColors): LayerSpecification {
+  const metersToPixelsAtZoomZero = 512 / (2 * Math.PI * 6_371_000);
+  const renderedLength = [
+    "*",
+    ["get", "length_m"],
+    ["^", 2, ["zoom"]],
+    metersToPixelsAtZoomZero,
+  ] as ExpressionSpecification;
+  const fittedSize = [
+    "/",
+    ["max", 0, ["-", renderedLength, LABEL_ENDPOINT_PADDING_PX * 2]],
+    ["*", ["get", "character_count"], LABEL_GLYPH_WIDTH_FACTOR],
+  ] as ExpressionSpecification;
   return {
     id: LAYER_IDS.roadLabels,
     type: "symbol",
@@ -128,13 +146,10 @@ export function buildRoadLabelLayer(theme: MapThemeColors): LayerSpecification {
     layout: {
       "text-field": ["get", "name"],
       "text-size": [
-        "interpolate",
-        ["linear"],
-        ["zoom"],
-        13,
-        10,
-        18,
-        13,
+        "case",
+        ["<", fittedSize, LABEL_MIN_FONT_SIZE],
+        0,
+        ["min", LABEL_MAX_FONT_SIZE, fittedSize],
       ] as ExpressionSpecification,
       "text-font": ["Noto Sans Regular"],
       "symbol-placement": "point",

@@ -15,7 +15,7 @@ UI, simulation, and hardware concerns.
 - `frontend/` — Next.js (App Router, TypeScript strict, Tailwind). The
   localized City Model page is an **editor-first MapLibre workspace**
   (`src/features/city-viewer/`): it starts from a clean local editor
-  document containing one production-generated road primitive. The separate
+  document containing three production-generated Stage 1 road primitives. The separate
   Road Geometry Lab remains the engineering surface for fixtures. No auth or
   full lane/intersection editor exists.
 - `backend/` — FastAPI + Pydantic + SQLAlchemy + Alembic, PostgreSQL.

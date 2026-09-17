@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import { useTranslations } from "next-intl";
 import { mapStyleUrl } from "@/lib/config";
 import { buildEditorWorkspace } from "../editor/editorWorkspace";
+import { EDITOR_WORLD_BOUNDS } from "../editor/editorWorld";
 import { PixelLaneMap } from "../map/PixelLaneMap";
 import { DEFAULT_LAYER_VISIBILITY, type MapSelection } from "../map/types";
 
@@ -29,7 +30,7 @@ export function CityViewerApp() {
         isFullscreen ? "fixed inset-0 z-50 h-dvh w-screen bg-background" : ""
       }`}
     >
-      <div className="relative flex min-w-0 flex-1 overflow-hidden pixel-lane-editor-grid">
+      <div className="relative flex min-w-0 flex-1 overflow-hidden">
         <PixelLaneMap
           city={city}
           selected={selected}
@@ -39,6 +40,7 @@ export function CityViewerApp() {
           overlayVisible
           layerVisibility={DEFAULT_LAYER_VISIBILITY}
           fitSignal={0}
+          editorWorld={EDITOR_WORLD_BOUNDS}
           mode="view"
           editorAction={null}
           onEditorStatusChange={() => undefined}

@@ -72,6 +72,8 @@ export interface LabelFeatureProperties {
   hierarchy: string;
   label_rank: number;
   rotation: number;
+  length_m: number;
+  character_count: number;
 }
 
 export type RoadFeatureCollection = GeoJSON.FeatureCollection<
@@ -262,6 +264,8 @@ export function buildRoadLabelFeatureCollection(city: {
         hierarchy,
         label_rank: HIERARCHY_LABEL_RANK[hierarchy],
         rotation: placement.rotation,
+        length_m: roadLengthMeters(road, city.coordinate_system),
+        character_count: road.name.length,
       },
     });
   }

@@ -194,6 +194,12 @@ rendered by the same `PixelLaneMap` and road-surface pipeline as the Lab;
 Demo City and Real Almaty remain backend/import fixtures, but are not loaded
 by the City Model editor page.
 
+The Stage 1 editor world is an explicit local-cartesian rectangle from
+`(-400, -300)` to `(600, 300)`. The three review roads live inside that
+stable 1000m × 600m world. Its grid is generated as MapLibre line geometry
+from those coordinates, with world-unit intervals adapting at camera zoom
+thresholds; it is not a CSS viewport background.
+
 Fixtures (each in its own grid cell, generously spaced):
 `01 Straight`, `02 Curve`, `03 T Junction`, `04 Four-Way`,
 `05 Y Junction`, `06 Merge`, `07 Split`, `08 Lane Transition`

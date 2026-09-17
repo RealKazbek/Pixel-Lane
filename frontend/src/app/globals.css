@@ -100,33 +100,3 @@ body {
   color: var(--foreground);
   font-family: var(--font-sans), Arial, Helvetica, sans-serif;
 }
-
-.pixel-lane-editor-grid {
-  background-color: var(--background);
-  background-image:
-    linear-gradient(
-      to right,
-      color-mix(in srgb, var(--border-subtle) 55%, transparent) 1px,
-      transparent 1px
-    ),
-    linear-gradient(
-      to bottom,
-      color-mix(in srgb, var(--border-subtle) 55%, transparent) 1px,
-      transparent 1px
-    ),
-    linear-gradient(
-      to right,
-      color-mix(in srgb, var(--text-muted) 22%, transparent) 1px,
-      transparent 1px
-    ),
-    linear-gradient(
-      to bottom,
-      color-mix(in srgb, var(--text-muted) 22%, transparent) 1px,
-      transparent 1px
-    );
-  background-size:
-    20px 20px,
-    20px 20px,
-    100px 100px,
-    100px 100px;
-}

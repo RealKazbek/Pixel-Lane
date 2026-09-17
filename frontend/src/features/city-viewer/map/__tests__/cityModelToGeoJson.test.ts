@@ -6,6 +6,7 @@ import {
   buildTrafficLightFeatureCollection,
 } from "../adapters/cityModelToGeoJson";
 import type { Intersection, Road, TrafficLight } from "../../types/city";
+import { labelFontSizeForRenderedLength } from "../labelSizing";
 
 function makeRoad(overrides: Partial<Road> = {}): Road {
   return {
@@ -236,6 +237,12 @@ describe("buildRoadLabelFeatureCollection", () => {
     expect(fc.features[0].properties.rotation).toBeCloseTo(0);
     expect(fc.features[1].properties.rotation).toBeCloseTo(-90);
     expect(fc.features[2].properties.rotation).toBeCloseTo(-45, 0);
+  });
+
+  it("fits labels to rendered length and hides labels that cannot fit", () => {
+    expect(labelFontSizeForRenderedLength(140, 6)).toBe(13);
+    expect(labelFontSizeForRenderedLength(65, 6)).toBeLessThan(13);
+    expect(labelFontSizeForRenderedLength(20, 6)).toBe(0);
   });
 
   it("skips OSM-importer fallback names", () => {
