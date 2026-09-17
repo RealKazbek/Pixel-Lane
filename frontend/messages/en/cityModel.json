@@ -86,7 +86,9 @@
   "fullscreen": {
     "enter": "Expand workspace",
     "exit": "Exit workspace",
-    "scale": "Scale 1:{denominator}"
+    "scale": "Scale 1:{denominator}",
+    "scaleBarMeters": "{value} m",
+    "scaleBarKm": "{value} km"
   },
   "editor": {
     "minPointsError": "A road needs at least 2 points.",

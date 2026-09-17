@@ -98,7 +98,7 @@ interface PixelLaneMapProps {
    * this component itself never renders any chrome. */
   onViewportStatusChange?: (status: ViewportDataStatus) => void;
   editorWorld?: EditorWorldBounds;
-  onScaleChange?: (denominator: number) => void;
+  onScaleChange?: (scale: { denominator: number; barMeters: number }) => void;
 }
 
 export function PixelLaneMap({
@@ -150,7 +150,6 @@ export function PixelLaneMap({
   const { mapRef, isLoaded } = useMapLibreMap(containerRef, {
     style: resolveMapStyle(basemapEnabled, mapStyleUrl, "transparent"),
     navigationControlPosition: editorWorld ? "top-left" : "top-right",
-    showScaleControl: Boolean(editorWorld),
     onScaleChange,
     // A reasonable initial guess only -- the fit-to-view effect below runs
     // right after load and corrects this to the city's actual bounds. Still

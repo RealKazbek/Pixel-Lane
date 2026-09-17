@@ -12,12 +12,11 @@ import { useEffect, useRef, useState } from "react";
 import {
   Map as MapLibreMap,
   NavigationControl,
-  ScaleControl,
   setWorkerUrl,
   type StyleSpecification,
 } from "maplibre-gl";
 import "maplibre-gl/dist/maplibre-gl.css";
-import { mapScaleDenominator } from "../mapScale";
+import { mapScaleBarMeters, mapScaleDenominator } from "../mapScale";
 
 // MapLibre's worker is a separate browser asset. Ship MapLibre's matching
 // worker with this app rather than relying on a sibling asset emitted by the
@@ -30,8 +29,7 @@ export interface MapLibreMapOptions {
   zoom: number;
   showAttribution?: boolean;
   navigationControlPosition?: "top-right" | "top-left";
-  showScaleControl?: boolean;
-  onScaleChange?: (denominator: number) => void;
+  onScaleChange?: (scale: { denominator: number; barMeters: number }) => void;
 }
 
 export function useMapLibreMap(
@@ -56,9 +54,14 @@ export function useMapLibreMap(
       attributionControl: initialOptions.current.showAttribution ? {} : false,
     });
     const updateScale = () => {
-      initialOptions.current.onScaleChange?.(
-        mapScaleDenominator(map.getZoom(), map.getCenter().lat),
+      const denominator = mapScaleDenominator(
+        map.getZoom(),
+        map.getCenter().lat,
       );
+      initialOptions.current.onScaleChange?.({
+        denominator,
+        barMeters: mapScaleBarMeters(denominator),
+      });
     };
     map.on("zoom", updateScale);
     map.on("move", updateScale);
@@ -66,12 +69,6 @@ export function useMapLibreMap(
       new NavigationControl({ showCompass: false }),
       initialOptions.current.navigationControlPosition ?? "top-right",
     );
-    if (initialOptions.current.showScaleControl) {
-      map.addControl(
-        new ScaleControl({ maxWidth: 100, unit: "metric" }),
-        "bottom-right",
-      );
-    }
     map.on("load", () => setIsLoaded(true));
     map.once("load", updateScale);
     mapRef.current = map;
