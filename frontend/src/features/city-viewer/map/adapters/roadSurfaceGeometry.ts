@@ -109,6 +109,7 @@ export function buildRoadSurfaceFeatureCollection(
                 rawLine.geometry.coordinates as LngLat[],
                 undefined,
                 road.smoothing ?? 1,
+                road.corner_smoothing,
               ),
             },
           }

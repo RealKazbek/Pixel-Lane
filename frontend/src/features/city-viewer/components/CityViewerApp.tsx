@@ -242,7 +242,10 @@ export function CityViewerApp() {
         )}
         {session.mode === "edit" &&
           selected?.type === "road" &&
-          selectedRoad && (
+          selectedRoad &&
+          selectedVertexIndex !== null &&
+          selectedVertexIndex > 0 &&
+          selectedVertexIndex < selectedRoad.geometry.points.length - 1 && (
             <label className="pointer-events-auto absolute bottom-3 left-3 rounded-lg border border-border-subtle bg-surface/90 px-3 py-2 text-[11px] text-foreground shadow-md backdrop-blur">
               <span className="mr-2">{t("smoothing")}</span>
               <input
@@ -250,16 +253,22 @@ export function CityViewerApp() {
                 min="0"
                 max="1"
                 step="0.05"
-                value={selectedRoad.smoothing ?? 0}
+                value={
+                  selectedRoad.corner_smoothing?.[selectedVertexIndex] ?? 0
+                }
                 onChange={(event) => {
                   const smoothing = Number(event.target.value);
                   setCity((current) => ({
                     ...current,
-                    roads: current.roads.map((road) =>
-                      road.id === selectedRoad.id
-                        ? { ...road, smoothing }
-                        : road,
-                    ),
+                    roads: current.roads.map((road) => {
+                      if (road.id !== selectedRoad.id) return road;
+                      const cornerSmoothing = Array.from(
+                        { length: road.geometry.points.length },
+                        (_, index) => road.corner_smoothing?.[index] ?? 0,
+                      );
+                      cornerSmoothing[selectedVertexIndex] = smoothing;
+                      return { ...road, corner_smoothing: cornerSmoothing };
+                    }),
                   }));
                 }}
                 aria-label={t("smoothing")}
