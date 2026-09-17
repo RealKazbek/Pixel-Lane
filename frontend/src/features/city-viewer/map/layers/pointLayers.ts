@@ -42,7 +42,9 @@ function circleRadiusExpression(
   ] as ExpressionSpecification;
 }
 
-export function buildIntersectionLayers(theme: MapThemeColors): LayerSpecification[] {
+export function buildIntersectionLayers(
+  theme: MapThemeColors,
+): LayerSpecification[] {
   const radius = circleRadiusExpression(8, [
     [13, 1.2],
     [16, 2.6],
@@ -90,7 +92,9 @@ export function buildIntersectionLayers(theme: MapThemeColors): LayerSpecificati
  * it read as an unrelated stray dot). Not a live phase indicator --
  * Traffic Engine v1 has no signal-timing simulation (see
  * docs/architecture.md). */
-export function buildTrafficLightLayer(theme: MapThemeColors): LayerSpecification {
+export function buildTrafficLightLayer(
+  theme: MapThemeColors,
+): LayerSpecification {
   return {
     id: LAYER_IDS.trafficLights,
     type: "circle",
@@ -134,6 +138,8 @@ export function buildRoadLabelLayer(theme: MapThemeColors): LayerSpecification {
       ] as ExpressionSpecification,
       "text-font": ["Noto Sans Regular"],
       "symbol-placement": "point",
+      "text-rotate": ["get", "rotation"],
+      "text-rotation-alignment": "map",
       "text-max-width": 8,
       "text-allow-overlap": false,
       "text-optional": true,

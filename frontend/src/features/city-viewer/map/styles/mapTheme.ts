@@ -46,21 +46,21 @@ export interface MapThemeColors {
 }
 
 const LIGHT_ROAD_ASPHALT: Record<RoadHierarchy, string> = {
-  HIGHWAY: "#78716c", // stone-500 -- lighter surface reads as "paved", not a graph edge
-  ARTERIAL: "#a8a29e", // stone-400
-  COLLECTOR: "#c4b8ac", // warm light stone
-  RESIDENTIAL: "#e5e1da", // near-white warm gray, like light pavement
-  SERVICE: "#ece8e1",
-  OTHER: "#d6d2ca",
+  HIGHWAY: "#374151",
+  ARTERIAL: "#4b5563",
+  COLLECTOR: "#64748b",
+  RESIDENTIAL: "#94a3b8",
+  SERVICE: "#cbd5e1",
+  OTHER: "#64748b",
 };
 
 const LIGHT_ROAD_CASING: Record<RoadHierarchy, string> = {
-  HIGHWAY: "#1c1917", // stone-900
-  ARTERIAL: "#292524", // stone-800
-  COLLECTOR: "#44403c", // stone-700
-  RESIDENTIAL: "#57534e", // stone-600
-  SERVICE: "#78716c", // stone-500
-  OTHER: "#57534e",
+  HIGHWAY: "#111827",
+  ARTERIAL: "#1f2937",
+  COLLECTOR: "#334155",
+  RESIDENTIAL: "#475569",
+  SERVICE: "#64748b",
+  OTHER: "#334155",
 };
 
 // Dark variant: asphalt gets *darker* toward the top of the hierarchy
@@ -71,21 +71,21 @@ const LIGHT_ROAD_CASING: Record<RoadHierarchy, string> = {
 // (see docs/theming.md's "common mistakes" section for the same rule
 // applied to the shared app tokens).
 const DARK_ROAD_ASPHALT: Record<RoadHierarchy, string> = {
-  HIGHWAY: "#3f3d3a",
-  ARTERIAL: "#4b4844",
-  COLLECTOR: "#57534e",
-  RESIDENTIAL: "#68625b",
-  SERVICE: "#726b62",
-  OTHER: "#5c564f",
+  HIGHWAY: "#1f2937",
+  ARTERIAL: "#334155",
+  COLLECTOR: "#475569",
+  RESIDENTIAL: "#64748b",
+  SERVICE: "#94a3b8",
+  OTHER: "#475569",
 };
 
 const DARK_ROAD_CASING: Record<RoadHierarchy, string> = {
-  HIGHWAY: "#e7e5e4", // stone-200
-  ARTERIAL: "#d6d3d1", // stone-300
-  COLLECTOR: "#a8a29e", // stone-400
-  RESIDENTIAL: "#78716c", // stone-500
-  SERVICE: "#57534e", // stone-600
-  OTHER: "#78716c",
+  HIGHWAY: "#f8fafc",
+  ARTERIAL: "#e2e8f0",
+  COLLECTOR: "#cbd5e1",
+  RESIDENTIAL: "#94a3b8",
+  SERVICE: "#64748b",
+  OTHER: "#cbd5e1",
 };
 
 export const LIGHT_MAP_THEME: MapThemeColors = {

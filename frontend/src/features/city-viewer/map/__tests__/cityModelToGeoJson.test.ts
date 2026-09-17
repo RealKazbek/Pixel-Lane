@@ -74,7 +74,10 @@ describe("buildRoadFeatureCollection", () => {
   });
 
   it("prefers an explicit backend-provided width_m over the lane-count estimate", () => {
-    const withExplicitWidth = makeRoad({ width_m: 42, is_width_estimated: false });
+    const withExplicitWidth = makeRoad({
+      width_m: 42,
+      is_width_estimated: false,
+    });
     const withoutExplicitWidth = makeRoad({ width_m: null });
 
     const fc = buildRoadFeatureCollection({
@@ -186,6 +189,53 @@ describe("buildRoadLabelFeatureCollection", () => {
     });
     expect(fc.features).toHaveLength(1);
     expect(fc.features[0].properties.name).toBe("Abay Avenue");
+  });
+
+  it("centers labels and derives readable road-aligned rotations", () => {
+    const roads = [
+      makeRoad({
+        id: "horizontal",
+        name: "Road A",
+        geometry: {
+          points: [
+            { x: 0, y: 0 },
+            { x: 10, y: 0 },
+          ],
+        },
+      }),
+      makeRoad({
+        id: "vertical",
+        name: "Road B",
+        geometry: {
+          points: [
+            { x: 20, y: 0 },
+            { x: 20, y: 10 },
+          ],
+        },
+      }),
+      makeRoad({
+        id: "diagonal",
+        name: "Road C",
+        geometry: {
+          points: [
+            { x: 40, y: 0 },
+            { x: 50, y: 10 },
+          ],
+        },
+      }),
+    ];
+    const fc = buildRoadLabelFeatureCollection({
+      roads,
+      coordinate_system: "WGS84",
+    });
+    expect(fc.features.map((feature) => feature.geometry.coordinates)).toEqual([
+      [5, 0],
+      [20, 5],
+      [45, 5],
+    ]);
+    expect(fc.features[0].properties.rotation).toBeCloseTo(0);
+    expect(fc.features[1].properties.rotation).toBeCloseTo(-90);
+    expect(fc.features[2].properties.rotation).toBeCloseTo(-45, 0);
   });
 
   it("skips OSM-importer fallback names", () => {
