@@ -76,6 +76,8 @@ export interface EditorAction {
 interface PixelLaneMapProps {
   city: City;
   selected: MapSelection | null;
+  selectedEndpoint?: "A" | "B" | null;
+  onEndpointSelect?: (endpoint: "A" | "B") => void;
   onSelect: (selection: MapSelection | null) => void;
   basemapEnabled: boolean;
   mapStyleUrl: string | null;
@@ -113,6 +115,8 @@ interface PixelLaneMapProps {
 export function PixelLaneMap({
   city,
   selected,
+  selectedEndpoint = null,
+  onEndpointSelect,
   onSelect,
   basemapEnabled,
   mapStyleUrl,
@@ -658,6 +662,14 @@ export function PixelLaneMap({
     // eslint-disable-next-line react-hooks/exhaustive-deps -- editor is a stable ref-backed API
   }, [mode, selected, isLoaded, city, onRoadGeometryChange]);
 
+  useEffect(() => {
+    if (mode === "edit-geometry" && selected?.type === "road") {
+      editor.setActiveEndpoint(
+        selectedEndpoint === "A" ? 0 : selectedEndpoint === "B" ? 1 : null,
+      );
+    }
+  }, [editor, mode, selected, selectedEndpoint]);
+
   // Leaving edit mode without an explicit apply/cancel action (e.g.
   // selecting a different entity) discards the in-progress edit.
   useEffect(() => {
@@ -743,7 +755,8 @@ export function PixelLaneMap({
         {endpointScreenPoints.map((endpoint) => (
           <span
             key={endpoint.label}
-            className="absolute -translate-x-1/2 -translate-y-1/2 rounded-full border border-white bg-primary px-1.5 py-0.5 text-[11px] font-bold leading-none text-white shadow-sm"
+            className={`absolute -translate-x-1/2 -translate-y-1/2 rounded-full border border-white bg-primary px-1.5 py-0.5 text-[11px] font-bold leading-none text-white shadow-sm transition-transform ${selectedEndpoint && selectedEndpoint !== endpoint.label ? "hidden" : "pointer-events-auto cursor-pointer hover:scale-125"} ${selectedEndpoint === endpoint.label ? "ring-2 ring-primary/50" : ""}`}
+            onClick={() => onEndpointSelect?.(endpoint.label as "A" | "B")}
             style={{ left: endpoint.x, top: endpoint.y }}
           >
             {endpoint.label}
