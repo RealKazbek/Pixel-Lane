@@ -98,6 +98,7 @@ interface PixelLaneMapProps {
    * this component itself never renders any chrome. */
   onViewportStatusChange?: (status: ViewportDataStatus) => void;
   editorWorld?: EditorWorldBounds;
+  onScaleChange?: (denominator: number) => void;
 }
 
 export function PixelLaneMap({
@@ -116,6 +117,7 @@ export function PixelLaneMap({
   onRoadSaved,
   onViewportStatusChange,
   editorWorld,
+  onScaleChange,
 }: PixelLaneMapProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   // Entity detail responses must not recenter the map.
@@ -149,6 +151,7 @@ export function PixelLaneMap({
     style: resolveMapStyle(basemapEnabled, mapStyleUrl, "transparent"),
     navigationControlPosition: editorWorld ? "top-left" : "top-right",
     showScaleControl: Boolean(editorWorld),
+    onScaleChange,
     // A reasonable initial guess only -- the fit-to-view effect below runs
     // right after load and corrects this to the city's actual bounds. Still
     // worth getting right: it's what's briefly visible before that fit runs.
@@ -586,5 +589,5 @@ export function PixelLaneMap({
       mode === "edit-geometry" ? "crosshair" : "";
   }, [mode, isLoaded, mapRef]);
 
-  return <div ref={containerRef} className="h-full w-full" />;
+  return <div ref={containerRef} className="city-model-map h-full w-full" />;
 }

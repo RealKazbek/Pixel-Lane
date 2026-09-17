@@ -85,7 +85,8 @@
   },
   "fullscreen": {
     "enter": "Expand workspace",
-    "exit": "Exit workspace"
+    "exit": "Exit workspace",
+    "scale": "Scale 1:{denominator}"
   },
   "editor": {
     "minPointsError": "A road needs at least 2 points.",

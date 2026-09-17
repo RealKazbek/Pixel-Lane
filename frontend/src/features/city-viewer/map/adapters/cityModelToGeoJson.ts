@@ -221,6 +221,9 @@ function roadLabelPlacement(
   let rotation = bearing(first, last) - 90;
   if (rotation < -90) rotation += 180;
   if (rotation > 90) rotation -= 180;
+  // Keep near-vertical names readable across the road instead of rendering
+  // a tall, difficult-to-scan glyph column.
+  if (Math.abs(rotation) > 60) rotation = 0;
   return { position, rotation };
 }
 

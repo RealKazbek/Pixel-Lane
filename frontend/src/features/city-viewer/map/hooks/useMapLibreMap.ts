@@ -17,6 +17,7 @@ import {
   type StyleSpecification,
 } from "maplibre-gl";
 import "maplibre-gl/dist/maplibre-gl.css";
+import { mapScaleDenominator } from "../mapScale";
 
 // MapLibre's worker is a separate browser asset. Ship MapLibre's matching
 // worker with this app rather than relying on a sibling asset emitted by the
@@ -30,6 +31,7 @@ export interface MapLibreMapOptions {
   showAttribution?: boolean;
   navigationControlPosition?: "top-right" | "top-left";
   showScaleControl?: boolean;
+  onScaleChange?: (denominator: number) => void;
 }
 
 export function useMapLibreMap(
@@ -53,6 +55,13 @@ export function useMapLibreMap(
       zoom: initialOptions.current.zoom,
       attributionControl: initialOptions.current.showAttribution ? {} : false,
     });
+    const updateScale = () => {
+      initialOptions.current.onScaleChange?.(
+        mapScaleDenominator(map.getZoom(), map.getCenter().lat),
+      );
+    };
+    map.on("zoom", updateScale);
+    map.on("move", updateScale);
     map.addControl(
       new NavigationControl({ showCompass: false }),
       initialOptions.current.navigationControlPosition ?? "top-right",
@@ -64,12 +73,15 @@ export function useMapLibreMap(
       );
     }
     map.on("load", () => setIsLoaded(true));
+    map.once("load", updateScale);
     mapRef.current = map;
     const resizeObserver = new ResizeObserver(() => map.resize());
     resizeObserver.observe(container);
 
     return () => {
       resizeObserver.disconnect();
+      map.off("zoom", updateScale);
+      map.off("move", updateScale);
       map.remove();
       mapRef.current = null;
       setIsLoaded(false);

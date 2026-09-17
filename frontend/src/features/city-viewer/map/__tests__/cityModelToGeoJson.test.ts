@@ -238,7 +238,7 @@ describe("buildRoadLabelFeatureCollection", () => {
       [45, 5],
     ]);
     expect(fc.features[0].properties.rotation).toBeCloseTo(0);
-    expect(fc.features[1].properties.rotation).toBeCloseTo(-90);
+    expect(fc.features[1].properties.rotation).toBeCloseTo(0);
     expect(fc.features[2].properties.rotation).toBeCloseTo(-45, 0);
   });
 

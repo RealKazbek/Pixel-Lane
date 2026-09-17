@@ -100,3 +100,13 @@ body {
   color: var(--foreground);
   font-family: var(--font-sans), Arial, Helvetica, sans-serif;
 }
+
+.city-model-map .maplibregl-ctrl-scale {
+  border: 1px solid color-mix(in srgb, var(--foreground) 48%, transparent);
+  border-top: 0;
+  background: color-mix(in srgb, var(--surface) 82%, transparent);
+  color: var(--foreground);
+  font-size: 10px;
+  line-height: 14px;
+  padding: 0 4px;
+}

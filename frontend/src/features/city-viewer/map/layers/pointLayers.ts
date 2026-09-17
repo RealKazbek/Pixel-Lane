@@ -1,12 +1,6 @@
 import type { ExpressionSpecification, LayerSpecification } from "maplibre-gl";
 import { LAYER_IDS, SOURCE_IDS } from "./layerIds";
 import type { MapThemeColors } from "../styles/mapTheme";
-import {
-  LABEL_ENDPOINT_PADDING_PX,
-  LABEL_GLYPH_WIDTH_FACTOR,
-  LABEL_MAX_FONT_SIZE,
-  LABEL_MIN_FONT_SIZE,
-} from "../labelSizing";
 
 const isSelected: ExpressionSpecification = [
   "boolean",
@@ -125,49 +119,6 @@ export function buildTrafficLightLayer(
 }
 
 export function buildRoadLabelLayer(theme: MapThemeColors): LayerSpecification {
-  const metersToPixelsAtZoomZero = 512 / (2 * Math.PI * 6_371_000);
-  // Style-spec only permits `zoom` at the input of a top-level interpolate or
-  // step expression. Keep the camera-dependent sizing valid by calculating
-  // the fitted result at two zoom anchors and interpolating between them.
-  const fittedSizeAtZoom = (zoom: number): ExpressionSpecification =>
-    [
-      "case",
-      [
-        "<",
-        [
-          "/",
-          [
-            "max",
-            0,
-            [
-              "-",
-              ["*", ["get", "length_m"], 2 ** zoom, metersToPixelsAtZoomZero],
-              LABEL_ENDPOINT_PADDING_PX * 2,
-            ],
-          ],
-          ["*", ["get", "character_count"], LABEL_GLYPH_WIDTH_FACTOR],
-        ],
-        LABEL_MIN_FONT_SIZE,
-      ],
-      0,
-      [
-        "min",
-        LABEL_MAX_FONT_SIZE,
-        [
-          "/",
-          [
-            "max",
-            0,
-            [
-              "-",
-              ["*", ["get", "length_m"], 2 ** zoom, metersToPixelsAtZoomZero],
-              LABEL_ENDPOINT_PADDING_PX * 2,
-            ],
-          ],
-          ["*", ["get", "character_count"], LABEL_GLYPH_WIDTH_FACTOR],
-        ],
-      ],
-    ] as ExpressionSpecification;
   return {
     id: LAYER_IDS.roadLabels,
     type: "symbol",
@@ -176,15 +127,7 @@ export function buildRoadLabelLayer(theme: MapThemeColors): LayerSpecification {
     filter: ["any", [">=", ["zoom"], 16], ["<=", ["get", "label_rank"], 2]],
     layout: {
       "text-field": ["get", "name"],
-      "text-size": [
-        "interpolate",
-        ["linear"],
-        ["zoom"],
-        13,
-        fittedSizeAtZoom(13),
-        24,
-        fittedSizeAtZoom(24),
-      ] as ExpressionSpecification,
+      "text-size": ["interpolate", ["linear"], ["zoom"], 13, 14, 24, 16],
       "text-font": ["Noto Sans Regular"],
       "symbol-placement": "point",
       "text-rotate": ["get", "rotation"],
