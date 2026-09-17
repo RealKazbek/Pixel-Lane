@@ -235,7 +235,10 @@ function buildLaneRenderingLines(
     const nodeRadius = computeNodeRadius(
       memberIds.map((id) => ({ halfWidthM: widthByRoadId.get(id)! / 2 })),
     );
-    const nodePosition = toLngLat(coordinateSystem, intersection.position) as LngLat;
+    const nodePosition = toLngLat(
+      coordinateSystem,
+      intersection.position,
+    ) as LngLat;
 
     const memberInfo = memberIds
       .map((id) => {
@@ -265,7 +268,14 @@ function buildLaneRenderingLines(
     outer: for (const narrow of memberInfo) {
       for (const wide of memberInfo) {
         if (narrow === wide || narrow.halfWidthM >= wide.halfWidthM) continue;
-        if (isMergeCandidate(narrow, wide, narrow.outwardBearingDeg, wide.outwardBearingDeg)) {
+        if (
+          isMergeCandidate(
+            narrow,
+            wide,
+            narrow.outwardBearingDeg,
+            wide.outwardBearingDeg,
+          )
+        ) {
           mergeRoadId = narrow.id;
           break outer;
         }
@@ -273,11 +283,18 @@ function buildLaneRenderingLines(
     }
 
     for (const member of memberInfo) {
-      const trim = member.id === mergeRoadId ? MERGE_TAPER_LENGTH_M : nodeRadius;
+      const trim =
+        member.id === mergeRoadId ? MERGE_TAPER_LENGTH_M : nodeRadius;
       if (member.atEnd) {
-        trimEndByRoadId.set(member.id, Math.max(trimEndByRoadId.get(member.id) ?? 0, trim));
+        trimEndByRoadId.set(
+          member.id,
+          Math.max(trimEndByRoadId.get(member.id) ?? 0, trim),
+        );
       } else {
-        trimStartByRoadId.set(member.id, Math.max(trimStartByRoadId.get(member.id) ?? 0, trim));
+        trimStartByRoadId.set(
+          member.id,
+          Math.max(trimStartByRoadId.get(member.id) ?? 0, trim),
+        );
       }
     }
   }
@@ -287,6 +304,8 @@ function buildLaneRenderingLines(
     if (!rawLine) continue;
     const smoothedCoords = smoothCenterline(
       rawLine.geometry.coordinates as LngLat[],
+      undefined,
+      road.smoothing ?? 1,
     );
     const smoothedLine: GeoJSON.Feature<GeoJSON.LineString> = {
       type: "Feature",
@@ -310,7 +329,11 @@ export function buildLaneSurfaceFeatureCollection(
   if (!supportsLaneDetailRendering(coordinateSystem)) {
     return { type: "FeatureCollection", features: [] };
   }
-  const renderingLines = buildLaneRenderingLines(roads, intersections, coordinateSystem);
+  const renderingLines = buildLaneRenderingLines(
+    roads,
+    intersections,
+    coordinateSystem,
+  );
   const features: LaneSurfaceFeatureCollection["features"] = [];
   for (const road of roads) {
     const laneCount = roadLaneCount(road);
@@ -351,7 +374,11 @@ export function buildLaneBoundaryFeatureCollection(
   if (!supportsLaneDetailRendering(coordinateSystem)) {
     return { type: "FeatureCollection", features: [] };
   }
-  const renderingLines = buildLaneRenderingLines(roads, intersections, coordinateSystem);
+  const renderingLines = buildLaneRenderingLines(
+    roads,
+    intersections,
+    coordinateSystem,
+  );
   const features: LaneBoundaryFeatureCollection["features"] = [];
   for (const road of roads) {
     const laneCount = roadLaneCount(road);
@@ -389,7 +416,11 @@ export function buildTurnArrowFeatureCollection(
   if (!supportsLaneDetailRendering(coordinateSystem)) {
     return { type: "FeatureCollection", features: [] };
   }
-  const renderingLines = buildLaneRenderingLines(roads, intersections, coordinateSystem);
+  const renderingLines = buildLaneRenderingLines(
+    roads,
+    intersections,
+    coordinateSystem,
+  );
   const features: TurnArrowFeatureCollection["features"] = [];
   for (const road of roads) {
     const lanes = "lanes" in road ? road.lanes : undefined;
@@ -450,7 +481,11 @@ export function buildLaneUseMarkingFeatureCollection(
   if (!supportsLaneDetailRendering(coordinateSystem)) {
     return { type: "FeatureCollection", features: [] };
   }
-  const renderingLines = buildLaneRenderingLines(roads, intersections, coordinateSystem);
+  const renderingLines = buildLaneRenderingLines(
+    roads,
+    intersections,
+    coordinateSystem,
+  );
   const features: LaneUseMarkingFeatureCollection["features"] = [];
   for (const road of roads) {
     const laneCount = roadLaneCount(road);

@@ -43,9 +43,16 @@ import {
   roadWidthMeters,
   type RoadHierarchy,
 } from "../styles/roadStyle";
-import { pointsMatch, type IncidentRoad, type LngLat } from "../geometry/nodeGeometry";
+import {
+  pointsMatch,
+  type IncidentRoad,
+  type LngLat,
+} from "../geometry/nodeGeometry";
 import { solveJunction } from "../geometry/junctionSolver";
-import { buildRoadEnvelope, type PolygonFeature } from "../geometry/roadEnvelope";
+import {
+  buildRoadEnvelope,
+  type PolygonFeature,
+} from "../geometry/roadEnvelope";
 import { smoothCenterline } from "../geometry/curveSmoothing";
 import type { CoordinateSystem, Intersection } from "../../types/city";
 
@@ -100,6 +107,8 @@ export function buildRoadSurfaceFeatureCollection(
               type: "LineString",
               coordinates: smoothCenterline(
                 rawLine.geometry.coordinates as LngLat[],
+                undefined,
+                road.smoothing ?? 1,
               ),
             },
           }
@@ -118,7 +127,10 @@ export function buildRoadSurfaceFeatureCollection(
     );
     if (memberIds.length < 2) continue;
 
-    const nodePosition = toLngLat(coordinateSystem, intersection.position) as LngLat;
+    const nodePosition = toLngLat(
+      coordinateSystem,
+      intersection.position,
+    ) as LngLat;
     const incident: IncidentRoad[] = [];
     for (const id of memberIds) {
       const line = lineByRoadId.get(id)!;

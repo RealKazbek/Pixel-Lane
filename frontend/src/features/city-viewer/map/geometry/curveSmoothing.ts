@@ -66,7 +66,8 @@ function clampToChord(
   const dy = chordEnd[1] - chordStart[1];
   const lenSq = dx * dx + dy * dy;
   if (lenSq === 0) return point;
-  const t = ((point[0] - chordStart[0]) * dx + (point[1] - chordStart[1]) * dy) / lenSq;
+  const t =
+    ((point[0] - chordStart[0]) * dx + (point[1] - chordStart[1]) * dy) / lenSq;
   const projX = chordStart[0] + t * dx;
   const projY = chordStart[1] + t * dy;
   const devX = point[0] - projX;
@@ -96,8 +97,11 @@ function dedupe(points: LngLat[]): LngLat[] {
 export function smoothCenterline(
   points: LngLat[],
   options: SmoothingOptions = DEFAULT_SMOOTHING_OPTIONS,
+  smoothing = 1,
 ): LngLat[] {
   const pts = dedupe(points);
+  if (smoothing <= 0) return pts;
+  const strength = Math.min(1, smoothing);
   if (pts.length < 3) return pts;
 
   const result: LngLat[] = [pts[0]];
@@ -109,7 +113,16 @@ export function smoothCenterline(
     for (let s = 1; s <= options.samplesPerSegment; s++) {
       const t = s / options.samplesPerSegment;
       const raw = catmullRomPoint(p0, p1, p2, p3, t);
-      result.push(clampToChord(raw, p1, p2, options.maxTangentInfluence));
+      const curved = clampToChord(
+        raw,
+        p1,
+        p2,
+        options.maxTangentInfluence * strength,
+      );
+      result.push([
+        p1[0] + (curved[0] - p1[0]) * strength,
+        p1[1] + (curved[1] - p1[1]) * strength,
+      ]);
     }
   }
   return result;

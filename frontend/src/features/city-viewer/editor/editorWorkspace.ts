@@ -47,6 +47,7 @@ function makeEditorRoad(id: string, name: string, points: [Point, Point]) {
     name,
     road_type: "ARTERIAL" as const,
     geometry: { points },
+    smoothing: 0,
     default_speed_limit_kmh: null,
     width_m: 8,
     is_width_estimated: false,
