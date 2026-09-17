@@ -187,7 +187,7 @@ export function CityViewerApp() {
             </svg>
           </button>
         </div>
-        <div className="pointer-events-none absolute left-20 top-3 sm:left-24">
+        <div className="pointer-events-none absolute left-3 top-3">
           <EditorToolbar
             session={session}
             onEnterEdit={() => dispatch({ type: "enter-edit" })}
