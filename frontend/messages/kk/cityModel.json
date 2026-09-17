@@ -89,7 +89,11 @@
     "title": "Таңдалған жол",
     "street": "Көше",
     "width": "Ені",
-    "meters": "м"
+    "meters": "м",
+    "lanes": "Жолақтар",
+    "laneWidth": "Жолақ ені",
+    "directions": "Бағыттар",
+    "laneNumber": "Жолақ {number}"
   },
   "fullscreen": {
     "smoothing": "Тегістеу",

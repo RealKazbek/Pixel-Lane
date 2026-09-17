@@ -204,6 +204,14 @@ current local workspace previews property changes locally, while the backend
 also exposes a validated properties update path for persisted City Model
 flows.
 
+PL-005.07–.09 add the first explicit lane model to the editor contract:
+ordered lanes with `FORWARD`/`BACKWARD` direction, a uniform lane-width
+invariant (`road width = lane count × lane width`), and derived lane boundary
+markings. Lane offsets and markings consume the shared smoothed centerline;
+same-direction boundaries are dashed and direction changes use a stronger
+solid center separator. Lane-level turn, transit, parking, speed, and
+intersection-connection editing remain deferred.
+
 The Stage 1 editor world is an explicit local-cartesian rectangle from
 `(-400, -300)` to `(600, 300)`. The three review roads live inside that
 stable 1000m × 600m world. Its grid is generated as MapLibre line geometry

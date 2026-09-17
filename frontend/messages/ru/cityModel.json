@@ -89,7 +89,11 @@
     "title": "Выбранная дорога",
     "street": "Улица",
     "width": "Ширина",
-    "meters": "м"
+    "meters": "м",
+    "lanes": "Полосы",
+    "laneWidth": "Ширина полосы",
+    "directions": "Направления",
+    "laneNumber": "Полоса {number}"
   },
   "fullscreen": {
     "smoothing": "Сглаживание",

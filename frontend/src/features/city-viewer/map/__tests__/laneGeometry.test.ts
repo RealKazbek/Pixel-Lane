@@ -118,6 +118,23 @@ describe("buildLaneBoundaryFeatureCollection", () => {
     expect(kinds.filter((k) => k === "edge")).toHaveLength(2);
     expect(kinds.filter((k) => k === "separator")).toHaveLength(2);
   });
+
+  it("marks only direction changes as center separators", () => {
+    const road = makeRoad({
+      lanes: [
+        makeLane({ index: 0, direction: "BACKWARD" }),
+        makeLane({ id: "lane-1", index: 1, direction: "BACKWARD" }),
+        makeLane({ id: "lane-2", index: 2, direction: "FORWARD" }),
+        makeLane({ id: "lane-3", index: 3, direction: "FORWARD" }),
+      ],
+    });
+    const kinds = buildLaneBoundaryFeatureCollection(
+      [road],
+      "LOCAL_CARTESIAN",
+    ).features.map((feature) => feature.properties.kind);
+    expect(kinds.filter((kind) => kind === "center")).toHaveLength(1);
+    expect(kinds.filter((kind) => kind === "separator")).toHaveLength(2);
+  });
 });
 
 describe("buildTurnArrowFeatureCollection", () => {
