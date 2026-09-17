@@ -22,7 +22,11 @@ export interface GeometryEditor {
    * linestring (vertices draggable, midpoints add new vertices, keyboard
    * delete removes them -- all Terra Draw's built-in select-mode
    * behavior, not custom vertex-manipulation code). */
-  beginEditingRoad(road: Road, coordinateSystem: CoordinateSystem): void;
+  beginEditingRoad(
+    road: Road,
+    coordinateSystem: CoordinateSystem,
+    onChange: (points: Point[]) => void,
+  ): void;
   /** Discards the in-progress edit without touching the City Model. */
   cancel(): void;
   /** Reads the current edited geometry back out as City Model points, and
@@ -44,9 +48,9 @@ export function createGeometryEditor(map: MapLibreMap): GeometryEditor {
             feature: {
               draggable: false,
               coordinates: {
-                midpoints: true,
+                midpoints: false,
                 draggable: true,
-                deletable: true,
+                deletable: false,
               },
             },
           },
@@ -57,6 +61,7 @@ export function createGeometryEditor(map: MapLibreMap): GeometryEditor {
 
   let started = false;
   let editingFeatureId: string | number | null = null;
+  let changeHandler: ((ids: (string | number)[]) => void) | null = null;
 
   function ensureStarted(): void {
     if (!started) {
@@ -66,7 +71,7 @@ export function createGeometryEditor(map: MapLibreMap): GeometryEditor {
   }
 
   return {
-    beginEditingRoad(road, coordinateSystem) {
+    beginEditingRoad(road, coordinateSystem, onChange) {
       ensureStarted();
       draw.clear();
       draw.setMode("select");
@@ -86,10 +91,24 @@ export function createGeometryEditor(map: MapLibreMap): GeometryEditor {
         result?.valid && result.id !== undefined ? result.id : null;
       if (editingFeatureId !== null) {
         draw.selectFeature(editingFeatureId);
+        changeHandler = (ids) => {
+          if (!ids.includes(editingFeatureId as string | number)) return;
+          const feature = draw.getSnapshotFeature(
+            editingFeatureId as string | number,
+          );
+          if (!feature || feature.geometry.type !== "LineString") return;
+          const points = feature.geometry.coordinates.map((coordinate) =>
+            fromLngLat(coordinateSystem, coordinate as LngLat),
+          );
+          if (points.length === 2) onChange(points);
+        };
+        draw.on("change", changeHandler);
       }
     },
 
     cancel() {
+      if (changeHandler) draw.off("change", changeHandler);
+      changeHandler = null;
       draw.clear();
       editingFeatureId = null;
     },
@@ -97,6 +116,8 @@ export function createGeometryEditor(map: MapLibreMap): GeometryEditor {
     apply(coordinateSystem) {
       if (editingFeatureId === null) return null;
       const feature = draw.getSnapshotFeature(editingFeatureId);
+      if (changeHandler) draw.off("change", changeHandler);
+      changeHandler = null;
       draw.clear();
       editingFeatureId = null;
 
@@ -107,6 +128,7 @@ export function createGeometryEditor(map: MapLibreMap): GeometryEditor {
     },
 
     destroy() {
+      if (changeHandler) draw.off("change", changeHandler);
       if (started) {
         draw.clear();
         draw.stop();
