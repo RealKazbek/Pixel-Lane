@@ -12,6 +12,7 @@
 import {
   GeoJSONSource,
   type ExpressionSpecification,
+  type LayerSpecification,
   type Map as MapLibreMap,
 } from "maplibre-gl";
 import {
@@ -51,6 +52,7 @@ import type {
 } from "../adapters/cityAmenitiesToGeoJson";
 
 export interface PixelLaneGeoJson {
+  grid: GeoJSON.FeatureCollection<GeoJSON.LineString>;
   roads: RoadFeatureCollection;
   intersections: IntersectionFeatureCollection;
   trafficLights: TrafficLightFeatureCollection;
@@ -67,8 +69,22 @@ export interface PixelLaneGeoJson {
 function buildAllLayers(
   referenceLatitudeDeg: number,
   theme: MapThemeColors,
-) {
+): LayerSpecification[] {
   return [
+    {
+      id: LAYER_IDS.gridMinor,
+      type: "line",
+      source: SOURCE_IDS.grid,
+      filter: ["==", ["get", "major"], false],
+      paint: { "line-color": theme.gridMinor, "line-width": 1 },
+    } as LayerSpecification,
+    {
+      id: LAYER_IDS.gridMajor,
+      type: "line",
+      source: SOURCE_IDS.grid,
+      filter: ["==", ["get", "major"], true],
+      paint: { "line-color": theme.gridMajor, "line-width": 1.2 },
+    } as LayerSpecification,
     ...buildRoadLayers(referenceLatitudeDeg, theme),
     ...buildRoadSurfaceLayers(theme),
     ...buildLaneDetailLayers(theme),
@@ -89,6 +105,9 @@ export function addPixelLaneSourcesAndLayers(
     theme.roadLabel,
     theme.roadLabelHalo,
   ]);
+  if (!map.getSource(SOURCE_IDS.grid)) {
+    map.addSource(SOURCE_IDS.grid, { type: "geojson", data: data.grid });
+  }
   if (!map.getSource(SOURCE_IDS.roads)) {
     map.addSource(SOURCE_IDS.roads, { type: "geojson", data: data.roads });
   }
@@ -138,7 +157,10 @@ export function addPixelLaneSourcesAndLayers(
     });
   }
   if (!map.getSource(SOURCE_IDS.busStops)) {
-    map.addSource(SOURCE_IDS.busStops, { type: "geojson", data: data.busStops });
+    map.addSource(SOURCE_IDS.busStops, {
+      type: "geojson",
+      data: data.busStops,
+    });
   }
   if (!map.getSource(SOURCE_IDS.crosswalks)) {
     map.addSource(SOURCE_IDS.crosswalks, {
@@ -195,6 +217,8 @@ export function updatePixelLaneData(
   map: MapLibreMap,
   data: PixelLaneGeoJson,
 ): void {
+  const gridSource = map.getSource(SOURCE_IDS.grid);
+  if (gridSource instanceof GeoJSONSource) gridSource.setData(data.grid);
   const roadsSource = map.getSource(SOURCE_IDS.roads);
   if (roadsSource instanceof GeoJSONSource) roadsSource.setData(data.roads);
 
@@ -230,7 +254,8 @@ export function updatePixelLaneData(
     roadSurfacesSource.setData(data.roadSurfaces);
 
   const busStopsSource = map.getSource(SOURCE_IDS.busStops);
-  if (busStopsSource instanceof GeoJSONSource) busStopsSource.setData(data.busStops);
+  if (busStopsSource instanceof GeoJSONSource)
+    busStopsSource.setData(data.busStops);
 
   const crosswalksSource = map.getSource(SOURCE_IDS.crosswalks);
   if (crosswalksSource instanceof GeoJSONSource)

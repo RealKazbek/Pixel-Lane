@@ -22,6 +22,8 @@ import type { RoadHierarchy } from "./roadStyle";
 export interface MapThemeColors {
   /** Empty-style canvas background (`styles/mapStyle.ts`'s `EMPTY_STYLE`). */
   background: string;
+  gridMinor: string;
+  gridMajor: string;
   roadAsphalt: Record<RoadHierarchy, string>;
   roadCasing: Record<RoadHierarchy, string>;
   /** Selected-road surface tint -- distinct from `selected` (the casing/
@@ -90,6 +92,8 @@ const DARK_ROAD_CASING: Record<RoadHierarchy, string> = {
 
 export const LIGHT_MAP_THEME: MapThemeColors = {
   background: "#f2f1ed",
+  gridMinor: "rgba(100, 116, 139, 0.15)",
+  gridMajor: "rgba(71, 85, 105, 0.28)",
   roadAsphalt: LIGHT_ROAD_ASPHALT,
   roadCasing: LIGHT_ROAD_CASING,
   selectedSurface: "#dbeafe", // blue-100
@@ -110,6 +114,8 @@ export const LIGHT_MAP_THEME: MapThemeColors = {
 
 export const DARK_MAP_THEME: MapThemeColors = {
   background: "#1c1a17",
+  gridMinor: "rgba(148, 163, 184, 0.14)",
+  gridMajor: "rgba(203, 213, 225, 0.28)",
   roadAsphalt: DARK_ROAD_ASPHALT,
   roadCasing: DARK_ROAD_CASING,
   selectedSurface: "#1e3a8a", // blue-900 -- lit-up tint stays legible on a dark surface

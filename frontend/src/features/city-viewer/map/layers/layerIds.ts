@@ -2,6 +2,7 @@
  * place to see the whole stack (see map/README.md for the draw order). */
 
 export const SOURCE_IDS = {
+  grid: "pixel-lane-editor-grid",
   roads: "pixel-lane-roads",
   intersections: "pixel-lane-intersections",
   trafficLights: "pixel-lane-traffic-lights",
@@ -16,6 +17,8 @@ export const SOURCE_IDS = {
 } as const;
 
 export const LAYER_IDS = {
+  gridMinor: "pixel-lane-editor-grid-minor",
+  gridMajor: "pixel-lane-editor-grid-major",
   roadCasing: "pixel-lane-road-casing",
   roadSurface: "pixel-lane-road-surface",
   roadSurfaceFill: "pixel-lane-road-surface-fill",
@@ -44,6 +47,8 @@ export const LAYER_IDS = {
  * casing/surface but below selection/points, so a selected road/
  * intersection still reads clearly through the extra detail. */
 export const LAYER_DRAW_ORDER: readonly string[] = [
+  LAYER_IDS.gridMinor,
+  LAYER_IDS.gridMajor,
   LAYER_IDS.roadCasing,
   LAYER_IDS.roadSurface,
   LAYER_IDS.roadSurfaceFill,
