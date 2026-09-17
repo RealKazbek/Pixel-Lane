@@ -171,9 +171,20 @@ export function CityViewerApp() {
             title={isFullscreen ? t("exit") : t("enter")}
             className="pointer-events-auto rounded-md border border-border-subtle bg-surface/90 p-2 text-foreground shadow-sm backdrop-blur transition-colors hover:bg-surface-elevated focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
           >
-            <span aria-hidden="true" className="text-base leading-none">
-              {isFullscreen ? "↙" : "↗"}
-            </span>
+            <svg
+              aria-hidden="true"
+              viewBox="0 0 20 20"
+              className="h-4 w-4"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="1.8"
+            >
+              {isFullscreen ? (
+                <path d="M7 3H3v4M13 17h4v-4M3 3l5 5M17 17l-5-5" />
+              ) : (
+                <path d="M3 8V3h5M17 12v5h-5M3 3l5 5M17 17l-5-5" />
+              )}
+            </svg>
           </button>
         </div>
         <div className="pointer-events-none absolute left-20 top-3 sm:left-24">
@@ -204,10 +215,12 @@ export function CityViewerApp() {
             {drawStartPoint ? t("drawFinish") : t("drawStart")}
           </div>
         )}
-        <div className="pointer-events-none absolute bottom-3 right-3 rounded-md border border-border-subtle bg-surface/90 px-2.5 py-1.5 text-[10px] font-medium text-foreground shadow-sm backdrop-blur">
-          <div>{t("scale", { denominator: scale.denominator })}</div>
-          <div className="mt-1 flex items-end gap-1 text-[9px] font-normal text-muted-foreground">
-            <span className="h-1.5 w-20 border-x border-b border-foreground/70" />
+        <div className="pointer-events-none absolute bottom-3 right-3 rounded-lg border border-border-subtle bg-surface/90 px-3 py-2 text-[11px] font-medium text-foreground shadow-md backdrop-blur">
+          <div className="tracking-wide">
+            {t("scale", { denominator: scale.denominator })}
+          </div>
+          <div className="mt-1.5 flex items-end gap-2 text-[10px] font-normal text-muted-foreground">
+            <span className="h-2 w-20 border-x-2 border-b-2 border-foreground/70" />
             <span>
               {t(scale.barMeters >= 1000 ? "scaleBarKm" : "scaleBarMeters", {
                 value:
