@@ -4,10 +4,12 @@ from pydantic import BaseModel, Field, model_validator
 
 from app.city.domain.enums import (
     CyclewayType,
+    LaneBoundaryMarking,
     LaneCountQuality,
     LaneDirection,
     MedianType,
     ParkingLaneOrientation,
+    RoadEdgeMarking,
     RoadType,
 )
 from app.city.domain.geometry import Polyline
@@ -51,6 +53,17 @@ class RoadCreate(BaseModel):
     parking_right: ParkingLaneOrientation = ParkingLaneOrientation.UNKNOWN
     cycleway_left: CyclewayType = CyclewayType.UNKNOWN
     cycleway_right: CyclewayType = CyclewayType.UNKNOWN
+    left_edge_marking: RoadEdgeMarking = RoadEdgeMarking.SOLID_YELLOW
+    right_edge_marking: RoadEdgeMarking = RoadEdgeMarking.SOLID_YELLOW
+    lane_boundary_markings: list[LaneBoundaryMarking] | None = None
+
+    @model_validator(mode="after")
+    def validate_boundary_markings(self) -> "RoadCreate":
+        if self.lane_boundary_markings is not None and len(self.lane_boundary_markings) != max(
+            0, len(self.lanes) - 1
+        ):
+            raise ValueError("lane_boundary_markings must match lane count - 1")
+        return self
 
 
 class RoadRead(BaseModel):
@@ -80,6 +93,9 @@ class RoadRead(BaseModel):
     cycleway_left: CyclewayType = CyclewayType.UNKNOWN
     cycleway_right: CyclewayType = CyclewayType.UNKNOWN
     lanes: list[LaneRead]
+    left_edge_marking: RoadEdgeMarking = RoadEdgeMarking.SOLID_YELLOW
+    right_edge_marking: RoadEdgeMarking = RoadEdgeMarking.SOLID_YELLOW
+    lane_boundary_markings: list[LaneBoundaryMarking] | None = None
 
     model_config = {"from_attributes": True}
 
@@ -99,6 +115,9 @@ class RoadPropertiesUpdate(BaseModel):
     lane_count: int = Field(ge=1, le=12)
     lane_width_m: float = Field(ge=MIN_LANE_WIDTH_M, le=MAX_LANE_WIDTH_M)
     lane_directions: list[LaneDirection] = Field(min_length=1, max_length=12)
+    left_edge_marking: RoadEdgeMarking = RoadEdgeMarking.SOLID_YELLOW
+    right_edge_marking: RoadEdgeMarking = RoadEdgeMarking.SOLID_YELLOW
+    lane_boundary_markings: list[LaneBoundaryMarking] = Field(default_factory=list, max_length=11)
 
     @model_validator(mode="after")
     def validate_lane_configuration(self) -> "RoadPropertiesUpdate":
@@ -107,4 +126,6 @@ class RoadPropertiesUpdate(BaseModel):
         expected = self.lane_count * self.lane_width_m
         if abs(self.width_m - expected) > 0.001:
             raise ValueError("width_m must equal lane_count * lane_width_m")
+        if len(self.lane_boundary_markings) not in (0, self.lane_count - 1):
+            raise ValueError("lane_boundary_markings must match lane_count - 1")
         return self

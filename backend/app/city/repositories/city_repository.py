@@ -118,6 +118,13 @@ def update_road_properties(
     road.name = properties.name.strip()
     road.width_m = properties.width_m
     road.is_width_estimated = False
+    road.left_edge_marking = properties.left_edge_marking.value
+    road.right_edge_marking = properties.right_edge_marking.value
+    road.lane_boundary_markings = (
+        [m.value for m in properties.lane_boundary_markings]
+        if properties.lane_boundary_markings
+        else None
+    )
     existing_by_index = {lane.index: lane for lane in road.lanes}
     configured_lanes: list[Lane] = []
     for index, direction in enumerate(properties.lane_directions):

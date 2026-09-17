@@ -1,10 +1,51 @@
-import type { Lane, LaneDirection, Road } from "../types/city";
+import type {
+  Lane,
+  LaneBoundaryMarking,
+  LaneDirection,
+  Road,
+  RoadEdgeMarking,
+} from "../types/city";
 
 export const MIN_EDITOR_LANE_COUNT = 1;
 export const MAX_EDITOR_LANE_COUNT = 12;
 export const MIN_EDITOR_LANE_WIDTH_M = 2.5;
 export const MAX_EDITOR_LANE_WIDTH_M = 6;
 export const MAX_EDITOR_ROAD_WIDTH_M = 60;
+
+export function defaultBoundaryMarking(
+  left: LaneDirection,
+  right: LaneDirection,
+): LaneBoundaryMarking {
+  return left === right ? "DASHED_WHITE" : "DOUBLE_SOLID_WHITE";
+}
+
+export function defaultBoundaryMarkings(
+  road: Pick<Road, "lanes">,
+): LaneBoundaryMarking[] {
+  return road.lanes
+    .slice(0, -1)
+    .map((lane, index) =>
+      defaultBoundaryMarking(lane.direction, road.lanes[index + 1].direction),
+    );
+}
+
+export function defaultEdgeMarking(
+  marking: RoadEdgeMarking | undefined,
+): RoadEdgeMarking {
+  return marking ?? "SOLID_YELLOW";
+}
+
+export function resizeBoundaryMarkings(
+  road: Pick<Road, "lanes" | "lane_boundary_markings">,
+  laneCount: number,
+): LaneBoundaryMarking[] {
+  const defaults = defaultBoundaryMarkings(road);
+  return Array.from(
+    { length: Math.max(0, laneCount - 1) },
+    (_, index) =>
+      road.lane_boundary_markings?.[index] ?? defaults[index] ?? "DASHED_WHITE",
+  );
+}
 
 export function clampLaneWidthMeters(value: number): number {
   return Math.min(

@@ -2,9 +2,15 @@
 
 import { useState } from "react";
 import { useTranslations } from "next-intl";
-import type { LaneDirection, Road } from "../types/city";
+import type {
+  LaneBoundaryMarking,
+  LaneDirection,
+  Road,
+  RoadEdgeMarking,
+} from "../types/city";
 import {
   laneWidthMeters,
+  resizeBoundaryMarkings,
   MAX_EDITOR_LANE_COUNT,
   MAX_EDITOR_ROAD_WIDTH_M,
   MIN_EDITOR_LANE_COUNT,
@@ -22,6 +28,9 @@ interface RoadPropertiesPanelProps {
     lane_count?: number;
     lane_width_m?: number;
     lane_directions?: LaneDirection[];
+    left_edge_marking?: RoadEdgeMarking;
+    right_edge_marking?: RoadEdgeMarking;
+    lane_boundary_markings?: LaneBoundaryMarking[];
   }) => void;
 }
 
@@ -38,6 +47,27 @@ export function RoadPropertiesPanel({
     { length: laneCount },
     (_, index) => road.lanes[index]?.direction ?? "FORWARD",
   );
+  const boundaryMarkings =
+    road.lane_boundary_markings?.length === laneCount - 1
+      ? road.lane_boundary_markings
+      : directions
+          .slice(0, -1)
+          .map((direction, index) =>
+            direction === directions[index + 1]
+              ? "DASHED_WHITE"
+              : "DOUBLE_SOLID_WHITE",
+          );
+  const edgeOptions: RoadEdgeMarking[] = [
+    "SOLID_YELLOW",
+    "SOLID_WHITE",
+    "NONE",
+  ];
+  const boundaryOptions: LaneBoundaryMarking[] = [
+    "DASHED_WHITE",
+    "SOLID_WHITE",
+    "DOUBLE_SOLID_WHITE",
+    "NONE",
+  ];
   const updateLaneModel = (
     count: number,
     widthM: number,
@@ -49,6 +79,7 @@ export function RoadPropertiesPanel({
       lane_width_m: widthM,
       width_m: count * widthM,
       lane_directions: nextDirections.slice(0, count),
+      lane_boundary_markings: resizeBoundaryMarkings(road, count),
     });
   };
 
@@ -140,6 +171,55 @@ export function RoadPropertiesPanel({
             </button>
           ))}
         </div>
+      </fieldset>
+      <fieldset className="mt-3">
+        <legend className="mb-1 text-muted-foreground">{t("markings")}</legend>
+        {(["left_edge_marking", "right_edge_marking"] as const).map((side) => (
+          <label
+            className="mt-2 flex items-center justify-between gap-2"
+            key={side}
+          >
+            <span>
+              {side === "left_edge_marking" ? t("leftEdge") : t("rightEdge")}
+            </span>
+            <select
+              value={road[side] ?? "SOLID_YELLOW"}
+              onChange={(event) =>
+                onChange({ [side]: event.target.value as RoadEdgeMarking })
+              }
+              className="min-w-0 rounded border border-border-subtle bg-background px-1 py-1 text-foreground"
+            >
+              {edgeOptions.map((option) => (
+                <option key={option} value={option}>
+                  {t(`marking.${option}`)}
+                </option>
+              ))}
+            </select>
+          </label>
+        ))}
+        {boundaryMarkings.map((marking, index) => (
+          <label
+            className="mt-2 flex items-center justify-between gap-2"
+            key={index}
+          >
+            <span>{t("lanePair", { left: index + 1, right: index + 2 })}</span>
+            <select
+              value={marking}
+              onChange={(event) => {
+                const next = [...boundaryMarkings];
+                next[index] = event.target.value as LaneBoundaryMarking;
+                onChange({ lane_boundary_markings: next });
+              }}
+              className="min-w-0 rounded border border-border-subtle bg-background px-1 py-1 text-foreground"
+            >
+              {boundaryOptions.map((option) => (
+                <option key={option} value={option}>
+                  {t(`marking.${option}`)}
+                </option>
+              ))}
+            </select>
+          </label>
+        ))}
       </fieldset>
       <label className="mt-3 block">
         <span className="mb-1 block text-muted-foreground">{t("width")}</span>

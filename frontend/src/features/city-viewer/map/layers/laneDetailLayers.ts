@@ -34,7 +34,6 @@ export function buildLaneDetailLayers(
   const PARKING_MARKING_COLOR = theme.parking;
   const CYCLEWAY_COLOR = theme.cycleway;
   const SEPARATOR_COLOR = theme.laneMarking;
-  const EDGE_COLOR = theme.roadCasing.HIGHWAY;
   const laneBusSurface: LayerSpecification = {
     id: LAYER_IDS.laneBusSurface,
     type: "line",
@@ -81,9 +80,23 @@ export function buildLaneDetailLayers(
     type: "line",
     source: SOURCE_IDS.laneBoundaries,
     minzoom: LANE_DETAIL_MIN_ZOOM,
-    filter: ["==", ["get", "kind"], "edge"],
+    filter: [
+      "all",
+      ["==", ["get", "kind"], "edge"],
+      ["==", ["get", "marking"], "SOLID_WHITE"],
+    ],
     layout: { "line-cap": "round", "line-join": "round" },
-    paint: { "line-color": EDGE_COLOR, "line-width": 1.5 },
+    paint: { "line-color": theme.laneMarking, "line-width": 1.5 },
+  };
+  const laneBoundaryEdgeYellow: LayerSpecification = {
+    ...laneBoundaryEdge,
+    id: `${LAYER_IDS.laneBoundaryEdge}-yellow`,
+    filter: [
+      "all",
+      ["==", ["get", "kind"], "edge"],
+      ["==", ["get", "marking"], "SOLID_YELLOW"],
+    ],
+    paint: { "line-color": theme.roadEdgeYellow, "line-width": 1.5 },
   };
 
   // Same-direction separators are dashed. Direction changes use the
@@ -93,7 +106,11 @@ export function buildLaneDetailLayers(
     type: "line",
     source: SOURCE_IDS.laneBoundaries,
     minzoom: LANE_DETAIL_MIN_ZOOM,
-    filter: ["==", ["get", "kind"], "separator"],
+    filter: [
+      "all",
+      ["==", ["get", "kind"], "separator"],
+      ["==", ["get", "marking"], "DASHED_WHITE"],
+    ],
     layout: { "line-cap": "butt", "line-join": "round" },
     paint: {
       "line-color": SEPARATOR_COLOR,
@@ -107,12 +124,30 @@ export function buildLaneDetailLayers(
     type: "line",
     source: SOURCE_IDS.laneBoundaries,
     minzoom: LANE_DETAIL_MIN_ZOOM,
-    filter: ["==", ["get", "kind"], "center"],
+    filter: [
+      "all",
+      ["==", ["get", "kind"], "center"],
+      ["==", ["get", "marking"], "DOUBLE_SOLID_WHITE"],
+    ],
     layout: { "line-cap": "butt", "line-join": "round" },
     paint: {
       "line-color": SEPARATOR_COLOR,
       "line-width": 1.5,
       "line-opacity": 0.95,
+    },
+  };
+  const laneBoundarySolid: LayerSpecification = {
+    ...laneBoundarySeparator,
+    id: LAYER_IDS.laneBoundarySolid,
+    filter: [
+      "all",
+      ["==", ["get", "kind"], "separator"],
+      ["==", ["get", "marking"], "SOLID_WHITE"],
+    ],
+    paint: {
+      "line-color": SEPARATOR_COLOR,
+      "line-width": 1,
+      "line-opacity": 0.9,
     },
   };
 
@@ -189,7 +224,9 @@ export function buildLaneDetailLayers(
     laneParkingLabel,
     laneCyclewayLine,
     laneBoundaryEdge,
+    laneBoundaryEdgeYellow,
     laneBoundarySeparator,
+    laneBoundarySolid,
     laneBoundaryCenter,
     laneBusLabel,
     turnArrows,

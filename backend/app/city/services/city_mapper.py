@@ -12,6 +12,7 @@ from app.city.domain.enums import (
     CoordinateSystem,
     CyclewayType,
     IntersectionControlType,
+    LaneBoundaryMarking,
     LaneChangePermission,
     LaneCountQuality,
     LaneDirection,
@@ -20,6 +21,7 @@ from app.city.domain.enums import (
     MovementType,
     ParkingLaneOrientation,
     ParkingSide,
+    RoadEdgeMarking,
     RoadType,
     TrafficRuleTargetType,
     TrafficRuleType,
@@ -95,6 +97,13 @@ def to_road_read(road: Road) -> RoadRead:
         cycleway_left=CyclewayType(road.cycleway_left),
         cycleway_right=CyclewayType(road.cycleway_right),
         lanes=[_to_lane_read(lane) for lane in road.lanes],
+        left_edge_marking=RoadEdgeMarking(road.left_edge_marking),
+        right_edge_marking=RoadEdgeMarking(road.right_edge_marking),
+        lane_boundary_markings=(
+            [LaneBoundaryMarking(m) for m in road.lane_boundary_markings]
+            if road.lane_boundary_markings is not None
+            else None
+        ),
     )
 
 

@@ -93,7 +93,18 @@
     "lanes": "Полосы",
     "laneWidth": "Ширина полосы",
     "directions": "Направления",
-    "laneNumber": "Полоса {number}"
+    "laneNumber": "Полоса {number}",
+    "markings": "Разметка",
+    "leftEdge": "Левый край",
+    "rightEdge": "Правый край",
+    "lanePair": "Полосы {left} / {right}",
+    "marking": {
+      "NONE": "Нет",
+      "DASHED_WHITE": "Пунктирная",
+      "SOLID_WHITE": "Сплошная",
+      "DOUBLE_SOLID_WHITE": "Двойная сплошная",
+      "SOLID_YELLOW": "Жёлтая"
+    }
   },
   "fullscreen": {
     "smoothing": "Сглаживание",

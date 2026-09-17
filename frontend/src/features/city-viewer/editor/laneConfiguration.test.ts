@@ -1,6 +1,9 @@
 import { describe, expect, it } from "vitest";
-import { buildLaneConfiguration } from "./laneConfiguration";
-import type { Road } from "../types/city";
+import {
+  buildLaneConfiguration,
+  resizeBoundaryMarkings,
+} from "./laneConfiguration";
+import type { LaneBoundaryMarking, Road } from "../types/city";
 
 const road: Road = {
   id: "road-1",
@@ -68,5 +71,17 @@ describe("buildLaneConfiguration", () => {
     expect(
       buildLaneConfiguration(road, 12, 6, Array(12).fill("FORWARD")),
     ).toBeNull();
+  });
+
+  it("preserves boundary choices when the lane count changes", () => {
+    const configured = {
+      ...road,
+      lane_boundary_markings: ["SOLID_WHITE"] as LaneBoundaryMarking[],
+    };
+    expect(resizeBoundaryMarkings(configured, 3)).toEqual([
+      "SOLID_WHITE",
+      "DASHED_WHITE",
+    ]);
+    expect(resizeBoundaryMarkings(configured, 1)).toEqual([]);
   });
 });
