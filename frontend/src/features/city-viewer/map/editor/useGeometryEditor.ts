@@ -53,10 +53,6 @@ export function useGeometryEditor() {
     setStatus("idle");
   }, []);
 
-  const setActiveEndpoint = useCallback((endpoint: 0 | 1 | null) => {
-    editorRef.current?.setActiveEndpoint(endpoint);
-  }, []);
-
   const apply = useCallback(
     async (
       map: MapLibreMap,
@@ -96,6 +92,5 @@ export function useGeometryEditor() {
     start,
     cancel,
     apply,
-    setActiveEndpoint,
   };
 }
