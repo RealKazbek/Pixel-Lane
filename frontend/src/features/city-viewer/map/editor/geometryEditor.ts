@@ -121,11 +121,15 @@ export function createGeometryEditor(map: MapLibreMap): GeometryEditor {
     },
 
     setActiveEndpoint(endpoint) {
+      void endpoint;
       selectMode.updateOptions({
         flags: {
           linestring: {
             feature: {
-              coordinates: { draggable: endpoint !== null },
+              // Endpoint dragging is owned by Pixel Lane's visible endpoint
+              // control; Terra Draw remains the geometry adapter but does
+              // not compete for the pointer gesture.
+              coordinates: { draggable: false },
             },
           },
         },

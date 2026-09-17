@@ -78,6 +78,7 @@ interface PixelLaneMapProps {
   selected: MapSelection | null;
   selectedEndpoint?: "A" | "B" | null;
   onEndpointSelect?: (endpoint: "A" | "B") => void;
+  onEndpointDrag?: (endpoint: "A" | "B", point: Point) => void;
   onSelect: (selection: MapSelection | null) => void;
   basemapEnabled: boolean;
   mapStyleUrl: string | null;
@@ -117,6 +118,7 @@ export function PixelLaneMap({
   selected,
   selectedEndpoint = null,
   onEndpointSelect,
+  onEndpointDrag,
   onSelect,
   basemapEnabled,
   mapStyleUrl,
@@ -154,6 +156,7 @@ export function PixelLaneMap({
   const [endpointScreenPoints, setEndpointScreenPoints] = useState<
     { label: string; x: number; y: number }[]
   >([]);
+  const [draggingEndpoint, setDraggingEndpoint] = useState<string | null>(null);
 
   // `next-themes`'s resolved appearance ("system" already resolved to
   // "light"/"dark") -- the one sanctioned exception to "consume the
@@ -755,8 +758,37 @@ export function PixelLaneMap({
         {endpointScreenPoints.map((endpoint) => (
           <span
             key={endpoint.label}
-            className={`absolute -translate-x-1/2 -translate-y-1/2 rounded-full border border-white bg-primary px-1.5 py-0.5 text-[11px] font-bold leading-none text-white shadow-sm transition-transform ${selectedEndpoint && selectedEndpoint !== endpoint.label ? "hidden" : "pointer-events-auto cursor-pointer hover:scale-125"} ${selectedEndpoint === endpoint.label ? "ring-2 ring-primary/50" : ""}`}
+            className={`absolute -translate-x-1/2 -translate-y-1/2 rounded-full border border-white bg-primary px-1.5 py-0.5 text-[11px] font-bold leading-none text-white shadow-sm transition-transform ${selectedEndpoint && selectedEndpoint !== endpoint.label ? "hidden" : `pointer-events-auto ${draggingEndpoint === endpoint.label ? "cursor-grabbing scale-125" : "cursor-grab hover:scale-125"}`} ${selectedEndpoint === endpoint.label ? "ring-2 ring-primary/50" : ""}`}
             onClick={() => onEndpointSelect?.(endpoint.label as "A" | "B")}
+            onPointerDown={(event) => {
+              const label = endpoint.label as "A" | "B";
+              if (selectedEndpoint !== label || !mapRef.current) return;
+              event.preventDefault();
+              event.stopPropagation();
+              const map = mapRef.current;
+              const rect = containerRef.current?.getBoundingClientRect();
+              if (!rect) return;
+              map.dragPan.disable();
+              setDraggingEndpoint(label);
+              const move = (moveEvent: PointerEvent) => {
+                const point = map.unproject([
+                  moveEvent.clientX - rect.left,
+                  moveEvent.clientY - rect.top,
+                ]);
+                onEndpointDrag?.(
+                  label,
+                  fromLngLat(city.coordinate_system, [point.lng, point.lat]),
+                );
+              };
+              const finish = () => {
+                map.dragPan.enable();
+                setDraggingEndpoint(null);
+                window.removeEventListener("pointermove", move);
+                window.removeEventListener("pointerup", finish);
+              };
+              window.addEventListener("pointermove", move);
+              window.addEventListener("pointerup", finish);
+            }}
             style={{ left: endpoint.x, top: endpoint.y }}
           >
             {endpoint.label}
