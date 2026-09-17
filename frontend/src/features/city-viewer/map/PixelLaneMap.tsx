@@ -738,7 +738,7 @@ export function PixelLaneMap({
 
   return (
     <div className="city-model-map relative h-full w-full">
-      <div ref={containerRef} className="absolute inset-0" />
+      <div ref={containerRef} className="h-full w-full" />
       <div className="pointer-events-none absolute inset-0" aria-hidden="true">
         {endpointScreenPoints.map((endpoint) => (
           <span
