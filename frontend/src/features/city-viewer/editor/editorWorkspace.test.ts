@@ -14,7 +14,7 @@ describe("buildEditorWorkspace", () => {
     ]);
     for (const road of city.roads) {
       expect(road.geometry.points).toHaveLength(2);
-      expect(road.lanes).toHaveLength(0);
+      expect(road.lanes).toHaveLength(2);
     }
     expect(city.intersections).toHaveLength(0);
     expect(city.traffic_lights).toHaveLength(0);

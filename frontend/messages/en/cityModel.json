@@ -89,7 +89,11 @@
     "title": "Selected road",
     "street": "Street",
     "width": "Width",
-    "meters": "m"
+    "meters": "m",
+    "lanes": "Lanes",
+    "laneWidth": "Lane width",
+    "directions": "Directions",
+    "laneNumber": "Lane {number}"
   },
   "fullscreen": {
     "smoothing": "Smoothing",

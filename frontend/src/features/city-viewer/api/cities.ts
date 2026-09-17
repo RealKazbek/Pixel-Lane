@@ -119,7 +119,11 @@ export function updateRoadGeometry(
 export function updateRoadProperties(
   cityId: string,
   roadId: string,
-  properties: Pick<Road, "name" | "width_m">,
+  properties: Pick<Road, "name" | "width_m"> & {
+    lane_count: number;
+    lane_width_m: number;
+    lane_directions: Road["lanes"][number]["direction"][];
+  },
 ): Promise<Road> {
   return apiRequest<Road>(
     `/api/v1/cities/${cityId}/roads/${roadId}/properties`,

@@ -344,6 +344,11 @@ const LANE_DETAIL_ROAD_ID_FILTERS: Partial<
     ["get", "kind"],
     "separator",
   ] as unknown as ExpressionSpecification,
+  [LAYER_IDS.laneBoundaryCenter]: [
+    "==",
+    ["get", "kind"],
+    "center",
+  ] as unknown as ExpressionSpecification,
   [LAYER_IDS.turnArrows]: undefined,
   [LAYER_IDS.laneParkingLine]: [
     "==",

@@ -53,6 +53,26 @@ function makeEditorRoad(id: string, name: string, points: [Point, Point]) {
     is_width_estimated: false,
     carriageway_count: 1,
     median: "NONE" as const,
-    lanes: [],
+    lanes: [
+      makeEditorLane(`${id}-lane-0`, id, 0, "FORWARD"),
+      makeEditorLane(`${id}-lane-1`, id, 1, "BACKWARD"),
+    ],
+  };
+}
+
+function makeEditorLane(
+  id: string,
+  roadId: string,
+  index: number,
+  direction: "FORWARD" | "BACKWARD",
+) {
+  return {
+    id,
+    road_id: roadId,
+    index,
+    direction,
+    allowed_movements: [],
+    lane_type: "GENERAL" as const,
+    speed_limit_kmh: null,
   };
 }

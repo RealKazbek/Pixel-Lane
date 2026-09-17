@@ -80,13 +80,9 @@ export interface LaneSurfaceProperties {
 
 export interface LaneBoundaryProperties {
   road_id: string;
-  /** "edge" = outer road boundary (solid); "separator" = between two
-   * lanes. Pixel Lane has no OSM-backed evidence of individual lane-line
-   * style (solid/double-solid/dashed) -- see docs/city-model.md's
-   * Road+Lane V1 audit -- so every internal separator renders the same
-   * (dashed) rather than fabricating a distinction the source data
-   * doesn't support. */
-  kind: "edge" | "separator";
+  /** "edge" = outer road boundary; "separator" = adjacent lanes share a
+   * direction; "center" = adjacent lanes change direction. */
+  kind: "edge" | "separator" | "center";
 }
 
 export interface TurnArrowProperties {
@@ -383,6 +379,7 @@ export function buildLaneBoundaryFeatureCollection(
   const features: LaneBoundaryFeatureCollection["features"] = [];
   for (const road of roads) {
     const laneCount = roadLaneCount(road);
+    const lanes = "lanes" in road ? road.lanes : undefined;
     if (laneCount < 1) continue;
     const line = renderingLines.get(road.id);
     if (!line) continue;
@@ -396,12 +393,27 @@ export function buildLaneBoundaryFeatureCollection(
     )) {
       const offset = safeOffset(line, offsetM);
       if (!offset) continue;
+      const boundaryIndex = Math.round((roadWidthM / 2 - offsetM) / laneWidthM);
+      const leftLane = lanes?.find((lane) => lane.index === boundaryIndex - 1);
+      const rightLane = lanes?.find((lane) => lane.index === boundaryIndex);
+      const leftDirection =
+        leftLane && "direction" in leftLane ? leftLane.direction : null;
+      const rightDirection =
+        rightLane && "direction" in rightLane ? rightLane.direction : null;
+      const isOppositeDirection =
+        leftDirection !== null &&
+        rightDirection !== null &&
+        leftDirection !== rightDirection;
       features.push({
         type: "Feature",
         geometry: offset.geometry,
         properties: {
           road_id: road.id,
-          kind: edgeOffsets.has(offsetM) ? "edge" : "separator",
+          kind: edgeOffsets.has(offsetM)
+            ? "edge"
+            : isOppositeDirection
+              ? "center"
+              : "separator",
         },
       });
     }

@@ -143,7 +143,13 @@ def test_update_road_properties_persists_name_and_width(client) -> None:
 
     response = client.patch(
         f"/api/v1/cities/{data['id']}/roads/{road_id}/properties",
-        json={"name": "Updated Avenue", "width_m": 14.0},
+        json={
+            "name": "Updated Avenue",
+            "width_m": 14.0,
+            "lane_count": 4,
+            "lane_width_m": 3.5,
+            "lane_directions": ["FORWARD", "FORWARD", "BACKWARD", "BACKWARD"],
+        },
     )
 
     assert response.status_code == 200
@@ -164,7 +170,13 @@ def test_update_road_properties_rejects_invalid_width(client) -> None:
 
     response = client.patch(
         f"/api/v1/cities/{data['id']}/roads/{road_id}/properties",
-        json={"name": "Updated Avenue", "width_m": 0},
+        json={
+            "name": "Updated Avenue",
+            "width_m": 0,
+            "lane_count": 4,
+            "lane_width_m": 3.5,
+            "lane_directions": ["FORWARD", "FORWARD", "BACKWARD", "BACKWARD"],
+        },
     )
 
     assert response.status_code == 422

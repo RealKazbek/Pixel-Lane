@@ -27,7 +27,9 @@ import type { MapThemeColors } from "../styles/mapTheme";
  * dense repeated stencil. */
 const BADGE_SYMBOL_SPACING_PX = 220;
 
-export function buildLaneDetailLayers(theme: MapThemeColors): LayerSpecification[] {
+export function buildLaneDetailLayers(
+  theme: MapThemeColors,
+): LayerSpecification[] {
   const BUS_LANE_COLOR = theme.busLane;
   const PARKING_MARKING_COLOR = theme.parking;
   const CYCLEWAY_COLOR = theme.cycleway;
@@ -84,10 +86,8 @@ export function buildLaneDetailLayers(theme: MapThemeColors): LayerSpecification
     paint: { "line-color": EDGE_COLOR, "line-width": 1.5 },
   };
 
-  // Every internal lane boundary renders the same (dashed): Pixel Lane has
-  // no OSM-backed evidence of individual lane-marking style (solid/
-  // double-solid), so it never fabricates that distinction -- see
-  // adapters/laneGeometry.ts's `LaneBoundaryProperties` docstring.
+  // Same-direction separators are dashed. Direction changes use the
+  // dedicated solid center-separator layer below.
   const laneBoundarySeparator: LayerSpecification = {
     id: LAYER_IDS.laneBoundarySeparator,
     type: "line",
@@ -100,6 +100,19 @@ export function buildLaneDetailLayers(theme: MapThemeColors): LayerSpecification
       "line-width": 1,
       "line-dasharray": [2, 2],
       "line-opacity": 0.9,
+    },
+  };
+  const laneBoundaryCenter: LayerSpecification = {
+    id: LAYER_IDS.laneBoundaryCenter,
+    type: "line",
+    source: SOURCE_IDS.laneBoundaries,
+    minzoom: LANE_DETAIL_MIN_ZOOM,
+    filter: ["==", ["get", "kind"], "center"],
+    layout: { "line-cap": "butt", "line-join": "round" },
+    paint: {
+      "line-color": SEPARATOR_COLOR,
+      "line-width": 1.5,
+      "line-opacity": 0.95,
     },
   };
 
@@ -177,6 +190,7 @@ export function buildLaneDetailLayers(theme: MapThemeColors): LayerSpecification
     laneCyclewayLine,
     laneBoundaryEdge,
     laneBoundarySeparator,
+    laneBoundaryCenter,
     laneBusLabel,
     turnArrows,
   ];

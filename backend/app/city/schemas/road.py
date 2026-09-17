@@ -1,10 +1,11 @@
 from uuid import UUID
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, model_validator
 
 from app.city.domain.enums import (
     CyclewayType,
     LaneCountQuality,
+    LaneDirection,
     MedianType,
     ParkingLaneOrientation,
     RoadType,
@@ -15,7 +16,12 @@ from app.city.domain.limits import (
     MAX_SPEED_LIMIT_KMH,
     NAME_MAX_LENGTH,
 )
-from app.city.domain.road_geometry import MAX_ROAD_WIDTH_M, MIN_ROAD_WIDTH_M
+from app.city.domain.road_geometry import (
+    MAX_LANE_WIDTH_M,
+    MAX_ROAD_WIDTH_M,
+    MIN_LANE_WIDTH_M,
+    MIN_ROAD_WIDTH_M,
+)
 from app.city.schemas.lane import LaneCreate, LaneRead
 
 
@@ -86,7 +92,19 @@ class RoadGeometryUpdate(BaseModel):
 
 
 class RoadPropertiesUpdate(BaseModel):
-    """Updates the editable name and physical width of one road."""
+    """Updates a road's name and uniform lane configuration atomically."""
 
     name: str = Field(min_length=1, max_length=NAME_MAX_LENGTH)
     width_m: float = Field(ge=MIN_ROAD_WIDTH_M, le=MAX_ROAD_WIDTH_M)
+    lane_count: int = Field(ge=1, le=12)
+    lane_width_m: float = Field(ge=MIN_LANE_WIDTH_M, le=MAX_LANE_WIDTH_M)
+    lane_directions: list[LaneDirection] = Field(min_length=1, max_length=12)
+
+    @model_validator(mode="after")
+    def validate_lane_configuration(self) -> "RoadPropertiesUpdate":
+        if len(self.lane_directions) != self.lane_count:
+            raise ValueError("lane_directions must match lane_count")
+        expected = self.lane_count * self.lane_width_m
+        if abs(self.width_m - expected) > 0.001:
+            raise ValueError("width_m must equal lane_count * lane_width_m")
+        return self

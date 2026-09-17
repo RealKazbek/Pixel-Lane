@@ -7,7 +7,7 @@ import {
   buildEditorWorkspace,
   createEditorRoad,
 } from "../editor/editorWorkspace";
-import type { Point } from "../types/city";
+import type { LaneDirection, Point } from "../types/city";
 import {
   insertPolylinePoint,
   updatePolylineVertex,
@@ -17,6 +17,7 @@ import { PixelLaneMap } from "../map/PixelLaneMap";
 import { DEFAULT_LAYER_VISIBILITY, type MapSelection } from "../map/types";
 import { EditorToolbar } from "../map/EditorToolbar";
 import { RoadPropertiesPanel } from "../map/RoadPropertiesPanel";
+import { buildLaneConfiguration } from "../editor/laneConfiguration";
 import {
   INITIAL_EDITOR_SESSION,
   reduceEditorSession,
@@ -58,13 +59,36 @@ export function CityViewerApp() {
     [],
   );
   const handleRoadPropertiesChange = useCallback(
-    (changes: { name?: string; width_m?: number }) => {
+    (changes: {
+      name?: string;
+      width_m?: number;
+      lane_count?: number;
+      lane_width_m?: number;
+      lane_directions?: LaneDirection[];
+    }) => {
       if (selected?.type !== "road") return;
       setCity((current) => ({
         ...current,
-        roads: current.roads.map((road) =>
-          road.id === selected.id ? { ...road, ...changes } : road,
-        ),
+        roads: current.roads.map((road) => {
+          if (road.id !== selected.id) return road;
+          const { lane_count, lane_width_m, lane_directions, ...simple } =
+            changes;
+          if (!lane_count || !lane_width_m || !lane_directions) {
+            return { ...road, ...simple };
+          }
+          const laneConfiguration = buildLaneConfiguration(
+            road,
+            lane_count,
+            lane_width_m,
+            lane_directions,
+          );
+          if (!laneConfiguration) return road;
+          return {
+            ...road,
+            ...simple,
+            ...laneConfiguration,
+          };
+        }),
       }));
     },
     [selected],
