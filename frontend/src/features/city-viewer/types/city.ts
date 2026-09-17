@@ -13,6 +13,9 @@ export type RoadType =
   "RESIDENTIAL" | "COLLECTOR" | "ARTERIAL" | "HIGHWAY" | "SERVICE";
 
 export type LaneDirection = "FORWARD" | "BACKWARD";
+export type LaneBoundaryMarking =
+  "NONE" | "DASHED_WHITE" | "SOLID_WHITE" | "DOUBLE_SOLID_WHITE";
+export type RoadEdgeMarking = "NONE" | "SOLID_WHITE" | "SOLID_YELLOW";
 
 export type LaneType =
   "GENERAL" | "BUS" | "BICYCLE" | "EMERGENCY" | "PARKING" | "TURN_ONLY";
@@ -134,6 +137,9 @@ export interface Road {
   cycleway_left?: CyclewayType;
   cycleway_right?: CyclewayType;
   lanes: Lane[];
+  left_edge_marking?: RoadEdgeMarking;
+  right_edge_marking?: RoadEdgeMarking;
+  lane_boundary_markings?: LaneBoundaryMarking[] | null;
 }
 
 export interface Intersection {
