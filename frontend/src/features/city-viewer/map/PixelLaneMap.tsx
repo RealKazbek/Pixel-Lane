@@ -29,6 +29,7 @@ import {
 import type { ApplyRoadEditError } from "./editor/applyRoadEdit";
 import { fromLngLat, toLngLat } from "./adapters/coordinates";
 import type { Point } from "../types/city";
+import { midpoint } from "./editor/polylineEditing";
 import {
   computeCityBounds,
   computeReferenceLatitude,
@@ -65,7 +66,6 @@ import { resolveMapTheme } from "./styles/mapTheme";
 import type { City } from "../types/city";
 import type { EditorWorldBounds } from "../editor/editorWorld";
 import { buildEditorGrid } from "./grid";
-import { updateRoadEndpoint } from "./editor/endpointEditing";
 import type { LayerVisibility, MapMode, MapSelection } from "./types";
 
 export interface EditorAction {
@@ -76,9 +76,10 @@ export interface EditorAction {
 interface PixelLaneMapProps {
   city: City;
   selected: MapSelection | null;
-  selectedEndpoint?: "A" | "B" | null;
-  onEndpointSelect?: (endpoint: "A" | "B") => void;
-  onEndpointDrag?: (endpoint: "A" | "B", point: Point) => void;
+  selectedVertexIndex?: number | null;
+  onVertexSelect?: (index: number) => void;
+  onVertexDrag?: (index: number, point: Point) => void;
+  onInsertPoint?: (segmentIndex: number, point: Point) => void;
   onSelect: (selection: MapSelection | null) => void;
   basemapEnabled: boolean;
   mapStyleUrl: string | null;
@@ -116,9 +117,10 @@ interface PixelLaneMapProps {
 export function PixelLaneMap({
   city,
   selected,
-  selectedEndpoint = null,
-  onEndpointSelect,
-  onEndpointDrag,
+  selectedVertexIndex = null,
+  onVertexSelect,
+  onVertexDrag,
+  onInsertPoint,
   onSelect,
   basemapEnabled,
   mapStyleUrl,
@@ -153,8 +155,11 @@ export function PixelLaneMap({
   const editor = useGeometryEditor();
   const appliedStyleKeyRef = useRef<string | null>(null);
   const [gridZoom, setGridZoom] = useState(16);
-  const [endpointScreenPoints, setEndpointScreenPoints] = useState<
-    { label: string; x: number; y: number }[]
+  const [vertexScreenPoints, setVertexScreenPoints] = useState<
+    { index: number; x: number; y: number }[]
+  >([]);
+  const [insertScreenPoints, setInsertScreenPoints] = useState<
+    { segmentIndex: number; point: Point; x: number; y: number }[]
   >([]);
   const [draggingEndpoint, setDraggingEndpoint] = useState<string | null>(null);
 
@@ -202,6 +207,11 @@ export function PixelLaneMap({
     city.coordinate_system === "WGS84"
       ? viewport.intersections
       : city.intersections;
+
+  const selectedRoad =
+    selected?.type === "road"
+      ? city.roads.find((candidate) => candidate.id === selected.id)
+      : null;
 
   useEffect(() => {
     onViewportStatusChange?.(viewport.status);
@@ -657,21 +667,11 @@ export function PixelLaneMap({
     const road = city.roads.find((r) => r.id === selected.id);
     if (road) {
       editor.start(map, road, city.coordinate_system, (points) => {
-        if (points.length !== 2) return;
-        const next = updateRoadEndpoint([points[0], points[1]], 0, points[0]);
-        if (next) onRoadGeometryChange?.(road.id, next);
+        if (points.length >= 2) onRoadGeometryChange?.(road.id, points);
       });
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps -- editor is a stable ref-backed API
   }, [mode, selected, isLoaded, city, onRoadGeometryChange]);
-
-  useEffect(() => {
-    if (mode === "edit-geometry" && selected?.type === "road") {
-      editor.setActiveEndpoint(
-        selectedEndpoint === "A" ? 0 : selectedEndpoint === "B" ? 1 : null,
-      );
-    }
-  }, [editor, mode, selected, selectedEndpoint]);
 
   // Leaving edit mode without an explicit apply/cancel action (e.g.
   // selecting a different entity) discards the in-progress edit.
@@ -725,22 +725,61 @@ export function PixelLaneMap({
         ? city.roads.find((candidate) => candidate.id === selected.id)
         : null;
     if (!map || !isLoaded || mode !== "edit-geometry" || !road) {
-      setEndpointScreenPoints([]);
+      setVertexScreenPoints([]);
+      setInsertScreenPoints([]);
       return;
     }
     const update = () => {
-      setEndpointScreenPoints(
-        road.geometry.points.slice(0, 2).map((point, index) => {
+      setVertexScreenPoints(
+        road.geometry.points.map((point, index) => {
           const projected = map.project(
             toLngLat(city.coordinate_system, point),
           );
           return {
-            label: index === 0 ? "A" : "B",
+            index,
             x: projected.x,
             y: projected.y,
           };
         }),
       );
+      const points = road.geometry.points;
+      const firstVector = {
+        x: points[1].x - points[0].x,
+        y: points[1].y - points[0].y,
+      };
+      const lastVector = {
+        x: points[points.length - 1].x - points[points.length - 2].x,
+        y: points[points.length - 1].y - points[points.length - 2].y,
+      };
+      const insertionPositions = [
+        {
+          segmentIndex: -1,
+          point: {
+            x: points[0].x - firstVector.x * 0.2,
+            y: points[0].y - firstVector.y * 0.2,
+          },
+        },
+        ...points.slice(0, -1).map((point, index) => ({
+          segmentIndex: index,
+          point: midpoint(point, points[index + 1]),
+        })),
+        {
+          segmentIndex: points.length - 1,
+          point: {
+            x: points[points.length - 1].x + lastVector.x * 0.2,
+            y: points[points.length - 1].y + lastVector.y * 0.2,
+          },
+        },
+      ];
+      const insertionPoints = insertionPositions.map(
+        ({ segmentIndex, point }) => {
+          const projected = map.project(
+            toLngLat(city.coordinate_system, point),
+          );
+          return { segmentIndex, point, x: projected.x, y: projected.y };
+        },
+      );
+      setInsertScreenPoints(insertionPoints);
     };
     update();
     map.on("move", update);
@@ -755,28 +794,28 @@ export function PixelLaneMap({
     <div className="city-model-map relative h-full w-full">
       <div ref={containerRef} className="h-full w-full" />
       <div className="pointer-events-none absolute inset-0" aria-hidden="true">
-        {endpointScreenPoints.map((endpoint) => (
+        {vertexScreenPoints.map((vertex) => (
           <span
-            key={endpoint.label}
-            className={`absolute -translate-x-1/2 -translate-y-1/2 rounded-full border border-white bg-primary px-1.5 py-0.5 text-[11px] font-bold leading-none text-white shadow-sm transition-transform ${selectedEndpoint && selectedEndpoint !== endpoint.label ? "hidden" : `pointer-events-auto ${draggingEndpoint === endpoint.label ? "cursor-grabbing scale-125" : "cursor-grab hover:scale-125"}`} ${selectedEndpoint === endpoint.label ? "ring-2 ring-primary/50" : ""}`}
-            onClick={() => onEndpointSelect?.(endpoint.label as "A" | "B")}
+            key={vertex.index}
+            className={`absolute -translate-x-1/2 -translate-y-1/2 rounded-full border border-white bg-primary px-1.5 py-0.5 text-[11px] font-bold leading-none text-white shadow-sm transition-transform ${selectedVertexIndex !== null && selectedVertexIndex !== vertex.index ? "hidden" : `pointer-events-auto ${draggingEndpoint === String(vertex.index) ? "cursor-grabbing scale-125" : "cursor-grab hover:scale-125"}`} ${selectedVertexIndex === vertex.index ? "ring-2 ring-primary/50" : ""}`}
+            onClick={() => onVertexSelect?.(vertex.index)}
             onPointerDown={(event) => {
-              const label = endpoint.label as "A" | "B";
-              if (selectedEndpoint !== label || !mapRef.current) return;
+              const index = vertex.index;
+              if (selectedVertexIndex !== index || !mapRef.current) return;
               event.preventDefault();
               event.stopPropagation();
               const map = mapRef.current;
               const rect = containerRef.current?.getBoundingClientRect();
               if (!rect) return;
               map.dragPan.disable();
-              setDraggingEndpoint(label);
+              setDraggingEndpoint(String(index));
               const move = (moveEvent: PointerEvent) => {
                 const point = map.unproject([
                   moveEvent.clientX - rect.left,
                   moveEvent.clientY - rect.top,
                 ]);
-                onEndpointDrag?.(
-                  label,
+                onVertexDrag?.(
+                  index,
                   fromLngLat(city.coordinate_system, [point.lng, point.lat]),
                 );
               };
@@ -789,10 +828,28 @@ export function PixelLaneMap({
               window.addEventListener("pointermove", move);
               window.addEventListener("pointerup", finish);
             }}
-            style={{ left: endpoint.x, top: endpoint.y }}
+            style={{ left: vertex.x, top: vertex.y }}
           >
-            {endpoint.label}
+            {vertex.index === 0
+              ? "A"
+              : vertex.index === (selectedRoad?.geometry.points.length ?? 1) - 1
+                ? "B"
+                : ""}
           </span>
+        ))}
+        {insertScreenPoints.map((insertion) => (
+          <button
+            key={`insert-${insertion.segmentIndex}`}
+            type="button"
+            aria-label="Insert road point"
+            className="pointer-events-auto absolute -translate-x-1/2 -translate-y-1/2 rounded-full border border-primary bg-surface px-1 text-xs font-bold text-primary shadow-sm hover:scale-125"
+            style={{ left: insertion.x, top: insertion.y }}
+            onClick={() =>
+              onInsertPoint?.(insertion.segmentIndex, insertion.point)
+            }
+          >
+            +
+          </button>
         ))}
       </div>
     </div>

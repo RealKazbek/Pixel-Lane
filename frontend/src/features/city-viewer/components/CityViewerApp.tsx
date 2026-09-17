@@ -8,7 +8,10 @@ import {
   createEditorRoad,
 } from "../editor/editorWorkspace";
 import type { Point } from "../types/city";
-import { updateRoadEndpoint } from "../map/editor/endpointEditing";
+import {
+  insertPolylinePoint,
+  updatePolylineVertex,
+} from "../map/editor/polylineEditing";
 import { EDITOR_WORLD_BOUNDS } from "../editor/editorWorld";
 import { PixelLaneMap } from "../map/PixelLaneMap";
 import { DEFAULT_LAYER_VISIBILITY, type MapSelection } from "../map/types";
@@ -24,7 +27,7 @@ export function CityViewerApp() {
   const [city, setCity] = useState(buildEditorWorkspace);
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [selected, setSelected] = useState<MapSelection | null>(null);
-  const [selectedEndpoint, setSelectedEndpoint] = useState<"A" | "B" | null>(
+  const [selectedVertexIndex, setSelectedVertexIndex] = useState<number | null>(
     null,
   );
   const [session, dispatch] = useReducer(
@@ -51,20 +54,36 @@ export function CityViewerApp() {
   );
   const handleSelect = useCallback((selection: MapSelection | null) => {
     setSelected(selection);
-    setSelectedEndpoint(null);
+    setSelectedVertexIndex(null);
   }, []);
   const handleEndpointDrag = useCallback(
-    (endpoint: "A" | "B", point: Point) => {
+    (vertexIndex: number, point: Point) => {
       if (selected?.type !== "road") return;
       setCity((current) => ({
         ...current,
         roads: current.roads.map((road) => {
           if (road.id !== selected.id) return road;
           const points = road.geometry.points;
-          if (points.length !== 2) return road;
-          const next = updateRoadEndpoint(
-            points as [Point, Point],
-            endpoint === "A" ? 0 : 1,
+          if (points.length < 2) return road;
+          const next = updatePolylineVertex(points, vertexIndex, point);
+          return next
+            ? { ...road, geometry: { ...road.geometry, points: next } }
+            : road;
+        }),
+      }));
+    },
+    [selected],
+  );
+  const handleInsertPoint = useCallback(
+    (segmentIndex: number, point: Point) => {
+      if (selected?.type !== "road") return;
+      setCity((current) => ({
+        ...current,
+        roads: current.roads.map((road) => {
+          if (road.id !== selected.id) return road;
+          const next = insertPolylinePoint(
+            road.geometry.points,
+            segmentIndex,
             point,
           );
           return next
@@ -72,6 +91,7 @@ export function CityViewerApp() {
             : road;
         }),
       }));
+      setSelectedVertexIndex(segmentIndex + 1);
     },
     [selected],
   );
@@ -139,9 +159,10 @@ export function CityViewerApp() {
           city={city}
           selected={selected}
           onSelect={handleSelect}
-          selectedEndpoint={selectedEndpoint}
-          onEndpointSelect={setSelectedEndpoint}
-          onEndpointDrag={handleEndpointDrag}
+          selectedVertexIndex={selectedVertexIndex}
+          onVertexSelect={setSelectedVertexIndex}
+          onVertexDrag={handleEndpointDrag}
+          onInsertPoint={handleInsertPoint}
           basemapEnabled={false}
           mapStyleUrl={mapStyleUrl}
           overlayVisible
