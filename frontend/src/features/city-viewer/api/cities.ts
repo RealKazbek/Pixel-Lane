@@ -115,3 +115,14 @@ export function updateRoadGeometry(
     body: JSON.stringify({ geometry }),
   });
 }
+
+export function updateRoadProperties(
+  cityId: string,
+  roadId: string,
+  properties: Pick<Road, "name" | "width_m">,
+): Promise<Road> {
+  return apiRequest<Road>(
+    `/api/v1/cities/${cityId}/roads/${roadId}/properties`,
+    { method: "PATCH", body: JSON.stringify(properties) },
+  );
+}

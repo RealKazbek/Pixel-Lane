@@ -85,6 +85,12 @@
     "cancel": "Cancel",
     "fitToView": "Fit to view"
   },
+  "properties": {
+    "title": "Selected road",
+    "street": "Street",
+    "width": "Width",
+    "meters": "m"
+  },
   "fullscreen": {
     "smoothing": "Smoothing",
     "drawStart": "Create road: choose a start point",

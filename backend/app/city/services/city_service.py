@@ -23,7 +23,7 @@ from app.city.schemas.city import (
 )
 from app.city.schemas.import_city import CityImport
 from app.city.schemas.intersection import IntersectionRead
-from app.city.schemas.road import RoadRead
+from app.city.schemas.road import RoadPropertiesUpdate, RoadRead
 from app.city.schemas.spatial import BBox, MapLaneSummary, MapRoad
 from app.city.services.city_mapper import to_city_read, to_intersection_read, to_road_read
 from app.city.validators.city_validator import validate_city
@@ -184,6 +184,15 @@ def get_city_metadata(db: Session, city_id: UUID) -> CityMetadata | None:
 
 def get_road(db: Session, city_id: UUID, road_id: UUID) -> RoadRead | None:
     road = spatial_repository.get_road(db, city_id, road_id)
+    return to_road_read(road) if road is not None else None
+
+
+def update_road_properties(
+    db: Session, city_id: UUID, road_id: UUID, properties: RoadPropertiesUpdate
+) -> RoadRead | None:
+    if not properties.name.strip():
+        raise ValueError("ROAD_NAME_EMPTY")
+    road = city_repository.update_road_properties(db, city_id, road_id, properties)
     return to_road_read(road) if road is not None else None
 
 

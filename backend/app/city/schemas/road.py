@@ -15,6 +15,7 @@ from app.city.domain.limits import (
     MAX_SPEED_LIMIT_KMH,
     NAME_MAX_LENGTH,
 )
+from app.city.domain.road_geometry import MAX_ROAD_WIDTH_M, MIN_ROAD_WIDTH_M
 from app.city.schemas.lane import LaneCreate, LaneRead
 
 
@@ -29,7 +30,7 @@ class RoadCreate(BaseModel):
     source_road_type: str | None = Field(default=None, max_length=200)
     one_way: bool | None = None
     source_lane_count: int | None = Field(default=None, gt=0)
-    width_m: float | None = Field(default=None, gt=0)
+    width_m: float | None = Field(default=None, ge=MIN_ROAD_WIDTH_M, le=MAX_ROAD_WIDTH_M)
     is_width_estimated: bool = True
     carriageway_count: int = Field(default=1, ge=1, le=2)
     median: MedianType = MedianType.NONE
@@ -82,3 +83,10 @@ class RoadGeometryUpdate(BaseModel):
     geometry in the 2D map editor. Nothing else about the road changes."""
 
     geometry: Polyline
+
+
+class RoadPropertiesUpdate(BaseModel):
+    """Updates the editable name and physical width of one road."""
+
+    name: str = Field(min_length=1, max_length=NAME_MAX_LENGTH)
+    width_m: float = Field(ge=MIN_ROAD_WIDTH_M, le=MAX_ROAD_WIDTH_M)

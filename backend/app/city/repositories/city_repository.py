@@ -18,6 +18,7 @@ from app.city.models.road import Road
 from app.city.models.traffic_light import TrafficLight
 from app.city.repositories.city_builder import build_city
 from app.city.schemas.city import CityCreate
+from app.city.schemas.road import RoadPropertiesUpdate
 
 # Eager-load every relationship a CityRead needs in a bounded number of
 # queries (selectinload avoids both N+1 row-by-row lookups and a single
@@ -101,4 +102,24 @@ def update_road_geometry(
         db.rollback()
         raise
 
+    return road
+
+
+def update_road_properties(
+    db: Session, city_id: UUID, road_id: UUID, properties: RoadPropertiesUpdate
+) -> Road | None:
+    road = db.execute(
+        select(Road).where(Road.id == road_id, Road.city_id == city_id)
+    ).scalar_one_or_none()
+    if road is None:
+        return None
+    road.name = properties.name.strip()
+    road.width_m = properties.width_m
+    road.is_width_estimated = False
+    db.execute(update(City).where(City.id == city_id).values(updated_at=func.now()))
+    try:
+        db.commit()
+    except Exception:
+        db.rollback()
+        raise
     return road

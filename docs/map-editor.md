@@ -16,3 +16,9 @@ geometry adapters. The generic geometry PATCH API persists source polyline
 vertices, but the current editor workspace does not auto-save local edits and
 the API has no smoothing-metadata field yet. No lane, intersection, signal,
 or congestion-overlay editor exists. See the implementation [map README](../frontend/src/features/city-viewer/map/README.md).
+
+PL-005.06 adds the first selected-road properties surface: street name and
+physical width in meters. Width is already a City Model field with a backend
+validation range of 2.5–60 m; the local editor previews changes immediately.
+The backend properties PATCH endpoint is available for backend-backed flows,
+but the local editor workspace is not persisted automatically yet.
