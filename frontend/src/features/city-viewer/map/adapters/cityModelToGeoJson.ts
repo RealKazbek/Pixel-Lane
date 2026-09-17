@@ -7,6 +7,7 @@
 import bearing from "@turf/bearing";
 import { toLngLat } from "./coordinates";
 import { roadLengthMeters } from "./geometryLength";
+import { smoothCenterline } from "../geometry/curveSmoothing";
 import {
   HIERARCHY_LABEL_RANK,
   roadCasingWidthMeters,
@@ -212,13 +213,30 @@ function roadLabelPlacement(
   road: Road | MapRoad,
 ): { position: GeoJSON.Position; rotation: number } {
   const points = road.geometry.points;
-  const first = toLngLat(coordinateSystem, points[0]);
-  const last = toLngLat(coordinateSystem, points[points.length - 1]);
+  const raw = points.map((point) => toLngLat(coordinateSystem, point));
+  const line =
+    coordinateSystem === "LOCAL_CARTESIAN"
+      ? smoothCenterline(raw, undefined, road.smoothing ?? 1)
+      : raw;
+  const lengths = line
+    .slice(1)
+    .map((point, index) =>
+      Math.hypot(point[0] - line[index][0], point[1] - line[index][1]),
+    );
+  const half = lengths.reduce((sum, value) => sum + value, 0) / 2;
+  let travelled = 0;
+  let segment = 0;
+  while (segment < lengths.length - 1 && travelled + lengths[segment] < half) {
+    travelled += lengths[segment++];
+  }
+  const ratio = lengths[segment] ? (half - travelled) / lengths[segment] : 0;
+  const start = line[segment];
+  const end = line[segment + 1] ?? start;
   const position: GeoJSON.Position = [
-    (first[0] + last[0]) / 2,
-    (first[1] + last[1]) / 2,
+    start[0] + (end[0] - start[0]) * ratio,
+    start[1] + (end[1] - start[1]) * ratio,
   ];
-  let rotation = bearing(first, last) - 90;
+  let rotation = bearing(start, end) - 90;
   if (rotation < -90) rotation += 180;
   if (rotation > 90) rotation -= 180;
   return { position, rotation };

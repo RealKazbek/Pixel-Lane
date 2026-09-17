@@ -39,6 +39,10 @@ export function CityViewerApp() {
   const [crosshair, setCrosshair] = useState<{ x: number; y: number } | null>(
     null,
   );
+  const selectedRoad =
+    selected?.type === "road"
+      ? city.roads.find((road) => road.id === selected.id)
+      : null;
   const handleRoadGeometryChange = useCallback(
     (roadId: string, points: { x: number; y: number }[]) => {
       setCity((current) => ({
@@ -236,6 +240,32 @@ export function CityViewerApp() {
             {drawStartPoint ? t("drawFinish") : t("drawStart")}
           </div>
         )}
+        {session.mode === "edit" &&
+          selected?.type === "road" &&
+          selectedRoad && (
+            <label className="pointer-events-auto absolute bottom-3 left-3 rounded-lg border border-border-subtle bg-surface/90 px-3 py-2 text-[11px] text-foreground shadow-md backdrop-blur">
+              <span className="mr-2">{t("smoothing")}</span>
+              <input
+                type="range"
+                min="0"
+                max="1"
+                step="0.05"
+                value={selectedRoad.smoothing ?? 0}
+                onChange={(event) => {
+                  const smoothing = Number(event.target.value);
+                  setCity((current) => ({
+                    ...current,
+                    roads: current.roads.map((road) =>
+                      road.id === selectedRoad.id
+                        ? { ...road, smoothing }
+                        : road,
+                    ),
+                  }));
+                }}
+                aria-label={t("smoothing")}
+              />
+            </label>
+          )}
         <div className="pointer-events-none absolute bottom-3 right-3 rounded-lg border border-border-subtle bg-surface/90 px-3 py-2 text-[11px] font-medium text-foreground shadow-md backdrop-blur">
           <div className="tracking-wide">
             {t("scale", { denominator: scale.denominator })}

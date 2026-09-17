@@ -86,6 +86,7 @@
     "fitToView": "Fit to view"
   },
   "fullscreen": {
+    "smoothing": "Smoothing",
     "drawStart": "Create road: choose a start point",
     "drawFinish": "Start point set — choose an end point",
     "enter": "Expand workspace",
