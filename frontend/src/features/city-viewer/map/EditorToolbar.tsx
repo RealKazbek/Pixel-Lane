@@ -55,9 +55,8 @@ export function EditorToolbar({
         type="button"
         onClick={() => onSetTool("draw-road")}
         aria-pressed={session.activeTool === "draw-road"}
-        disabled
         title={t("drawRoadTooltip")}
-        className={`${base} ${neutral}`}
+        className={`${base} ${session.activeTool === "draw-road" ? active : neutral}`}
       >
         + {t("drawRoad")}
       </button>

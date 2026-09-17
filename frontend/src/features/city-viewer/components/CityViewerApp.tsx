@@ -3,7 +3,11 @@
 import { useCallback, useEffect, useReducer, useState } from "react";
 import { useTranslations } from "next-intl";
 import { mapStyleUrl } from "@/lib/config";
-import { buildEditorWorkspace } from "../editor/editorWorkspace";
+import {
+  buildEditorWorkspace,
+  createEditorRoad,
+} from "../editor/editorWorkspace";
+import type { Point } from "../types/city";
 import { EDITOR_WORLD_BOUNDS } from "../editor/editorWorld";
 import { PixelLaneMap } from "../map/PixelLaneMap";
 import { DEFAULT_LAYER_VISIBILITY, type MapSelection } from "../map/types";
@@ -24,6 +28,7 @@ export function CityViewerApp() {
     INITIAL_EDITOR_SESSION,
   );
   const [scale, setScale] = useState({ denominator: 2000, barMeters: 100 });
+  const [drawStartPoint, setDrawStartPoint] = useState<Point | null>(null);
   const handleRoadGeometryChange = useCallback(
     (roadId: string, points: { x: number; y: number }[]) => {
       setCity((current) => ({
@@ -37,18 +42,45 @@ export function CityViewerApp() {
     },
     [],
   );
+  const handleDrawPoint = useCallback(
+    (point: Point) => {
+      if (!drawStartPoint) {
+        setDrawStartPoint(point);
+        return;
+      }
+      const dx = point.x - drawStartPoint.x;
+      const dy = point.y - drawStartPoint.y;
+      if (Math.hypot(dx, dy) < 1) return;
+      const id = `editor-road-${Date.now()}`;
+      const road = createEditorRoad(
+        id,
+        `Road ${String.fromCharCode(65 + city.roads.length)}`,
+        [drawStartPoint, point],
+      );
+      setCity((current) => ({ ...current, roads: [...current.roads, road] }));
+      setSelected({ type: "road", id });
+      setDrawStartPoint(null);
+      dispatch({ type: "set-tool", tool: "select" });
+    },
+    [city.roads.length, drawStartPoint],
+  );
 
   useEffect(() => {
     if (!isFullscreen) return;
     const handleKeyDown = (event: KeyboardEvent) => {
       if (event.key === "Escape") setIsFullscreen(false);
+      if (event.key === "Escape" && drawStartPoint) {
+        setDrawStartPoint(null);
+        dispatch({ type: "set-tool", tool: "select" });
+        return;
+      }
       if (event.key === "Escape" && session.mode === "edit") {
         dispatch({ type: "exit-edit" });
       }
     };
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [isFullscreen, session.mode]);
+  }, [isFullscreen, session.mode, drawStartPoint]);
 
   return (
     <main
@@ -74,6 +106,10 @@ export function CityViewerApp() {
               ? "edit-geometry"
               : "view"
           }
+          activeTool={
+            session.activeTool === "draw-road" ? "draw-road" : "select"
+          }
+          onDrawPoint={handleDrawPoint}
           editorAction={null}
           onEditorStatusChange={() => undefined}
           onRoadSaved={() => undefined}
@@ -101,6 +137,11 @@ export function CityViewerApp() {
             onSetTool={(tool) => dispatch({ type: "set-tool", tool })}
           />
         </div>
+        {session.activeTool === "draw-road" && (
+          <div className="pointer-events-none absolute left-1/2 top-3 -translate-x-1/2 rounded-md border border-border-subtle bg-surface/90 px-3 py-1.5 text-xs text-foreground shadow-sm backdrop-blur">
+            {drawStartPoint ? t("drawFinish") : t("drawStart")}
+          </div>
+        )}
         <div className="pointer-events-none absolute bottom-3 right-3 rounded-md border border-border-subtle bg-surface/90 px-2.5 py-1.5 text-[10px] font-medium text-foreground shadow-sm backdrop-blur">
           <div>{t("scale", { denominator: scale.denominator })}</div>
           <div className="mt-1 flex items-end gap-1 text-[9px] font-normal text-muted-foreground">

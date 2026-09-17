@@ -77,7 +77,7 @@
     "editGeometryTooltip": "Таңдалған жолдың геометриясын өңдеу",
     "editGeometryDisabledTooltip": "Алдымен жолды таңдаңыз",
     "drawRoad": "Жол салу",
-    "drawRoadTooltip": "Әзірленуде — жол құру серверге әлі қосылмаған",
+    "drawRoadTooltip": "Картада жол жасау",
     "toolGroupLabel": "Құралдар",
     "viewGroupLabel": "Көрініс",
     "apply": "Қолдану",
@@ -86,6 +86,8 @@
     "fitToView": "Экранға сыйдыру"
   },
   "fullscreen": {
+    "drawStart": "Жол жасау: бастапқы нүктені таңдаңыз",
+    "drawFinish": "Бастапқы нүкте қойылды — соңғы нүктені таңдаңыз",
     "enter": "Жұмыс аймағын кеңейту",
     "exit": "Жұмыс режимінен шығу",
     "scale": "Масштаб 1:{denominator}",

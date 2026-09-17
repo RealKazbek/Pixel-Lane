@@ -27,6 +27,8 @@ import {
   type EditorStatus,
 } from "./editor/useGeometryEditor";
 import type { ApplyRoadEditError } from "./editor/applyRoadEdit";
+import { fromLngLat } from "./adapters/coordinates";
+import type { Point } from "../types/city";
 import {
   computeCityBounds,
   computeReferenceLatitude,
@@ -88,6 +90,8 @@ interface PixelLaneMapProps {
    * doesn't re-trigger the fly. */
   focusBounds?: { bounds: LngLatBoundsLike; token: number } | null;
   mode: MapMode;
+  activeTool?: "select" | "draw-road";
+  onDrawPoint?: (point: Point) => void;
   editorAction: EditorAction | null;
   onEditorStatusChange: (
     status: EditorStatus,
@@ -117,6 +121,8 @@ export function PixelLaneMap({
   fitSignal,
   focusBounds,
   mode,
+  activeTool = "select",
+  onDrawPoint,
   editorAction,
   onEditorStatusChange,
   onRoadSaved,
@@ -442,24 +448,68 @@ export function PixelLaneMap({
     if (!map || !isLoaded) return;
 
     const handleIntersectionClick = (event: MapLayerMouseEvent) => {
+      if (activeTool === "draw-road") {
+        onDrawPoint?.(
+          fromLngLat(city.coordinate_system, [
+            event.lngLat.lng,
+            event.lngLat.lat,
+          ]),
+        );
+        return;
+      }
       const feature = event.features?.[0];
       if (feature?.properties?.id) {
         onSelect({ type: "intersection", id: String(feature.properties.id) });
       }
     };
     const handleRoadClick = (event: MapLayerMouseEvent) => {
+      if (activeTool === "draw-road") {
+        onDrawPoint?.(
+          fromLngLat(city.coordinate_system, [
+            event.lngLat.lng,
+            event.lngLat.lat,
+          ]),
+        );
+        return;
+      }
       const feature = event.features?.[0];
       if (feature?.properties?.id) {
         onSelect({ type: "road", id: String(feature.properties.id) });
       }
     };
     const handleTrafficLightClick = (event: MapLayerMouseEvent) => {
+      if (activeTool === "draw-road") {
+        onDrawPoint?.(
+          fromLngLat(city.coordinate_system, [
+            event.lngLat.lng,
+            event.lngLat.lat,
+          ]),
+        );
+        return;
+      }
       const intersectionId = event.features?.[0]?.properties?.intersection_id;
       if (intersectionId) {
         onSelect({ type: "intersection", id: String(intersectionId) });
       }
     };
     const handleBackgroundClick = (event: MapLayerMouseEvent) => {
+      if (activeTool === "draw-road") {
+        const layers = [
+          LAYER_IDS.roadSurface,
+          LAYER_IDS.roadSurfaceFill,
+          LAYER_IDS.intersections,
+          LAYER_IDS.intersectionDetails,
+          LAYER_IDS.trafficLights,
+        ].filter((id) => map.getLayer(id));
+        if (!map.queryRenderedFeatures(event.point, { layers }).length)
+          onDrawPoint?.(
+            fromLngLat(city.coordinate_system, [
+              event.lngLat.lng,
+              event.lngLat.lat,
+            ]),
+          );
+        return;
+      }
       const layers = [
         LAYER_IDS.roadSurface,
         LAYER_IDS.roadSurfaceFill,
@@ -470,6 +520,35 @@ export function PixelLaneMap({
       if (!map.queryRenderedFeatures(event.point, { layers }).length)
         onSelect(null);
     };
+    let hoveredRoadId: string | null = null;
+    const handleRoadHover = (event: MapLayerMouseEvent) => {
+      const id = event.features?.[0]?.properties?.id;
+      if (!id) return;
+      const nextId = String(id);
+      if (hoveredRoadId && hoveredRoadId !== nextId) {
+        map.setFeatureState(
+          { source: SOURCE_IDS.roads, id: hoveredRoadId },
+          { hovered: false },
+        );
+      }
+      hoveredRoadId = nextId;
+      map.setFeatureState(
+        { source: SOURCE_IDS.roads, id: nextId },
+        { hovered: true },
+      );
+      map.getCanvasContainer().style.cursor = "pointer";
+    };
+    const clearRoadHover = () => {
+      if (hoveredRoadId) {
+        map.setFeatureState(
+          { source: SOURCE_IDS.roads, id: hoveredRoadId },
+          { hovered: false },
+        );
+        hoveredRoadId = null;
+      }
+      if (mode !== "edit-geometry" && activeTool !== "draw-road")
+        map.getCanvasContainer().style.cursor = "";
+    };
 
     map.on("click", LAYER_IDS.intersections, handleIntersectionClick);
     map.on("click", LAYER_IDS.intersectionDetails, handleIntersectionClick);
@@ -479,6 +558,10 @@ export function PixelLaneMap({
     // clicking it is a no-op here rather than misattributing the click to
     // one arbitrary constituent road (see roadSurfaceGeometry.ts).
     map.on("click", LAYER_IDS.roadSurfaceFill, handleRoadClick);
+    map.on("mousemove", LAYER_IDS.roadSurface, handleRoadHover);
+    map.on("mousemove", LAYER_IDS.roadSurfaceFill, handleRoadHover);
+    map.on("mouseout", LAYER_IDS.roadSurface, clearRoadHover);
+    map.on("mouseout", LAYER_IDS.roadSurfaceFill, clearRoadHover);
     map.on("click", LAYER_IDS.trafficLights, handleTrafficLightClick);
     map.on("click", handleBackgroundClick);
 
@@ -487,10 +570,22 @@ export function PixelLaneMap({
       map.off("click", LAYER_IDS.intersectionDetails, handleIntersectionClick);
       map.off("click", LAYER_IDS.roadSurface, handleRoadClick);
       map.off("click", LAYER_IDS.roadSurfaceFill, handleRoadClick);
+      map.off("mousemove", LAYER_IDS.roadSurface, handleRoadHover);
+      map.off("mousemove", LAYER_IDS.roadSurfaceFill, handleRoadHover);
+      map.off("mouseout", LAYER_IDS.roadSurface, clearRoadHover);
+      map.off("mouseout", LAYER_IDS.roadSurfaceFill, clearRoadHover);
       map.off("click", LAYER_IDS.trafficLights, handleTrafficLightClick);
       map.off("click", handleBackgroundClick);
     };
-  }, [isLoaded, onSelect, mapRef]);
+  }, [
+    isLoaded,
+    onSelect,
+    mapRef,
+    activeTool,
+    onDrawPoint,
+    city.coordinate_system,
+    mode,
+  ]);
 
   // Reflect `selected` as MapLibre feature-state rather than rebuilding
   // any GeoJSON source -- selection changes are cheap regardless of city
