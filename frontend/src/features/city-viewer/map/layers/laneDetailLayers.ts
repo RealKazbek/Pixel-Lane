@@ -86,7 +86,7 @@ export function buildLaneDetailLayers(
       ["==", ["get", "marking"], "SOLID_WHITE"],
     ],
     layout: { "line-cap": "round", "line-join": "round" },
-    paint: { "line-color": theme.laneMarking, "line-width": 1.5 },
+    paint: { "line-color": theme.laneMarking, "line-width": 1.4 },
   };
   const laneBoundaryEdgeYellow: LayerSpecification = {
     ...laneBoundaryEdge,
@@ -114,8 +114,8 @@ export function buildLaneDetailLayers(
     layout: { "line-cap": "butt", "line-join": "round" },
     paint: {
       "line-color": SEPARATOR_COLOR,
-      "line-width": 1,
-      "line-dasharray": [2, 2],
+      "line-width": 1.4,
+      "line-dasharray": [6, 3],
       "line-opacity": 0.9,
     },
   };
@@ -132,7 +132,7 @@ export function buildLaneDetailLayers(
     layout: { "line-cap": "butt", "line-join": "round" },
     paint: {
       "line-color": SEPARATOR_COLOR,
-      "line-width": 1.5,
+      "line-width": 1.4,
       "line-opacity": 0.95,
     },
   };

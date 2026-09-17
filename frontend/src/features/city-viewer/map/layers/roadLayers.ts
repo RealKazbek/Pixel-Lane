@@ -48,15 +48,6 @@ export function buildRoadLayers(
     "width_m",
     matchOnHierarchy(ROAD_MIN_PIXEL_WIDTH, ROAD_MIN_PIXEL_WIDTH.OTHER),
   );
-  const casingMinimumWidth = matchOnHierarchy(
-    ROAD_CASING_MIN_PIXEL_WIDTH,
-    ROAD_CASING_MIN_PIXEL_WIDTH.OTHER,
-  );
-  const casingWidth = roadWidthPixelsExpression(
-    referenceLatitudeDeg,
-    "casing_width_m",
-    casingMinimumWidth,
-  );
   const selectionWidth = roadWidthPixelsExpression(
     referenceLatitudeDeg,
     "casing_width_m",
@@ -85,30 +76,6 @@ export function buildRoadLayers(
   // per-road dashed style is not safely achievable without a second,
   // filtered layer -- not worth the added layer-stack complexity for
   // Part 1.
-
-  const casing: LayerSpecification = {
-    filter: roadVisibility,
-    id: LAYER_IDS.roadCasing,
-    type: "line",
-    source: SOURCE_IDS.roads,
-    // Real metric road-surface polygons (see roadSurfaceLayers.ts) take
-    // over at SURFACE_DETAIL_MIN_ZOOM -- this simple per-road stroke
-    // stays for city-wide zoom levels where a true-to-scale polygon
-    // would be sub-pixel/invisible anyway.
-    maxzoom: SURFACE_DETAIL_MIN_ZOOM,
-    layout: { "line-cap": "round", "line-join": "round" },
-    paint: {
-      "line-color": [
-        "case",
-        isSelected,
-        theme.selected,
-        isHovered,
-        theme.selectedSurface,
-        matchOnHierarchy(theme.roadCasing, theme.roadCasing.OTHER),
-      ] as ExpressionSpecification,
-      "line-width": casingWidth,
-    },
-  };
 
   const surface: LayerSpecification = {
     filter: roadVisibility,
@@ -165,9 +132,16 @@ export function buildRoadLayers(
       // MapLibre permits feature-state in paint expressions, but not in a
       // layer filter. Keeping unselected features transparent preserves the
       // same visual result without invalidating the entire layer.
-      "line-opacity": ["case", isSelected, 0.25, isHovered, 0.16, 0] as ExpressionSpecification,
+      "line-opacity": [
+        "case",
+        isSelected,
+        0.25,
+        isHovered,
+        0.16,
+        0,
+      ] as ExpressionSpecification,
     },
   };
 
-  return [casing, surface, laneMarkings, selection];
+  return [surface, laneMarkings, selection];
 }

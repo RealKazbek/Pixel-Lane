@@ -423,7 +423,7 @@ export function buildLaneBoundaryFeatureCollection(
       if (marking === "NONE") continue;
       const lineFeatures =
         marking === "DOUBLE_SOLID_WHITE"
-          ? [safeOffset(line, offsetM - 0.12), safeOffset(line, offsetM + 0.12)]
+          ? [safeOffset(line, offsetM - 0.28), safeOffset(line, offsetM + 0.28)]
           : [offset];
       for (const lineFeature of lineFeatures) {
         if (!lineFeature) continue;
