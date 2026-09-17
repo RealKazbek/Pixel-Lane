@@ -1,14 +1,17 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useReducer, useState } from "react";
 import { useTranslations } from "next-intl";
 import { mapStyleUrl } from "@/lib/config";
 import { buildEditorWorkspace } from "../editor/editorWorkspace";
 import { EDITOR_WORLD_BOUNDS } from "../editor/editorWorld";
 import { PixelLaneMap } from "../map/PixelLaneMap";
 import { DEFAULT_LAYER_VISIBILITY, type MapSelection } from "../map/types";
-import type { MapMode } from "../map/types";
 import { EditorToolbar } from "../map/EditorToolbar";
+import {
+  INITIAL_EDITOR_SESSION,
+  reduceEditorSession,
+} from "../map/editor/editorState";
 
 /** City Model is currently an editor document, not a city picker/viewer. */
 export function CityViewerApp() {
@@ -16,7 +19,10 @@ export function CityViewerApp() {
   const [city, setCity] = useState(buildEditorWorkspace);
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [selected, setSelected] = useState<MapSelection | null>(null);
-  const [mode, setMode] = useState<MapMode>("view");
+  const [session, dispatch] = useReducer(
+    reduceEditorSession,
+    INITIAL_EDITOR_SESSION,
+  );
   const [scale, setScale] = useState({ denominator: 2000, barMeters: 100 });
   const handleRoadGeometryChange = useCallback(
     (roadId: string, points: { x: number; y: number }[]) => {
@@ -36,10 +42,13 @@ export function CityViewerApp() {
     if (!isFullscreen) return;
     const handleKeyDown = (event: KeyboardEvent) => {
       if (event.key === "Escape") setIsFullscreen(false);
+      if (event.key === "Escape" && session.mode === "edit") {
+        dispatch({ type: "exit-edit" });
+      }
     };
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [isFullscreen]);
+  }, [isFullscreen, session.mode]);
 
   return (
     <main
@@ -60,7 +69,11 @@ export function CityViewerApp() {
           layerVisibility={DEFAULT_LAYER_VISIBILITY}
           fitSignal={0}
           editorWorld={EDITOR_WORLD_BOUNDS}
-          mode={mode}
+          mode={
+            session.mode === "edit" && session.activeTool === "select"
+              ? "edit-geometry"
+              : "view"
+          }
           editorAction={null}
           onEditorStatusChange={() => undefined}
           onRoadSaved={() => undefined}
@@ -81,7 +94,12 @@ export function CityViewerApp() {
           </button>
         </div>
         <div className="pointer-events-none absolute left-3 top-3">
-          <EditorToolbar mode={mode} onSetMode={setMode} />
+          <EditorToolbar
+            session={session}
+            onEnterEdit={() => dispatch({ type: "enter-edit" })}
+            onExitEdit={() => dispatch({ type: "exit-edit" })}
+            onSetTool={(tool) => dispatch({ type: "set-tool", tool })}
+          />
         </div>
         <div className="pointer-events-none absolute bottom-3 right-3 rounded-md border border-border-subtle bg-surface/90 px-2.5 py-1.5 text-[10px] font-medium text-foreground shadow-sm backdrop-blur">
           <div>{t("scale", { denominator: scale.denominator })}</div>

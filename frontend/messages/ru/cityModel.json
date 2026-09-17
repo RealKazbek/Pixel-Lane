@@ -71,6 +71,8 @@
     "overlayOff": "Слой выкл.",
     "overlayTooltip": "Переключить оверлей дорожной сети Pixel Lane (для отладки)",
     "select": "Выбор",
+    "editMode": "Редактировать",
+    "done": "Готово",
     "editGeometry": "Редактировать геометрию",
     "editGeometryTooltip": "Редактировать геометрию выбранной дороги",
     "editGeometryDisabledTooltip": "Сначала выберите дорогу",

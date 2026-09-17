@@ -71,6 +71,8 @@
     "overlayOff": "Қабат өшірулі",
     "overlayTooltip": "Pixel Lane жол желісі қабатын ауыстыру (жөндеу үшін)",
     "select": "Таңдау",
+    "editMode": "Өзгерту",
+    "done": "Дайын",
     "editGeometry": "Геометрияны өңдеу",
     "editGeometryTooltip": "Таңдалған жолдың геометриясын өңдеу",
     "editGeometryDisabledTooltip": "Алдымен жолды таңдаңыз",
