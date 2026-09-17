@@ -62,6 +62,7 @@ import { resolveMapTheme } from "./styles/mapTheme";
 import type { City } from "../types/city";
 import type { EditorWorldBounds } from "../editor/editorWorld";
 import { buildEditorGrid } from "./grid";
+import { gridIntervalForZoom } from "./grid";
 import type { LayerVisibility, MapMode, MapSelection } from "./types";
 
 export interface EditorAction {
@@ -97,6 +98,7 @@ interface PixelLaneMapProps {
    * this component itself never renders any chrome. */
   onViewportStatusChange?: (status: ViewportDataStatus) => void;
   editorWorld?: EditorWorldBounds;
+  onGridIntervalChange?: (interval: number) => void;
 }
 
 export function PixelLaneMap({
@@ -115,6 +117,7 @@ export function PixelLaneMap({
   onRoadSaved,
   onViewportStatusChange,
   editorWorld,
+  onGridIntervalChange,
 }: PixelLaneMapProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   // Entity detail responses must not recenter the map.
@@ -141,6 +144,7 @@ export function PixelLaneMap({
 
   const { mapRef, isLoaded } = useMapLibreMap(containerRef, {
     style: resolveMapStyle(basemapEnabled, mapStyleUrl, "transparent"),
+    navigationControlPosition: editorWorld ? "top-left" : "top-right",
     // A reasonable initial guess only -- the fit-to-view effect below runs
     // right after load and corrects this to the city's actual bounds. Still
     // worth getting right: it's what's briefly visible before that fit runs.
@@ -263,13 +267,17 @@ export function PixelLaneMap({
   useEffect(() => {
     const map = mapRef.current;
     if (!map || !isLoaded || !editorWorld) return;
-    const updateGridZoom = () => setGridZoom(map.getZoom());
+    const updateGridZoom = () => {
+      const zoom = map.getZoom();
+      setGridZoom(zoom);
+      onGridIntervalChange?.(gridIntervalForZoom(zoom));
+    };
     updateGridZoom();
     map.on("zoomend", updateGridZoom);
     return () => {
       map.off("zoomend", updateGridZoom);
     };
-  }, [editorWorld, isLoaded, mapRef]);
+  }, [editorWorld, isLoaded, mapRef, onGridIntervalChange]);
   const styleKey =
     basemapEnabled && mapStyleUrl ? mapStyleUrl : "pixel-lane-empty";
 

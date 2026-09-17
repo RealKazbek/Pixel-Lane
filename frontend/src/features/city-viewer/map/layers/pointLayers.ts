@@ -126,17 +126,48 @@ export function buildTrafficLightLayer(
 
 export function buildRoadLabelLayer(theme: MapThemeColors): LayerSpecification {
   const metersToPixelsAtZoomZero = 512 / (2 * Math.PI * 6_371_000);
-  const renderedLength = [
-    "*",
-    ["get", "length_m"],
-    ["^", 2, ["zoom"]],
-    metersToPixelsAtZoomZero,
-  ] as ExpressionSpecification;
-  const fittedSize = [
-    "/",
-    ["max", 0, ["-", renderedLength, LABEL_ENDPOINT_PADDING_PX * 2]],
-    ["*", ["get", "character_count"], LABEL_GLYPH_WIDTH_FACTOR],
-  ] as ExpressionSpecification;
+  // Style-spec only permits `zoom` at the input of a top-level interpolate or
+  // step expression. Keep the camera-dependent sizing valid by calculating
+  // the fitted result at two zoom anchors and interpolating between them.
+  const fittedSizeAtZoom = (zoom: number): ExpressionSpecification =>
+    [
+      "case",
+      [
+        "<",
+        [
+          "/",
+          [
+            "max",
+            0,
+            [
+              "-",
+              ["*", ["get", "length_m"], 2 ** zoom, metersToPixelsAtZoomZero],
+              LABEL_ENDPOINT_PADDING_PX * 2,
+            ],
+          ],
+          ["*", ["get", "character_count"], LABEL_GLYPH_WIDTH_FACTOR],
+        ],
+        LABEL_MIN_FONT_SIZE,
+      ],
+      0,
+      [
+        "min",
+        LABEL_MAX_FONT_SIZE,
+        [
+          "/",
+          [
+            "max",
+            0,
+            [
+              "-",
+              ["*", ["get", "length_m"], 2 ** zoom, metersToPixelsAtZoomZero],
+              LABEL_ENDPOINT_PADDING_PX * 2,
+            ],
+          ],
+          ["*", ["get", "character_count"], LABEL_GLYPH_WIDTH_FACTOR],
+        ],
+      ],
+    ] as ExpressionSpecification;
   return {
     id: LAYER_IDS.roadLabels,
     type: "symbol",
@@ -146,18 +177,25 @@ export function buildRoadLabelLayer(theme: MapThemeColors): LayerSpecification {
     layout: {
       "text-field": ["get", "name"],
       "text-size": [
-        "case",
-        ["<", fittedSize, LABEL_MIN_FONT_SIZE],
-        0,
-        ["min", LABEL_MAX_FONT_SIZE, fittedSize],
+        "interpolate",
+        ["linear"],
+        ["zoom"],
+        13,
+        fittedSizeAtZoom(13),
+        24,
+        fittedSizeAtZoom(24),
       ] as ExpressionSpecification,
       "text-font": ["Noto Sans Regular"],
       "symbol-placement": "point",
       "text-rotate": ["get", "rotation"],
       "text-rotation-alignment": "map",
-      "text-max-width": 8,
-      "text-allow-overlap": false,
-      "text-optional": true,
+      "text-max-width": 100,
+      // These isolated editor labels are part of the primitive's inspection
+      // surface. Their size expression guarantees they stay inside the road;
+      // collision avoidance must not make the validation labels disappear.
+      "text-allow-overlap": true,
+      "text-ignore-placement": true,
+      "text-optional": false,
       // Higher-hierarchy roads (lower rank number) win collision priority
       // and get placed first -- a highway's name should never lose to a
       // service road's when there isn't room for both.
@@ -167,6 +205,7 @@ export function buildRoadLabelLayer(theme: MapThemeColors): LayerSpecification {
       "text-color": theme.roadLabel,
       "text-halo-color": theme.roadLabelHalo,
       "text-halo-width": 1.6,
+      "text-opacity": 1,
     },
   };
 }
