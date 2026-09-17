@@ -90,6 +90,7 @@ export interface Road {
   geometry: Polyline;
   /** Derived rendering smoothness; source geometry remains the polyline. */
   smoothing?: number | null;
+  corner_smoothing?: number[] | null;
   default_speed_limit_kmh: number | null;
   source_id?: string | null;
   source_road_type?: string | null;
@@ -235,6 +236,7 @@ export type MapRoad = Pick<
   | "road_type"
   | "geometry"
   | "smoothing"
+  | "corner_smoothing"
   | "width_m"
   | "is_width_estimated"
   | "carriageway_count"

@@ -216,7 +216,12 @@ function roadLabelPlacement(
   const raw = points.map((point) => toLngLat(coordinateSystem, point));
   const line =
     coordinateSystem === "LOCAL_CARTESIAN"
-      ? smoothCenterline(raw, undefined, road.smoothing ?? 1)
+      ? smoothCenterline(
+          raw,
+          undefined,
+          road.smoothing ?? 1,
+          road.corner_smoothing,
+        )
       : raw;
   const lengths = line
     .slice(1)

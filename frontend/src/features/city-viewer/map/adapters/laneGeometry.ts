@@ -306,6 +306,7 @@ function buildLaneRenderingLines(
       rawLine.geometry.coordinates as LngLat[],
       undefined,
       road.smoothing ?? 1,
+      road.corner_smoothing,
     );
     const smoothedLine: GeoJSON.Feature<GeoJSON.LineString> = {
       type: "Feature",
