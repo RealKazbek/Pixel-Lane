@@ -23,6 +23,9 @@ export function CityViewerApp() {
   const [city, setCity] = useState(buildEditorWorkspace);
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [selected, setSelected] = useState<MapSelection | null>(null);
+  const [selectedEndpoint, setSelectedEndpoint] = useState<"A" | "B" | null>(
+    null,
+  );
   const [session, dispatch] = useReducer(
     reduceEditorSession,
     INITIAL_EDITOR_SESSION,
@@ -45,6 +48,10 @@ export function CityViewerApp() {
     },
     [],
   );
+  const handleSelect = useCallback((selection: MapSelection | null) => {
+    setSelected(selection);
+    setSelectedEndpoint(null);
+  }, []);
   const handleDrawPoint = useCallback(
     (point: Point) => {
       if (!drawStartPoint) {
@@ -108,7 +115,9 @@ export function CityViewerApp() {
         <PixelLaneMap
           city={city}
           selected={selected}
-          onSelect={setSelected}
+          onSelect={handleSelect}
+          selectedEndpoint={selectedEndpoint}
+          onEndpointSelect={setSelectedEndpoint}
           basemapEnabled={false}
           mapStyleUrl={mapStyleUrl}
           overlayVisible

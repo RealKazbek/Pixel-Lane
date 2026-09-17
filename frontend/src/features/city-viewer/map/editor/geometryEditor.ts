@@ -27,6 +27,7 @@ export interface GeometryEditor {
     coordinateSystem: CoordinateSystem,
     onChange: (points: Point[]) => void,
   ): void;
+  setActiveEndpoint(endpoint: 0 | 1 | null): void;
   /** Discards the in-progress edit without touching the City Model. */
   cancel(): void;
   /** Reads the current edited geometry back out as City Model points, and
@@ -39,42 +40,37 @@ export interface GeometryEditor {
 }
 
 export function createGeometryEditor(map: MapLibreMap): GeometryEditor {
+  const selectMode = new TerraDrawSelectMode({
+    pointerDistance: 28,
+    cursors: {
+      pointerOverCoordinate: "grab",
+      pointerOverResizeHandle: "grab",
+      dragStart: "grabbing",
+      dragEnd: "grab",
+    },
+    styles: {
+      selectedPointColor: "#ffffff",
+      selectedPointWidth: 16,
+      selectedPointOpacity: 1,
+      selectedPointOutlineColor: "#2563eb",
+      selectedPointOutlineWidth: 3,
+      selectedPointOutlineOpacity: 1,
+      selectedLineStringColor: "#2563eb",
+      selectedLineStringWidth: 2,
+      selectedLineStringOpacity: 0,
+    },
+    flags: {
+      linestring: {
+        feature: {
+          draggable: false,
+          coordinates: { midpoints: false, draggable: false, deletable: false },
+        },
+      },
+    },
+  });
   const draw = new TerraDraw({
     adapter: new TerraDrawMapLibreGLAdapter({ map }),
-    modes: [
-      new TerraDrawSelectMode({
-        pointerDistance: 28,
-        cursors: {
-          pointerOverCoordinate: "grab",
-          pointerOverResizeHandle: "grab",
-          dragStart: "grabbing",
-          dragEnd: "grab",
-        },
-        styles: {
-          selectedPointColor: "#ffffff",
-          selectedPointWidth: 16,
-          selectedPointOpacity: 1,
-          selectedPointOutlineColor: "#2563eb",
-          selectedPointOutlineWidth: 3,
-          selectedPointOutlineOpacity: 1,
-          selectedLineStringColor: "#2563eb",
-          selectedLineStringWidth: 2,
-          selectedLineStringOpacity: 0,
-        },
-        flags: {
-          linestring: {
-            feature: {
-              draggable: false,
-              coordinates: {
-                midpoints: false,
-                draggable: true,
-                deletable: false,
-              },
-            },
-          },
-        },
-      }),
-    ],
+    modes: [selectMode],
   });
 
   let started = false;
@@ -122,6 +118,18 @@ export function createGeometryEditor(map: MapLibreMap): GeometryEditor {
         };
         draw.on("change", changeHandler);
       }
+    },
+
+    setActiveEndpoint(endpoint) {
+      selectMode.updateOptions({
+        flags: {
+          linestring: {
+            feature: {
+              coordinates: { draggable: endpoint !== null },
+            },
+          },
+        },
+      });
     },
 
     cancel() {
