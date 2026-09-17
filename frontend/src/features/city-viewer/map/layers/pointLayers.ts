@@ -127,7 +127,7 @@ export function buildRoadLabelLayer(theme: MapThemeColors): LayerSpecification {
     filter: ["any", [">=", ["zoom"], 16], ["<=", ["get", "label_rank"], 2]],
     layout: {
       "text-field": ["get", "name"],
-      "text-size": ["interpolate", ["linear"], ["zoom"], 13, 14, 24, 16],
+      "text-size": ["interpolate", ["linear"], ["zoom"], 13, 13, 24, 14],
       "text-font": ["Noto Sans Regular"],
       "symbol-placement": "point",
       "text-rotate": ["get", "rotation"],
