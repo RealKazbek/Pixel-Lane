@@ -134,7 +134,7 @@ export function PixelLaneMap({
   );
 
   const { mapRef, isLoaded } = useMapLibreMap(containerRef, {
-    style: resolveMapStyle(basemapEnabled, mapStyleUrl, mapTheme.background),
+    style: resolveMapStyle(basemapEnabled, mapStyleUrl, "transparent"),
     // A reasonable initial guess only -- the fit-to-view effect below runs
     // right after load and corrects this to the city's actual bounds. Still
     // worth getting right: it's what's briefly visible before that fit runs.
@@ -230,7 +230,10 @@ export function PixelLaneMap({
       // itself, not `visibleRoads`/`visibleIntersections`, since a WGS84
       // city's own bus_stops/crosswalks are always [] until that follow-up
       // exists, and a LOCAL_CARTESIAN city's full list is already `city`.
-      busStops: buildBusStopFeatureCollection(city.bus_stops, city.coordinate_system),
+      busStops: buildBusStopFeatureCollection(
+        city.bus_stops,
+        city.coordinate_system,
+      ),
       crosswalks: buildCrosswalkFeatureCollection(
         city.crosswalks,
         city.roads,
@@ -323,7 +326,7 @@ export function PixelLaneMap({
     // quickly, and the overlay must be restored after—not before—the new
     // style is ready.
     map.once("style.load", () => ensurePixelLaneLayers(map));
-    map.setStyle(resolveMapStyle(basemapEnabled, mapStyleUrl, mapTheme.background));
+    map.setStyle(resolveMapStyle(basemapEnabled, mapStyleUrl, "transparent"));
     appliedStyleKeyRef.current = styleKey;
   }, [
     basemapEnabled,
@@ -354,7 +357,7 @@ export function PixelLaneMap({
       map.setPaintProperty(
         "pixel-lane-empty-background",
         "background-color",
-        mapTheme.background,
+        "transparent",
       );
     }
   }, [
@@ -381,7 +384,11 @@ export function PixelLaneMap({
   useEffect(() => {
     const map = mapRef.current;
     if (!map || !isLoaded || !focusBounds) return;
-    map.fitBounds(focusBounds.bounds, { padding: 80, maxZoom: 19, duration: 0 });
+    map.fitBounds(focusBounds.bounds, {
+      padding: 80,
+      maxZoom: 19,
+      duration: 0,
+    });
     // eslint-disable-next-line react-hooks/exhaustive-deps -- token is the manual trigger
   }, [isLoaded, focusBounds?.token]);
 

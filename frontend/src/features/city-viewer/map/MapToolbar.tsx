@@ -5,6 +5,7 @@ import type { LayerVisibility, MapMode } from "./types";
 import type { EditorStatus } from "./editor/useGeometryEditor";
 
 interface MapToolbarProps {
+  editorOnly?: boolean;
   basemapEnabled: boolean;
   onToggleBasemap: () => void;
   basemapConfigured: boolean;
@@ -30,6 +31,7 @@ const buttonActive = "border-blue-600 bg-blue-600 text-white hover:bg-blue-500";
 /** A small, focused toolbar -- not a full GIS UI (see map/README.md's
  * scope notes). */
 export function MapToolbar({
+  editorOnly = false,
   basemapEnabled,
   onToggleBasemap,
   basemapConfigured,
@@ -108,40 +110,41 @@ export function MapToolbar({
         )}
       </div>
 
-      <div className="mx-1 h-4 w-px bg-border-subtle" />
+      {!editorOnly && <div className="mx-1 h-4 w-px bg-border-subtle" />}
 
-      {/* View: what's rendered, independent of the active tool. */}
-      <div
-        role="group"
-        aria-label={t("viewGroupLabel")}
-        className="flex items-center gap-1.5"
-      >
-        <button
-          type="button"
-          onClick={onToggleBasemap}
-          disabled={!basemapConfigured}
-          title={
-            basemapConfigured
-              ? t("basemapTooltip")
-              : t("basemapUnconfiguredTooltip")
-          }
-          className={`${buttonBase} ${basemapEnabled ? buttonActive : buttonNeutral}`}
+      {!editorOnly && (
+        <div
+          role="group"
+          aria-label={t("viewGroupLabel")}
+          className="flex items-center gap-1.5"
         >
-          {basemapEnabled ? t("basemapOn") : t("basemapOff")}
-        </button>
-        <button
-          type="button"
-          onClick={onToggleOverlay}
-          title={t("overlayTooltip")}
-          className={`${buttonBase} ${overlayVisible ? buttonActive : buttonNeutral}`}
-        >
-          {overlayVisible ? t("overlayOn") : t("overlayOff")}
-        </button>
-        <MapLayersToggle
-          layerVisibility={layerVisibility}
-          onToggleLayer={onToggleLayer}
-        />
-      </div>
+          <button
+            type="button"
+            onClick={onToggleBasemap}
+            disabled={!basemapConfigured}
+            title={
+              basemapConfigured
+                ? t("basemapTooltip")
+                : t("basemapUnconfiguredTooltip")
+            }
+            className={`${buttonBase} ${basemapEnabled ? buttonActive : buttonNeutral}`}
+          >
+            {basemapEnabled ? t("basemapOn") : t("basemapOff")}
+          </button>
+          <button
+            type="button"
+            onClick={onToggleOverlay}
+            title={t("overlayTooltip")}
+            className={`${buttonBase} ${overlayVisible ? buttonActive : buttonNeutral}`}
+          >
+            {overlayVisible ? t("overlayOn") : t("overlayOff")}
+          </button>
+          <MapLayersToggle
+            layerVisibility={layerVisibility}
+            onToggleLayer={onToggleLayer}
+          />
+        </div>
+      )}
 
       <div className="mx-1 h-4 w-px bg-border-subtle" />
 
