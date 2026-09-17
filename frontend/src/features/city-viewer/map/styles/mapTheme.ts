@@ -51,8 +51,8 @@ const LIGHT_ROAD_ASPHALT: Record<RoadHierarchy, string> = {
   HIGHWAY: "#374151",
   ARTERIAL: "#374151",
   COLLECTOR: "#64748b",
-  RESIDENTIAL: "#94a3b8",
-  SERVICE: "#cbd5e1",
+  RESIDENTIAL: "#64748b",
+  SERVICE: "#94a3b8",
   OTHER: "#64748b",
 };
 
