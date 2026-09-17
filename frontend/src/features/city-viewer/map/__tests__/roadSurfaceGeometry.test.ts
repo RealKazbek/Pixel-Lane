@@ -211,4 +211,51 @@ describe("buildRoadSurfaceFeatureCollection", () => {
     expect(fc.features).toHaveLength(1);
     expect(fc.features[0].properties.is_junction).toBe(true);
   });
+
+  describe("PL-005.01: minimal two-point, zero-lane primitive", () => {
+    it("is deterministic -- the same two points always produce the same polygon", () => {
+      const road = makeRoad();
+      const first = buildRoadSurfaceFeatureCollection(
+        [road],
+        [],
+        "LOCAL_CARTESIAN",
+      );
+      const second = buildRoadSurfaceFeatureCollection(
+        [road],
+        [],
+        "LOCAL_CARTESIAN",
+      );
+      expect(first.features[0].geometry).toEqual(second.features[0].geometry);
+    });
+
+    it("changing an endpoint deterministically changes the generated geometry", () => {
+      const roadA = makeRoad({
+        geometry: {
+          points: [
+            { x: 0, y: 0 },
+            { x: 0, y: 40 },
+          ],
+        },
+      });
+      const roadB = makeRoad({
+        geometry: {
+          points: [
+            { x: 0, y: 0 },
+            { x: 0, y: 80 },
+          ],
+        },
+      });
+      const fcA = buildRoadSurfaceFeatureCollection(
+        [roadA],
+        [],
+        "LOCAL_CARTESIAN",
+      );
+      const fcB = buildRoadSurfaceFeatureCollection(
+        [roadB],
+        [],
+        "LOCAL_CARTESIAN",
+      );
+      expect(fcA.features[0].geometry).not.toEqual(fcB.features[0].geometry);
+    });
+  });
 });

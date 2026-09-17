@@ -447,6 +447,23 @@ function buildTest10TurnPocket(b: LabCityBuilder, origin: Point): void {
   );
 }
 
+function buildTest11MinimalPrimitive(b: LabCityBuilder, origin: Point): void {
+  // PL-005.01: the smallest possible road primitive -- two endpoints, one
+  // straight centerline, one fixed-width surface, zero lanes. No lane
+  // markings, no intersection, no traffic control, no simulation. Width
+  // comes from roadWidthMeters()'s existing lane-count fallback (this
+  // fixture deliberately does not thread a custom width_m through the Lab
+  // builder -- explicit road-width configuration is PL-005.06's scope).
+  b.addRoad("t11-road", "11 Minimal Primitive", origin, {
+    road_type: "ARTERIAL",
+    points: [
+      [-60, 0],
+      [60, 0],
+    ],
+    lanes: [],
+  });
+}
+
 const FIXTURE_BUILDERS: {
   id: string;
   label: string;
@@ -462,6 +479,7 @@ const FIXTURE_BUILDERS: {
   { id: "08", label: "08 Lane Transition", build: buildTest08LaneTransition },
   { id: "09", label: "09 Median", build: buildTest09Median },
   { id: "10", label: "10 Turn Pocket", build: buildTest10TurnPocket },
+  { id: "11", label: "11 Minimal Primitive", build: buildTest11MinimalPrimitive },
 ];
 
 export interface RoadLabCell {
