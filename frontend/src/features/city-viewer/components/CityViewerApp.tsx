@@ -14,7 +14,7 @@ export function CityViewerApp() {
   const city = useMemo(() => buildEditorWorkspace(), []);
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [selected, setSelected] = useState<MapSelection | null>(null);
-  const [scaleDenominator, setScaleDenominator] = useState(2000);
+  const [scale, setScale] = useState({ denominator: 2000, barMeters: 100 });
 
   useEffect(() => {
     if (!isFullscreen) return;
@@ -48,7 +48,7 @@ export function CityViewerApp() {
           editorAction={null}
           onEditorStatusChange={() => undefined}
           onRoadSaved={() => undefined}
-          onScaleChange={setScaleDenominator}
+          onScaleChange={setScale}
         />
         <div className="pointer-events-none absolute inset-x-3 top-3 flex justify-end">
           <button
@@ -63,8 +63,19 @@ export function CityViewerApp() {
             </span>
           </button>
         </div>
-        <div className="pointer-events-none absolute bottom-9 right-3 rounded-md border border-border-subtle bg-surface/85 px-2 py-1 text-[10px] font-medium text-foreground shadow-sm backdrop-blur">
-          {t("scale", { denominator: scaleDenominator })}
+        <div className="pointer-events-none absolute bottom-3 right-3 rounded-md border border-border-subtle bg-surface/90 px-2.5 py-1.5 text-[10px] font-medium text-foreground shadow-sm backdrop-blur">
+          <div>{t("scale", { denominator: scale.denominator })}</div>
+          <div className="mt-1 flex items-end gap-1 text-[9px] font-normal text-muted-foreground">
+            <span className="h-1.5 w-20 border-x border-b border-foreground/70" />
+            <span>
+              {t(scale.barMeters >= 1000 ? "scaleBarKm" : "scaleBarMeters", {
+                value:
+                  scale.barMeters >= 1000
+                    ? scale.barMeters / 1000
+                    : scale.barMeters,
+              })}
+            </span>
+          </div>
         </div>
       </div>
     </main>

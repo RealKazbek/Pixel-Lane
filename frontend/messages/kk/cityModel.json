@@ -86,7 +86,9 @@
   "fullscreen": {
     "enter": "Жұмыс аймағын кеңейту",
     "exit": "Жұмыс режимінен шығу",
-    "scale": "Масштаб 1:{denominator}"
+    "scale": "Масштаб 1:{denominator}",
+    "scaleBarMeters": "{value} м",
+    "scaleBarKm": "{value} км"
   },
   "editor": {
     "minPointsError": "Жол үшін кемінде 2 нүкте қажет.",

@@ -86,7 +86,9 @@
   "fullscreen": {
     "enter": "Развернуть рабочую область",
     "exit": "Выйти из рабочего режима",
-    "scale": "Масштаб 1:{denominator}"
+    "scale": "Масштаб 1:{denominator}",
+    "scaleBarMeters": "{value} м",
+    "scaleBarKm": "{value} км"
   },
   "editor": {
     "minPointsError": "Дороге нужно минимум 2 точки.",
