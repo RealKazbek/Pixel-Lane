@@ -136,6 +136,14 @@ persisted geometry. The backend properties endpoint validates and persists
 the contract for persisted City Model roads; the current clean editor
 workspace remains local-preview data.
 
+PL-005.09 extends this with explicit persisted marking configuration. Internal
+boundaries support `NONE`, `DASHED_WHITE`, `SOLID_WHITE`, and
+`DOUBLE_SOLID_WHITE`; road edges independently support `NONE`, `SOLID_WHITE`,
+and `SOLID_YELLOW`. Double-solid is internal-only. Missing legacy values use
+direction-based defaults (dashed for same-direction lanes, double-solid for
+opposing lanes) and yellow outer edges. Boundary arrays remain ordered by
+adjacent lane index and are preserved when lane count changes where possible.
+
 Added by migration `f3b7c1d92a58`, on top of Part 1. This is normalized
 lane metadata. The editor's derived lane geometry and basic markings are
 documented in the PL-005.07–.09 section above; backend lane rows remain

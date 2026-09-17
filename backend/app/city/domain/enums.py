@@ -116,6 +116,19 @@ class LaneDirection(StrEnum):
     BACKWARD = "BACKWARD"
 
 
+class LaneBoundaryMarking(StrEnum):
+    NONE = "NONE"
+    DASHED_WHITE = "DASHED_WHITE"
+    SOLID_WHITE = "SOLID_WHITE"
+    DOUBLE_SOLID_WHITE = "DOUBLE_SOLID_WHITE"
+
+
+class RoadEdgeMarking(StrEnum):
+    NONE = "NONE"
+    SOLID_WHITE = "SOLID_WHITE"
+    SOLID_YELLOW = "SOLID_YELLOW"
+
+
 class LaneType(StrEnum):
     GENERAL = "GENERAL"
     BUS = "BUS"

@@ -7,7 +7,12 @@ import {
   buildEditorWorkspace,
   createEditorRoad,
 } from "../editor/editorWorkspace";
-import type { LaneDirection, Point } from "../types/city";
+import type {
+  LaneBoundaryMarking,
+  LaneDirection,
+  Point,
+  RoadEdgeMarking,
+} from "../types/city";
 import {
   insertPolylinePoint,
   updatePolylineVertex,
@@ -65,16 +70,28 @@ export function CityViewerApp() {
       lane_count?: number;
       lane_width_m?: number;
       lane_directions?: LaneDirection[];
+      left_edge_marking?: RoadEdgeMarking;
+      right_edge_marking?: RoadEdgeMarking;
+      lane_boundary_markings?: LaneBoundaryMarking[];
     }) => {
       if (selected?.type !== "road") return;
       setCity((current) => ({
         ...current,
         roads: current.roads.map((road) => {
           if (road.id !== selected.id) return road;
-          const { lane_count, lane_width_m, lane_directions, ...simple } =
-            changes;
+          const {
+            lane_count,
+            lane_width_m,
+            lane_directions,
+            lane_boundary_markings,
+            ...simple
+          } = changes;
           if (!lane_count || !lane_width_m || !lane_directions) {
-            return { ...road, ...simple };
+            return {
+              ...road,
+              ...simple,
+              ...(lane_boundary_markings ? { lane_boundary_markings } : {}),
+            };
           }
           const laneConfiguration = buildLaneConfiguration(
             road,
@@ -87,6 +104,8 @@ export function CityViewerApp() {
             ...road,
             ...simple,
             ...laneConfiguration,
+            lane_boundary_markings:
+              lane_boundary_markings ?? road.lane_boundary_markings,
           };
         }),
       }));

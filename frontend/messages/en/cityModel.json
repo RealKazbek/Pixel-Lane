@@ -93,7 +93,18 @@
     "lanes": "Lanes",
     "laneWidth": "Lane width",
     "directions": "Directions",
-    "laneNumber": "Lane {number}"
+    "laneNumber": "Lane {number}",
+    "markings": "Markings",
+    "leftEdge": "Left edge",
+    "rightEdge": "Right edge",
+    "lanePair": "Lane {left} / {right}",
+    "marking": {
+      "NONE": "None",
+      "DASHED_WHITE": "Dashed",
+      "SOLID_WHITE": "Solid",
+      "DOUBLE_SOLID_WHITE": "Double solid",
+      "SOLID_YELLOW": "Yellow"
+    }
   },
   "fullscreen": {
     "smoothing": "Smoothing",

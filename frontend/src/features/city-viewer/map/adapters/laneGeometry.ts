@@ -60,6 +60,8 @@ import type {
   Intersection,
   ParkingLaneOrientation,
   TurnLaneType,
+  LaneBoundaryMarking,
+  RoadEdgeMarking,
 } from "../../types/city";
 
 /** Roads' Intersections, restricted to the fields this module needs --
@@ -83,6 +85,7 @@ export interface LaneBoundaryProperties {
   /** "edge" = outer road boundary; "separator" = adjacent lanes share a
    * direction; "center" = adjacent lanes change direction. */
   kind: "edge" | "separator" | "center";
+  marking: LaneBoundaryMarking | RoadEdgeMarking;
 }
 
 export interface TurnArrowProperties {
@@ -404,18 +407,40 @@ export function buildLaneBoundaryFeatureCollection(
         leftDirection !== null &&
         rightDirection !== null &&
         leftDirection !== rightDirection;
-      features.push({
-        type: "Feature",
-        geometry: offset.geometry,
-        properties: {
-          road_id: road.id,
-          kind: edgeOffsets.has(offsetM)
-            ? "edge"
-            : isOppositeDirection
-              ? "center"
-              : "separator",
-        },
-      });
+      const isEdge = edgeOffsets.has(offsetM);
+      const marking = isEdge
+        ? offsetM > 0
+          ? (("left_edge_marking" in road
+              ? road.left_edge_marking
+              : undefined) ?? "SOLID_YELLOW")
+          : (("right_edge_marking" in road
+              ? road.right_edge_marking
+              : undefined) ?? "SOLID_YELLOW")
+        : (("lane_boundary_markings" in road
+            ? road.lane_boundary_markings?.[boundaryIndex - 1]
+            : undefined) ??
+          (isOppositeDirection ? "DOUBLE_SOLID_WHITE" : "DASHED_WHITE"));
+      if (marking === "NONE") continue;
+      const lineFeatures =
+        marking === "DOUBLE_SOLID_WHITE"
+          ? [safeOffset(line, offsetM - 0.12), safeOffset(line, offsetM + 0.12)]
+          : [offset];
+      for (const lineFeature of lineFeatures) {
+        if (!lineFeature) continue;
+        features.push({
+          type: "Feature",
+          geometry: lineFeature.geometry,
+          properties: {
+            road_id: road.id,
+            kind: isEdge
+              ? "edge"
+              : marking === "DOUBLE_SOLID_WHITE"
+                ? "center"
+                : "separator",
+            marking,
+          },
+        });
+      }
     }
   }
   return { type: "FeatureCollection", features };

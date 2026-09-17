@@ -132,7 +132,7 @@ describe("buildLaneBoundaryFeatureCollection", () => {
       [road],
       "LOCAL_CARTESIAN",
     ).features.map((feature) => feature.properties.kind);
-    expect(kinds.filter((kind) => kind === "center")).toHaveLength(1);
+    expect(kinds.filter((kind) => kind === "center")).toHaveLength(2);
     expect(kinds.filter((kind) => kind === "separator")).toHaveLength(2);
   });
 });

@@ -84,6 +84,13 @@ def build_city(payload: CityCreate) -> City:
             parking_right=road_data.parking_right.value,
             cycleway_left=road_data.cycleway_left.value,
             cycleway_right=road_data.cycleway_right.value,
+            left_edge_marking=road_data.left_edge_marking.value,
+            right_edge_marking=road_data.right_edge_marking.value,
+            lane_boundary_markings=(
+                [m.value for m in road_data.lane_boundary_markings]
+                if road_data.lane_boundary_markings is not None
+                else None
+            ),
             lanes=lanes,
         )
         roads.append(road)

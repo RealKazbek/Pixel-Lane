@@ -93,7 +93,18 @@
     "lanes": "Жолақтар",
     "laneWidth": "Жолақ ені",
     "directions": "Бағыттар",
-    "laneNumber": "Жолақ {number}"
+    "laneNumber": "Жолақ {number}",
+    "markings": "Жол таңбалары",
+    "leftEdge": "Сол жақ шеті",
+    "rightEdge": "Оң жақ шеті",
+    "lanePair": "{left} / {right} жолақтары",
+    "marking": {
+      "NONE": "Жоқ",
+      "DASHED_WHITE": "Үзік",
+      "SOLID_WHITE": "Тұтас",
+      "DOUBLE_SOLID_WHITE": "Қос тұтас",
+      "SOLID_YELLOW": "Сары"
+    }
   },
   "fullscreen": {
     "smoothing": "Тегістеу",

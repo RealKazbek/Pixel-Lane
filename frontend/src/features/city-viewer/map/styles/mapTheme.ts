@@ -33,6 +33,7 @@ export interface MapThemeColors {
   selected: string;
   /** Coarse "multi-lane" dashed hint + real lane-separator dashes. */
   laneMarking: string;
+  roadEdgeYellow: string;
   roadLabel: string;
   roadLabelHalo: string;
   intersectionFill: string;
@@ -99,6 +100,7 @@ export const LIGHT_MAP_THEME: MapThemeColors = {
   selectedSurface: "#bfdbfe", // blue-200
   selected: "#2563eb", // blue-600
   laneMarking: "#fafaf9",
+  roadEdgeYellow: "#ca8a04",
   roadLabel: "#292524",
   roadLabelHalo: "#fffdf7",
   intersectionFill: "#78716c",
@@ -121,6 +123,7 @@ export const DARK_MAP_THEME: MapThemeColors = {
   selectedSurface: "#1e3a8a", // blue-900 -- lit-up tint stays legible on a dark surface
   selected: "#60a5fa", // blue-400 -- brighter accent reads against dark asphalt
   laneMarking: "#d6d3d1",
+  roadEdgeYellow: "#facc15",
   roadLabel: "#f5f5f4",
   roadLabelHalo: "#1c1917",
   intersectionFill: "#a8a29e",

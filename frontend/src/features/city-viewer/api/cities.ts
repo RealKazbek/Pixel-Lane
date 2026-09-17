@@ -6,6 +6,8 @@ import type {
   Polyline,
   Road,
   MapRoad,
+  LaneBoundaryMarking,
+  RoadEdgeMarking,
 } from "../types/city";
 import type { TrafficAnalysisResult } from "../types/traffic-analysis";
 import type { BBox } from "../map/adapters/viewport";
@@ -123,6 +125,9 @@ export function updateRoadProperties(
     lane_count: number;
     lane_width_m: number;
     lane_directions: Road["lanes"][number]["direction"][];
+    left_edge_marking: RoadEdgeMarking;
+    right_edge_marking: RoadEdgeMarking;
+    lane_boundary_markings: LaneBoundaryMarking[];
   },
 ): Promise<Road> {
   return apiRequest<Road>(
