@@ -5,7 +5,7 @@ import type { Map as MapLibreMap } from "maplibre-gl";
 import { applyRoadEdit, type ApplyRoadEditError } from "./applyRoadEdit";
 import { createGeometryEditor, type GeometryEditor } from "./geometryEditor";
 import { setEditedRoadHidden } from "../layers/setupLayers";
-import type { CoordinateSystem, Road } from "../../types/city";
+import type { CoordinateSystem, Point, Road } from "../../types/city";
 
 export type EditorStatus = "idle" | "editing" | "saving" | "error";
 
@@ -29,12 +29,16 @@ export function useGeometryEditor() {
   );
 
   const start = useCallback(
-    (map: MapLibreMap, road: Road, coordinateSystem: CoordinateSystem) => {
+    (
+      map: MapLibreMap,
+      road: Road,
+      coordinateSystem: CoordinateSystem,
+      onChange: (points: Point[]) => void,
+    ) => {
       if (!editorRef.current) {
         editorRef.current = createGeometryEditor(map);
       }
-      editorRef.current.beginEditingRoad(road, coordinateSystem);
-      setEditedRoadHidden(map, road.id);
+      editorRef.current.beginEditingRoad(road, coordinateSystem, onChange);
       setEditingRoadId(road.id);
       setStatus("editing");
       setError(null);

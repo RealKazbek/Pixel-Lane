@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { useTranslations } from "next-intl";
 import { mapStyleUrl } from "@/lib/config";
 import { buildEditorWorkspace } from "../editor/editorWorkspace";
@@ -11,10 +11,23 @@ import { DEFAULT_LAYER_VISIBILITY, type MapSelection } from "../map/types";
 /** City Model is currently an editor document, not a city picker/viewer. */
 export function CityViewerApp() {
   const t = useTranslations("cityModel.fullscreen");
-  const city = useMemo(() => buildEditorWorkspace(), []);
+  const [city, setCity] = useState(buildEditorWorkspace);
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [selected, setSelected] = useState<MapSelection | null>(null);
   const [scale, setScale] = useState({ denominator: 2000, barMeters: 100 });
+  const handleRoadGeometryChange = useCallback(
+    (roadId: string, points: { x: number; y: number }[]) => {
+      setCity((current) => ({
+        ...current,
+        roads: current.roads.map((road) =>
+          road.id === roadId
+            ? { ...road, geometry: { ...road.geometry, points } }
+            : road,
+        ),
+      }));
+    },
+    [],
+  );
 
   useEffect(() => {
     if (!isFullscreen) return;
@@ -44,11 +57,12 @@ export function CityViewerApp() {
           layerVisibility={DEFAULT_LAYER_VISIBILITY}
           fitSignal={0}
           editorWorld={EDITOR_WORLD_BOUNDS}
-          mode="view"
+          mode="edit-geometry"
           editorAction={null}
           onEditorStatusChange={() => undefined}
           onRoadSaved={() => undefined}
           onScaleChange={setScale}
+          onRoadGeometryChange={handleRoadGeometryChange}
         />
         <div className="pointer-events-none absolute inset-x-3 top-3 flex justify-end">
           <button

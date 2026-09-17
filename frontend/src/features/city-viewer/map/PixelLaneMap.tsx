@@ -63,6 +63,7 @@ import { resolveMapTheme } from "./styles/mapTheme";
 import type { City } from "../types/city";
 import type { EditorWorldBounds } from "../editor/editorWorld";
 import { buildEditorGrid } from "./grid";
+import { updateRoadEndpoint } from "./editor/endpointEditing";
 import type { LayerVisibility, MapMode, MapSelection } from "./types";
 
 export interface EditorAction {
@@ -99,6 +100,10 @@ interface PixelLaneMapProps {
   onViewportStatusChange?: (status: ViewportDataStatus) => void;
   editorWorld?: EditorWorldBounds;
   onScaleChange?: (scale: { denominator: number; barMeters: number }) => void;
+  onRoadGeometryChange?: (
+    roadId: string,
+    points: { x: number; y: number }[],
+  ) => void;
 }
 
 export function PixelLaneMap({
@@ -118,6 +123,7 @@ export function PixelLaneMap({
   onViewportStatusChange,
   editorWorld,
   onScaleChange,
+  onRoadGeometryChange,
 }: PixelLaneMapProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   // Entity detail responses must not recenter the map.
@@ -544,18 +550,29 @@ export function PixelLaneMap({
     if (editor.editingRoadId === selected.id) return;
 
     const road = city.roads.find((r) => r.id === selected.id);
-    if (road) editor.start(map, road, city.coordinate_system);
+    if (road) {
+      editor.start(map, road, city.coordinate_system, (points) => {
+        if (points.length !== 2) return;
+        const next = updateRoadEndpoint([points[0], points[1]], 0, points[0]);
+        if (next) onRoadGeometryChange?.(road.id, next);
+      });
+    }
     // eslint-disable-next-line react-hooks/exhaustive-deps -- editor is a stable ref-backed API
-  }, [mode, selected, isLoaded, city]);
+  }, [mode, selected, isLoaded, city, onRoadGeometryChange]);
 
   // Leaving edit mode without an explicit apply/cancel action (e.g.
   // selecting a different entity) discards the in-progress edit.
   useEffect(() => {
     const map = mapRef.current;
-    if (!map || mode === "edit-geometry" || !editor.editingRoadId) return;
+    if (
+      !map ||
+      (mode === "edit-geometry" && selected?.type === "road") ||
+      !editor.editingRoadId
+    )
+      return;
     editor.cancel(map);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [mode]);
+  }, [mode, selected]);
 
   // The toolbar's Apply/Cancel buttons drive the editor via this token.
   useEffect(() => {
