@@ -171,7 +171,7 @@ export function PixelLaneMap({
 
   const { mapRef, isLoaded } = useMapLibreMap(containerRef, {
     style: resolveMapStyle(basemapEnabled, mapStyleUrl, "transparent"),
-    navigationControlPosition: editorWorld ? "top-left" : "top-right",
+    navigationControlPosition: "top-right",
     onScaleChange,
     // A reasonable initial guess only -- the fit-to-view effect below runs
     // right after load and corrects this to the city's actual bounds. Still

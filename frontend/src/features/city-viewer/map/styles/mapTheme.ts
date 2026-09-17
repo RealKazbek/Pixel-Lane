@@ -49,7 +49,7 @@ export interface MapThemeColors {
 
 const LIGHT_ROAD_ASPHALT: Record<RoadHierarchy, string> = {
   HIGHWAY: "#374151",
-  ARTERIAL: "#4b5563",
+  ARTERIAL: "#374151",
   COLLECTOR: "#64748b",
   RESIDENTIAL: "#94a3b8",
   SERVICE: "#cbd5e1",
@@ -96,7 +96,7 @@ export const LIGHT_MAP_THEME: MapThemeColors = {
   gridMajor: "rgba(71, 85, 105, 0.28)",
   roadAsphalt: LIGHT_ROAD_ASPHALT,
   roadCasing: LIGHT_ROAD_CASING,
-  selectedSurface: "#dbeafe", // blue-100
+  selectedSurface: "#bfdbfe", // blue-200
   selected: "#2563eb", // blue-600
   laneMarking: "#fafaf9",
   roadLabel: "#292524",
