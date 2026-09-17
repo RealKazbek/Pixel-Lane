@@ -91,7 +91,17 @@ export function CityViewerApp() {
             point,
           );
           return next
-            ? { ...road, geometry: { ...road.geometry, points: next } }
+            ? {
+                ...road,
+                geometry: { ...road.geometry, points: next },
+                corner_smoothing: next.map((_, index) =>
+                  index === segmentIndex + 1
+                    ? 0
+                    : (road.corner_smoothing?.[
+                        index > segmentIndex + 1 ? index - 1 : index
+                      ] ?? 0),
+                ),
+              }
             : road;
         }),
       }));

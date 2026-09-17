@@ -59,7 +59,7 @@ export function smoothCenterline(
   cornerSmoothing?: number[] | null,
 ): LngLat[] {
   const pts = dedupe(points);
-  if (smoothing <= 0) return pts;
+  if (smoothing <= 0 && !cornerSmoothing) return pts;
   if (pts.length < 3) return pts;
   const values = cornerSmoothing ?? pts.map(() => smoothing);
   const result: LngLat[] = [pts[0]];

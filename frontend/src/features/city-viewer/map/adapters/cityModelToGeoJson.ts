@@ -228,13 +228,43 @@ function roadLabelPlacement(
     .map((point, index) =>
       Math.hypot(point[0] - line[index][0], point[1] - line[index][1]),
     );
-  const half = lengths.reduce((sum, value) => sum + value, 0) / 2;
-  let travelled = 0;
-  let segment = 0;
-  while (segment < lengths.length - 1 && travelled + lengths[segment] < half) {
-    travelled += lengths[segment++];
-  }
-  const ratio = lengths[segment] ? (half - travelled) / lengths[segment] : 0;
+  const total = lengths.reduce((sum, value) => sum + value, 0);
+  const cumulative = [0];
+  for (const length of lengths)
+    cumulative.push(cumulative[cumulative.length - 1] + length);
+  const candidates = Array.from(
+    { length: 9 },
+    (_, index) => 0.3 + index * 0.05,
+  );
+  const candidate = candidates
+    .map((fraction) => {
+      const target = total * fraction;
+      const segment = Math.max(
+        0,
+        cumulative.findIndex((value) => value >= target) - 1,
+      );
+      const window = Math.max(1, Math.floor(line.length * 0.08));
+      const before = line[Math.max(0, segment - window)];
+      const after = line[Math.min(line.length - 1, segment + window + 1)];
+      const curvature = Math.abs(
+        bearing(before, line[segment + 1] ?? before) -
+          bearing(line[segment], after),
+      );
+      return {
+        fraction,
+        segment,
+        score: curvature + Math.abs(fraction - 0.5) * 20,
+      };
+    })
+    .sort((a, b) => a.score - b.score)[0];
+  const target = total * candidate.fraction;
+  const segment = Math.max(
+    0,
+    cumulative.findIndex((value) => value >= target) - 1,
+  );
+  const ratio = lengths[segment]
+    ? (target - cumulative[segment]) / lengths[segment]
+    : 0;
   const start = line[segment];
   const end = line[segment + 1] ?? start;
   const position: GeoJSON.Position = [
