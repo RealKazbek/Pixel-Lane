@@ -43,7 +43,7 @@ export function createGeometryEditor(map: MapLibreMap): GeometryEditor {
     adapter: new TerraDrawMapLibreGLAdapter({ map }),
     modes: [
       new TerraDrawSelectMode({
-        pointerDistance: 18,
+        pointerDistance: 28,
         cursors: {
           pointerOverCoordinate: "grab",
           pointerOverResizeHandle: "grab",
@@ -52,7 +52,7 @@ export function createGeometryEditor(map: MapLibreMap): GeometryEditor {
         },
         styles: {
           selectedPointColor: "#ffffff",
-          selectedPointWidth: 14,
+          selectedPointWidth: 16,
           selectedPointOpacity: 1,
           selectedPointOutlineColor: "#2563eb",
           selectedPointOutlineWidth: 3,
