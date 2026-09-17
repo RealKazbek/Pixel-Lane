@@ -26,6 +26,7 @@ export interface MapLibreMapOptions {
   style: string | StyleSpecification;
   center: [number, number];
   zoom: number;
+  showAttribution?: boolean;
 }
 
 export function useMapLibreMap(
@@ -47,12 +48,16 @@ export function useMapLibreMap(
       style: initialOptions.current.style,
       center: initialOptions.current.center,
       zoom: initialOptions.current.zoom,
+      attributionControl: initialOptions.current.showAttribution ? {} : false,
     });
     map.addControl(new NavigationControl({ showCompass: false }), "top-right");
     map.on("load", () => setIsLoaded(true));
     mapRef.current = map;
+    const resizeObserver = new ResizeObserver(() => map.resize());
+    resizeObserver.observe(container);
 
     return () => {
+      resizeObserver.disconnect();
       map.remove();
       mapRef.current = null;
       setIsLoaded(false);

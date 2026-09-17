@@ -1,27 +1,34 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
+import { useTranslations } from "next-intl";
 import { mapStyleUrl } from "@/lib/config";
 import { buildEditorWorkspace } from "../editor/editorWorkspace";
-import { MapToolbar } from "../map/MapToolbar";
 import { PixelLaneMap } from "../map/PixelLaneMap";
-import {
-  DEFAULT_LAYER_VISIBILITY,
-  type LayerVisibility,
-  type MapSelection,
-} from "../map/types";
+import { DEFAULT_LAYER_VISIBILITY, type MapSelection } from "../map/types";
 
 /** City Model is currently an editor document, not a city picker/viewer. */
 export function CityViewerApp() {
+  const t = useTranslations("cityModel.fullscreen");
   const city = useMemo(() => buildEditorWorkspace(), []);
+  const [isFullscreen, setIsFullscreen] = useState(false);
   const [selected, setSelected] = useState<MapSelection | null>(null);
-  const [fitSignal, setFitSignal] = useState(0);
-  const [layerVisibility, setLayerVisibility] = useState<LayerVisibility>(
-    DEFAULT_LAYER_VISIBILITY,
-  );
+
+  useEffect(() => {
+    if (!isFullscreen) return;
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") setIsFullscreen(false);
+    };
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [isFullscreen]);
 
   return (
-    <main className="relative flex min-h-0 flex-1 overflow-hidden">
+    <main
+      className={`relative flex min-h-0 flex-1 overflow-hidden ${
+        isFullscreen ? "fixed inset-0 z-50 h-dvh w-screen bg-background" : ""
+      }`}
+    >
       <div className="relative flex min-w-0 flex-1 overflow-hidden pixel-lane-editor-grid">
         <PixelLaneMap
           city={city}
@@ -30,36 +37,23 @@ export function CityViewerApp() {
           basemapEnabled={false}
           mapStyleUrl={mapStyleUrl}
           overlayVisible
-          layerVisibility={layerVisibility}
-          fitSignal={fitSignal}
+          layerVisibility={DEFAULT_LAYER_VISIBILITY}
+          fitSignal={0}
           mode="view"
           editorAction={null}
           onEditorStatusChange={() => undefined}
           onRoadSaved={() => undefined}
         />
-        <div className="pointer-events-none absolute inset-x-3 top-3 flex justify-center">
-          <MapToolbar
-            editorOnly
-            basemapEnabled={false}
-            onToggleBasemap={() => undefined}
-            basemapConfigured={false}
-            overlayVisible
-            onToggleOverlay={() => undefined}
-            layerVisibility={layerVisibility}
-            onToggleLayer={(layer) =>
-              setLayerVisibility((current) => ({
-                ...current,
-                [layer]: !current[layer],
-              }))
-            }
-            mode="view"
-            onSetMode={() => undefined}
-            canEditSelection={false}
-            editorStatus="idle"
-            onApply={() => undefined}
-            onCancel={() => undefined}
-            onFitToView={() => setFitSignal((value) => value + 1)}
-          />
+        <div className="pointer-events-none absolute right-3 top-3">
+          <button
+            type="button"
+            onClick={() => setIsFullscreen((value) => !value)}
+            aria-label={isFullscreen ? t("exit") : t("enter")}
+            title={isFullscreen ? t("exit") : t("enter")}
+            className="pointer-events-auto rounded-md border border-border-subtle bg-surface/90 px-2.5 py-1.5 text-xs font-medium text-foreground shadow-sm backdrop-blur transition-colors hover:bg-surface-elevated focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
+          >
+            {isFullscreen ? t("exit") : t("enter")}
+          </button>
         </div>
       </div>
     </main>
