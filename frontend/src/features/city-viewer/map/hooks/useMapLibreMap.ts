@@ -27,6 +27,7 @@ export interface MapLibreMapOptions {
   center: [number, number];
   zoom: number;
   showAttribution?: boolean;
+  navigationControlPosition?: "top-right" | "top-left";
 }
 
 export function useMapLibreMap(
@@ -50,7 +51,10 @@ export function useMapLibreMap(
       zoom: initialOptions.current.zoom,
       attributionControl: initialOptions.current.showAttribution ? {} : false,
     });
-    map.addControl(new NavigationControl({ showCompass: false }), "top-right");
+    map.addControl(
+      new NavigationControl({ showCompass: false }),
+      initialOptions.current.navigationControlPosition ?? "top-right",
+    );
     map.on("load", () => setIsLoaded(true));
     mapRef.current = map;
     const resizeObserver = new ResizeObserver(() => map.resize());
