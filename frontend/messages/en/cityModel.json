@@ -71,6 +71,8 @@
     "overlayOff": "Overlay off",
     "overlayTooltip": "Toggle the Pixel Lane road-network overlay (debugging aid)",
     "select": "Select",
+    "editMode": "Edit",
+    "done": "Done",
     "editGeometry": "Edit geometry",
     "editGeometryTooltip": "Edit the selected road's geometry",
     "editGeometryDisabledTooltip": "Select a road first",
