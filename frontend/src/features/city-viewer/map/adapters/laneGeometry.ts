@@ -29,7 +29,7 @@
  * "controlled/synthetic fixture" vs. "real import", not a demo-specific
  * special case -- see docs/city-model.md's Demo City section.
  *
- * Centerlines are Catmull-Rom smoothed (`geometry/curveSmoothing.ts`,
+ * Centerlines use shared per-corner derived smoothing (`geometry/curveSmoothing.ts`,
  * same `LOCAL_CARTESIAN`-only gate) before any offsetting, and trimmed
  * back at every real junction end by that junction's node radius
  * (`geometry/nodeGeometry.ts`'s `computeNodeRadius`/`trimLine`, the same
@@ -205,7 +205,7 @@ function supportsLaneDetailRendering(
   return coordinateSystem === "LOCAL_CARTESIAN";
 }
 
-/** Builds each road's rendering centerline: Catmull-Rom smoothed, then
+/** Builds each road's rendering centerline: per-corner smoothed, then
  * trimmed back at any end that's a real (2+ road) junction by that
  * junction's node radius -- the same radius
  * `geometry/junctionSolver.ts` trims road envelopes by, so lane markings

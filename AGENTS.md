@@ -334,7 +334,7 @@ patterns. Do not build massive page components that mix all logic and UI.
 - **Work happens on a task branch, never on `main`.** If you find yourself
   checked out on `main` at the start of a task, create or switch to the
   appropriate task branch (see `docs/development/project-management.md`'s
-  branch-naming convention, e.g. `feat/PL-XXX-short-description`) *before*
+  branch-naming convention, e.g. `feat/PL-XXX-short-description`) _before_
   editing or committing anything — do not edit/commit on `main` intending
   to push it or move it to a branch later.
 - Inspect `git status` before making changes; before any destructive
@@ -379,6 +379,14 @@ file — `untracked ≠ temporary`, `ignored ≠ disposable`.
   `chore: configure development tooling`
 - Never use vague messages like `update`, `fix stuff`, `changes`, `final`,
   `work`.
+
+### Staged roadmap work
+
+An umbrella task such as `PL-005` names a capability; a staged task such as
+`PL-005.04` is one independently reviewable implementation increment. Agents
+must identify the next Ready stage, implement only that stage, validate its
+acceptance criteria, and wait for project-lead review before starting a
+dependent stage.
 
 ## 14. Push rules
 
@@ -463,7 +471,7 @@ Load the relevant skill from `.agents/skills/` for the task type:
 
 Skills contain only specialized instructions — they do not repeat this file.
 
-When *writing* a prompt for an AI agent to work in this repository (rather
+When _writing_ a prompt for an AI agent to work in this repository (rather
 than acting as the agent), see `docs/ai-prompting.md` for the canonical
 prompt template, required sections, and examples — it is a downstream
 guide for prompt authors, not a policy source; this file remains
@@ -639,7 +647,7 @@ subsystem, never into a catch-all utils file (see § 3).
 
 **Dependency boundary review.** Before changing a public contract (schema,
 service interface, domain object, DB model, API, shared type), find its
-consumers, callers, tests, and docs *first* — this matters more than
+consumers, callers, tests, and docs _first_ — this matters more than
 saving context (see § 2's task-scoping algorithm and § 17's completion
 checklist).
 
@@ -757,7 +765,7 @@ custom properties defined once in `frontend/src/app/globals.css`.
 - keep the map/City Model workspace's own canvas styling (a
   self-contained engineering-map palette with its own Light/Dark tokens
   in `map/styles/mapTheme.ts`, not the shared app tokens) and the
-  surrounding overlay/toolbar/panel chrome (which *does* use the shared
+  surrounding overlay/toolbar/panel chrome (which _does_ use the shared
   `globals.css` tokens) conceptually distinct, while both must still read
   correctly in both Light and Dark — see `docs/theming.md`;
 - localize any new theme-switcher-adjacent labels through the existing
