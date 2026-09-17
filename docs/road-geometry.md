@@ -63,7 +63,7 @@ GEOMETRY (frontend/.../map/geometry/, pure TS, no MapLibre/React)
   roadEnvelope.ts    centerline -> buffered polygon
   junctionSolver.ts  incident roads at a Node -> one unified Junction polygon
   mergeTaper.ts       variable-width envelope for a slip/merge/split approach
-  curveSmoothing.ts   Catmull-Rom centerline resampling
+  curveSmoothing.ts   per-corner quadratic centerline resampling
   laneConnection.ts   lane-to-lane connector curve through a Junction
 
 RENDERING (frontend/.../map/layers/ + styles/)

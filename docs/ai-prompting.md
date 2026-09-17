@@ -55,7 +55,7 @@ before writing code:
    available, stop and ask for the task content instead of guessing** —
    never infer a goal, scope, or acceptance criteria from the Task ID or
    title alone.
-4. Audit the *actual current implementation* of the area being touched —
+4. Audit the _actual current implementation_ of the area being touched —
    never assume a feature is missing/present because a UI button exists or
    a doc implies it. This repo has repeatedly turned out to be
    further along than a task description assumed; the correct response is
@@ -109,6 +109,12 @@ violate these, even implicitly:
   Simulation — already follow this pattern; point to it as precedent).
 
 ## Task execution lifecycle
+
+For staged roadmap work, treat `PL-XXX` as the umbrella capability and
+`PL-XXX.YY` as the independently reviewable increment. Resolve the next Ready
+stage in Notion, implement only that stage, validate it, and wait for review
+before beginning dependent work. Notion remains the live source for stage
+status and acceptance tracking; this repository records implementation facts.
 
 Adapt to task size; every phase still applies even for small tasks.
 
@@ -283,6 +289,7 @@ Out of scope:
 Do not redesign City Model road/intersection topology or touch simulation.
 
 Acceptance criteria:
+
 - Demo City's known problem junctions render without visible gaps/spikes.
 - No regression in road width/casing styling at other junctions.
 - Verified in both Light and Dark.
@@ -323,6 +330,7 @@ Do not change the Traffic Engine's own handling of a null speed limit —
 that fallback already exists there for manually-created cities.
 
 Acceptance criteria:
+
 - Missing OSM speed tag resolves to the documented default, not null.
 - Existing importer tests still pass; a new test covers the missing-tag case.
 
@@ -387,77 +395,89 @@ change, or anything security-sensitive.
 Not every section is needed for every task — use judgment, but always keep
 1–3, 13, 15, and 16.
 
-| # | Section | Mandatory? |
-|---|---|---|
-| 1 | Task / Goal | Always |
-| 2 | Repository Instructions (pointer to AGENTS.md + entry point — don't paste it) | Always |
-| 3 | Required Audit Before Implementation | Always |
-| 4 | Current Context (what you, the human, already know is true right now) | Usually |
-| 5 | Functional Requirements | Task-dependent |
-| 6 | Architecture Requirements | When touching boundaries/schema/new modules |
-| 7 | Frontend Requirements | Frontend-touching tasks |
-| 8 | Backend Requirements | Backend-touching tasks |
-| 9 | Database Requirements | Schema/query-touching tasks |
-| 10 | Security Requirements | When handling input, auth, secrets, external data |
-| 11 | Internationalization Requirements | Any user-facing UI change |
-| 11b | Light/Dark Theme Requirements | Any user-facing UI change |
-| 12 | Performance and Scalability | Hot paths, large data, rendering loops |
-| 13 | Testing / Validation | Always |
-| 14 | Documentation | When architecture/workflow/data-flow changes |
-| 15 | Git Workflow | Always |
-| 16 | Final Report | Always |
-| 17 | Restrictions / Non-Goals | Always |
+| #   | Section                                                                       | Mandatory?                                        |
+| --- | ----------------------------------------------------------------------------- | ------------------------------------------------- |
+| 1   | Task / Goal                                                                   | Always                                            |
+| 2   | Repository Instructions (pointer to AGENTS.md + entry point — don't paste it) | Always                                            |
+| 3   | Required Audit Before Implementation                                          | Always                                            |
+| 4   | Current Context (what you, the human, already know is true right now)         | Usually                                           |
+| 5   | Functional Requirements                                                       | Task-dependent                                    |
+| 6   | Architecture Requirements                                                     | When touching boundaries/schema/new modules       |
+| 7   | Frontend Requirements                                                         | Frontend-touching tasks                           |
+| 8   | Backend Requirements                                                          | Backend-touching tasks                            |
+| 9   | Database Requirements                                                         | Schema/query-touching tasks                       |
+| 10  | Security Requirements                                                         | When handling input, auth, secrets, external data |
+| 11  | Internationalization Requirements                                             | Any user-facing UI change                         |
+| 11b | Light/Dark Theme Requirements                                                 | Any user-facing UI change                         |
+| 12  | Performance and Scalability                                                   | Hot paths, large data, rendering loops            |
+| 13  | Testing / Validation                                                          | Always                                            |
+| 14  | Documentation                                                                 | When architecture/workflow/data-flow changes      |
+| 15  | Git Workflow                                                                  | Always                                            |
+| 16  | Final Report                                                                  | Always                                            |
+| 17  | Restrictions / Non-Goals                                                      | Always                                            |
 
 ### Reusable template
 
 ```markdown
 # Task
+
 [One or two sentences: what needs to be done.]
 
 # Goal
+
 [The concrete outcome that defines success.]
 
 # Repository Instructions
+
 Read AGENTS.md as the canonical policy, plus your entry point
 (CLAUDE.md / GEMINI.md / native AGENTS.md discovery for Codex) and any
 relevant .agents/skills/ checklist for this task type.
 
 # Required Audit
+
 Before writing any code:
+
 - Inspect the actual current implementation of [area] — do not assume it
   is missing, broken, or complete based on this prompt alone.
 - Report anything below that turns out to be inaccurate instead of
   silently working around it.
 
 # Current Context
+
 [What you know right now: existing files/modules involved, what already
 works, what's known to be missing. Keep this short — point at files
 instead of pasting their contents.]
 
 # Requirements
+
 [Task-specific functional requirements. Be concrete: fields, routes,
 behaviors, acceptance criteria.]
 
 # Architecture Constraints
+
 [Only the constraints relevant to this task — e.g. "this must go through
 the existing city_service layer, not a new direct DB call" — not the
 entire AGENTS.md.]
 
 # Non-Goals
+
 [Explicitly out of scope: what must NOT change, be redesigned, or be
 "cleaned up" as a side effect.]
 
 # Validation
+
 Run the checks relevant to what changed (frontend: format/lint/typecheck/
 test/check:i18n/build; backend: lint/typecheck/test/migration check).
 Report exactly what ran and its result; say explicitly if something
 couldn't be run.
 
 # Git
+
 Follow AGENTS.md's git/commit/push rules: logical Conventional Commits,
 push to the current remote branch, verify remote HEAD matches local HEAD.
 
 # Final Report
+
 Return: audit findings, what changed and why, files touched, validation
 results (pass/fail per check), known limitations, commit hash(es), push
 status.
@@ -469,7 +489,7 @@ A good Pixel Lane prompt:
 
 - States a precise goal and explicit scope boundary.
 - States what you already know to be true about the current system —
-  and flags what you're *not* sure about, so the agent knows to verify it
+  and flags what you're _not_ sure about, so the agent knows to verify it
   rather than trust it blindly.
 - Gives acceptance criteria, not just a vibe.
 - Lists explicit non-goals when scope creep is a real risk.
@@ -529,7 +549,7 @@ workflow mechanics differ.
   about the project) — has no repository access or automatic discovery at
   all. Any Pixel Lane fact it needs must be pasted into the conversation or
   the prompt being drafted; it cannot verify anything against the live
-  repo, so prompts drafted *by* ChatGPT for use *in* the repo must still
+  repo, so prompts drafted _by_ ChatGPT for use _in_ the repo must still
   carry the full "Required Audit" section, since ChatGPT cannot have done
   that audit itself.
 - **Gemini** — reads `GEMINI.md` first (repo convention mirroring
@@ -584,60 +604,73 @@ memory block unless asked.
 
 ## Example prompts
 
-These are illustrations of prompt *construction*, not real assigned tasks.
+These are illustrations of prompt _construction_, not real assigned tasks.
 Do not implement them.
 
 ### Example 1 — Frontend feature (hypothetical)
 
 ```markdown
 # Task
+
 Add a "Recently viewed cities" list to the internal dashboard sidebar.
 
 # Goal
+
 Users who work with multiple cities can jump back to one they viewed
 recently without reopening the city picker.
 
 # Repository Instructions
+
 Read AGENTS.md, CLAUDE.md, and the frontend-review skill.
 
 # Required Audit
+
 Verify how city selection currently works in `frontend/src/features/
 city-viewer/` before assuming there's a "current city" concept to persist.
 Confirm whether any existing local/persisted UI state mechanism exists to
 extend, rather than introducing a new one.
 
 # Current Context
+
 The app shell sidebar and city-viewer feature already exist; city-viewer's
 public boundary is its entry component only — do not reach into its
 internals from the app shell.
 
 # Requirements
+
 - Show up to 5 most-recently-viewed cities in the sidebar.
 - Clicking one navigates to that city in the existing city-viewer.
 - Persist across a page reload for the current browser.
 
 # Architecture Constraints
+
 Must not add new backend endpoints — this is client-side UI state only.
 Must not duplicate city-viewer's domain types; reuse its existing City id.
 
 # Non-Goals
+
 Do not change city-viewer's internal selection/editor logic. Do not add a
 global state management library.
 
 # Internationalization Requirements
+
 All new labels need kk/ru/en entries in the appropriate messages namespace.
 
 # Light/Dark Theme Requirements
+
 Use existing semantic tokens (AGENTS.md § 21) — no hardcoded single-theme
 colors. Verify readable in both Light and Dark before calling this done.
 
 # Validation
+
 npm run format / lint / typecheck / test / check:i18n / build (frontend/).
 
 # Git
+
 Follow AGENTS.md's commit/push rules; verify remote HEAD after push.
 
 # Final Report
+
 Audit findings, files changed, validation results, limitations, commit
 hash(es), push status.
 ```
@@ -646,28 +679,34 @@ hash(es), push status.
 
 ```markdown
 # Task
+
 Add a `Camera` entity to the City Model for future computer-vision
 integration (persistence only — no CV logic).
 
 # Goal
+
 The domain model can represent a camera's location and the road/
 intersection it's associated with, ready for a future importer/consumer.
 
 # Repository Instructions
+
 Read AGENTS.md and the architecture-review + database-review skills.
 
 # Required Audit
+
 Inspect `backend/app/city/` to confirm the exact layering convention used
 by an existing similar entity (e.g. how `ParkingZone` or `TrafficLight` is
 structured across domain/schemas/models/validators/repositories/services/
 api) before adding a new one — match that pattern, don't invent a new one.
 
 # Current Context
+
 City Model v1 already has Road/Lane/Intersection/TrafficLight/TrafficRule/
 ParkingZone/TrafficDemand, normalized in PostgreSQL with real FKs/cascades.
 No PostGIS yet; geometry uses generic Point/Polyline value objects.
 
 # Requirements
+
 - New `Camera` entity: id, city_id, position (Point), optional road_id or
   intersection_id association, status enum (active/planned).
 - A real Alembic migration.
@@ -675,19 +714,23 @@ No PostGIS yet; geometry uses generic Point/Polyline value objects.
   same way existing entities are.
 
 # Database Requirements
+
 PostgreSQL only; real FK constraints with ON DELETE CASCADE from city_id;
 no JSON blob shortcut unless justified the way Road.geometry's JSONB
 exception is documented.
 
 # Non-Goals
+
 Do not implement any camera feed/CV logic. Do not add this to the frontend
 in this task unless explicitly asked.
 
 # Validation
+
 make backend-lint / backend-typecheck / backend-test; make migrate against
 a real Postgres; confirm migration applies cleanly from a clean database.
 
 # Final Report
+
 Audit findings, schema/migration diff, files changed, validation results
 (explicitly note if Postgres wasn't reachable in the environment), commit
 hash(es), push status.
@@ -697,55 +740,66 @@ hash(es), push status.
 
 ```markdown
 # Task
+
 Introduce bounding-box (viewport-based) loading for City Model road data,
 replacing "always fetch the whole city" for cities beyond demo scale.
 
 # Goal
+
 Large cities can be viewed without loading their entire road network into
 the frontend at once, without a rewrite of the City Model domain layer.
 
 # Repository Instructions
+
 Read AGENTS.md fully (architecture, database, performance sections), plus
 architecture-review, database-review, and performance-review skills.
 
 # Required Audit
+
 Confirm current behavior: does the city API already return the whole city
 per request? Is PostGIS installed? What's the actual size of the Almaty
 demo dataset today — is this genuinely needed yet, or premature? Report
 findings before proposing an implementation.
 
 # Current Context
+
 docs/architecture.md documents PostGIS as deferred until a concrete
 spatial-query need exists; docs/city-model.md documents the same trigger
 condition. This task should only proceed with a real justification found
 during the audit — e.g. an actual multi-district import in progress.
 
 # Architecture Constraints
+
 The Traffic Engine (simulation/) must remain unaware of any bbox/pagination
 concept — that's purely an API/frontend concern. Domain logic changes must
 stay reversible/optional (existing "load whole city" behavior should keep
 working for small cities).
 
 # Database Requirements
+
 If PostGIS is introduced, do it via a real Alembic migration adding the
 extension and geometry columns — not a speculative half-measure. Justify
 the decision explicitly.
 
 # Performance and Scalability
+
 Document, in docs/architecture.md, the concrete new trigger condition this
 resolves and what would come next (vector tiles) if it's still not enough.
 
 # Non-Goals
+
 Do not implement vector tiles in this task. Do not migrate away from
 GeoJSON if the audit shows current scale doesn't justify it — a "no, not
 yet, here's why" is an acceptable outcome of this task.
 
 # Validation
+
 Full relevant stack: backend lint/typecheck/test/migration-apply, frontend
 lint/typecheck/test/build, manual confirmation the map still renders the
 existing Almaty demo city correctly.
 
 # Final Report
+
 Audit findings (including if the conclusion is "not needed yet"),
 architecture decision and reasoning, files changed, migrations, validation
 results, commit hash(es), push status.

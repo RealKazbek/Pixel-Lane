@@ -8,45 +8,45 @@ direction this roadmap serves.
 
 ## Phase 0 — Foundation and restructuring
 
-| Item | Status |
-| --- | --- |
-| Canonical product documentation | Implemented (this pass) |
-| Clear module boundaries (`AGENTS.md` §1, §19) | Implemented |
-| Architecture contracts (`docs/architecture.md`) | Implemented |
-| Clean developer onboarding | Implemented (`docs/developer-onboarding.md`) |
-| Demo City | Implemented (Demo District, `make seed-demo-city`) |
-| Real Almaty baseline | Implemented (full-city import, see `docs/full-almaty-verification.md`) |
-| Developer workflow | Implemented (`docs/development.md`, Makefile targets) |
-| Tests / CI expectations | Implemented — `.github/workflows/ci.yml` runs check-agents, frontend, backend (with an isolated PostgreSQL service container), and simulation checks on every PR against `main` (see `docs/testing.md`); not yet a required status check in branch protection — see the `Developer Platform / CI` epic |
+| Item                                            | Status                                                                                                                                                                                                                                                                                                 |
+| ----------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| Canonical product documentation                 | Implemented (this pass)                                                                                                                                                                                                                                                                                |
+| Clear module boundaries (`AGENTS.md` §1, §19)   | Implemented                                                                                                                                                                                                                                                                                            |
+| Architecture contracts (`docs/architecture.md`) | Implemented                                                                                                                                                                                                                                                                                            |
+| Clean developer onboarding                      | Implemented (`docs/developer-onboarding.md`)                                                                                                                                                                                                                                                           |
+| Demo City                                       | Implemented (Demo District, `make seed-demo-city`)                                                                                                                                                                                                                                                     |
+| Real Almaty baseline                            | Implemented (full-city import, see `docs/full-almaty-verification.md`)                                                                                                                                                                                                                                 |
+| Developer workflow                              | Implemented (`docs/development.md`, Makefile targets)                                                                                                                                                                                                                                                  |
+| Tests / CI expectations                         | Implemented — `.github/workflows/ci.yml` runs check-agents, frontend, backend (with an isolated PostgreSQL service container), and simulation checks on every PR against `main` (see `docs/testing.md`); not yet a required status check in branch protection — see the `Developer Platform / CI` epic |
 
 ## v0.1 — City Model
 
-| Item | Status |
-| --- | --- |
-| Road / Lane / Intersection topology | Implemented (`docs/city-model.md`) |
-| Signals (presence + phases) | Implemented; real-world signal *timing* is not imported from OSM (synthetic placeholder phase only) |
-| Parking | Implemented (`ParkingZone`) |
-| Stops | Implemented (`BusStop`) |
-| Markings (turn arrows, bus/cycle lane rendering) | Implemented for rendering; no dedicated pavement-marking domain entity |
-| Import pipeline | Implemented (OSM import, Demo City generator) |
-| One authoritative City Model shared by rendering, editing, analytics | Implemented; **shared by simulation is Planned** — no simulation engine consumes the City Model yet |
-| Full lane/intersection structural editor (draw new roads, edit lanes/signals from the map) | Planned — current editor only moves/adds/removes an existing road's vertices |
+| Item                                                                                       | Status                                                                                                                                          |
+| ------------------------------------------------------------------------------------------ | ----------------------------------------------------------------------------------------------------------------------------------------------- |
+| Road / Lane / Intersection topology                                                        | Implemented (`docs/city-model.md`)                                                                                                              |
+| Signals (presence + phases)                                                                | Implemented; real-world signal _timing_ is not imported from OSM (synthetic placeholder phase only)                                             |
+| Parking                                                                                    | Implemented (`ParkingZone`)                                                                                                                     |
+| Stops                                                                                      | Implemented (`BusStop`)                                                                                                                         |
+| Markings (turn arrows, bus/cycle lane rendering)                                           | Implemented for rendering; no dedicated pavement-marking domain entity                                                                          |
+| Import pipeline                                                                            | Implemented (OSM import, Demo City generator)                                                                                                   |
+| One authoritative City Model shared by rendering, editing, analytics                       | Implemented; **shared by simulation is Planned** — no simulation engine consumes the City Model yet                                             |
+| Full lane/intersection structural editor (draw new roads, edit lanes/signals from the map) | Planned — current editor has a local MVP for drawing roads and inserting/moving vertices, but no persisted structural lane/intersection editing |
 
 ## v0.2 — Traffic Simulation Core
 
-| Item | Status |
-| --- | --- |
-| Static routing, capacity, congestion, and bottleneck analysis | Implemented — **Traffic Engine v1** (`simulation/pixel_lane_simulation/traffic/`), a framework-independent static analyzer: deterministic shortest-path routing, flat per-lane capacity, volume/capacity congestion classification. See `docs/traffic-engine.md`. |
-| Vehicle-level / timestep simulation | Next — not implemented; Traffic Engine v1 is explicitly static, not a simulation |
-| Lane following, intersection movement, signal compliance, queues, lane changing | Next |
-| Configurable traffic demand | In progress — manually-entered `TrafficDemand` exists in the City Model; no synthetic-demand generation tool yet |
-| Vehicle types | Planned |
-| Deterministic simulation, traffic KPIs beyond static congestion metrics | Planned |
+| Item                                                                            | Status                                                                                                                                                                                                                                                            |
+| ------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Static routing, capacity, congestion, and bottleneck analysis                   | Implemented — **Traffic Engine v1** (`simulation/pixel_lane_simulation/traffic/`), a framework-independent static analyzer: deterministic shortest-path routing, flat per-lane capacity, volume/capacity congestion classification. See `docs/traffic-engine.md`. |
+| Vehicle-level / timestep simulation                                             | Next — not implemented; Traffic Engine v1 is explicitly static, not a simulation                                                                                                                                                                                  |
+| Lane following, intersection movement, signal compliance, queues, lane changing | Next                                                                                                                                                                                                                                                              |
+| Configurable traffic demand                                                     | In progress — manually-entered `TrafficDemand` exists in the City Model; no synthetic-demand generation tool yet                                                                                                                                                  |
+| Vehicle types                                                                   | Planned                                                                                                                                                                                                                                                           |
+| Deterministic simulation, traffic KPIs beyond static congestion metrics         | Planned                                                                                                                                                                                                                                                           |
 
 ## v0.3 — Network Adaptive Signals
 
-| Item | Status |
-| --- | --- |
+| Item                                                                                                                                                                                                       | Status                                                    |
+| ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------- |
 | Multiple connected intersections, downstream-capacity awareness, queue prediction, gridlock prevention, adaptive phase selection, corridor coordination, fixed-timing baseline vs. adaptive A/B comparison | Future — depends on v0.2's simulation core existing first |
 
 **Main proof for this phase:** demonstrate measurable congestion

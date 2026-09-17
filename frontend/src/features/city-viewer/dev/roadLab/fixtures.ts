@@ -149,7 +149,7 @@ function buildTest01Straight(b: LabCityBuilder, origin: Point): void {
 }
 
 function buildTest02Curve(b: LabCityBuilder, origin: Point): void {
-  // A gentle S-curve -- exercises Catmull-Rom smoothing
+  // A gentle S-curve -- exercises derived centerline smoothing
   // (geometry/curveSmoothing.ts) without forcing artificial curvature
   // into what would otherwise be a straight road.
   b.addRoad("t02-road", "02 Curve", origin, {
@@ -234,13 +234,9 @@ function buildTest04FourWay(b: LabCityBuilder, origin: Point): void {
     ],
     lanes: [{ index: 0 }],
   });
-  b.addIntersection(
-    "t04-node",
-    origin,
-    [0, 0],
-    [south, north, east, west],
-    { control_type: "TRAFFIC_LIGHT" },
-  );
+  b.addIntersection("t04-node", origin, [0, 0], [south, north, east, west], {
+    control_type: "TRAFFIC_LIGHT",
+  });
 }
 
 function buildTest05YJunction(b: LabCityBuilder, origin: Point): void {
@@ -291,14 +287,19 @@ function buildTest06Merge(b: LabCityBuilder, origin: Point): void {
     ],
     lanes: [{ index: 0 }, { index: 1 }],
   });
-  const hostContinuation = b.addRoad("t06-host-continuation", "06 Merge", origin, {
-    road_type: "ARTERIAL",
-    points: [
-      [0, 0],
-      [80, 0],
-    ],
-    lanes: [{ index: 0 }, { index: 1 }],
-  });
+  const hostContinuation = b.addRoad(
+    "t06-host-continuation",
+    "06 Merge",
+    origin,
+    {
+      road_type: "ARTERIAL",
+      points: [
+        [0, 0],
+        [80, 0],
+      ],
+      lanes: [{ index: 0 }, { index: 1 }],
+    },
+  );
   const slip = b.addRoad("t06-slip", "06 Merge (slip)", origin, {
     road_type: "COLLECTOR",
     points: [
@@ -435,16 +436,10 @@ function buildTest10TurnPocket(b: LabCityBuilder, origin: Point): void {
     ],
     lanes: [{ index: 0 }],
   });
-  b.addIntersection(
-    "t10-node",
-    origin,
-    [0, 0],
-    [approach, through, cross],
-    {
-      connected_lane_ids: [b.laneId(approach, 0), b.laneId(approach, 1)],
-      control_type: "STOP_SIGN",
-    },
-  );
+  b.addIntersection("t10-node", origin, [0, 0], [approach, through, cross], {
+    connected_lane_ids: [b.laneId(approach, 0), b.laneId(approach, 1)],
+    control_type: "STOP_SIGN",
+  });
 }
 
 function buildTest11MinimalPrimitive(b: LabCityBuilder, origin: Point): void {
@@ -479,7 +474,11 @@ const FIXTURE_BUILDERS: {
   { id: "08", label: "08 Lane Transition", build: buildTest08LaneTransition },
   { id: "09", label: "09 Median", build: buildTest09Median },
   { id: "10", label: "10 Turn Pocket", build: buildTest10TurnPocket },
-  { id: "11", label: "11 Minimal Primitive", build: buildTest11MinimalPrimitive },
+  {
+    id: "11",
+    label: "11 Minimal Primitive",
+    build: buildTest11MinimalPrimitive,
+  },
 ];
 
 export interface RoadLabCell {

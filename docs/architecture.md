@@ -42,13 +42,13 @@ Compact registry of implemented subsystems -- keep this current as new
 subsystems are added (see AGENTS.md § 19). Each links to its detailed
 section below.
 
-| Subsystem | Location | Responsibility | Public entry point | Depends on |
-|---|---|---|---|---|
-| City Model v1 | `backend/app/city/` | Persisted city/road-network domain model | `city_service` (validate/create/get/list), REST `/api/v1/cities*` | PostgreSQL |
-| Traffic Engine v1 | `simulation/pixel_lane_simulation/traffic/` | Static network/routing/congestion analysis | `analyze_city()` / `TrafficEngine.analyze()` | Nothing in this repo (its own `CityInput` contract only) |
-| Traffic adapter | `backend/app/traffic/` | Translates City -> Traffic Engine input, serializes result | REST `POST /api/v1/cities/{id}/traffic-analysis` | City Model, Traffic Engine |
-| Map/editor v2 | `frontend/src/features/city-viewer/` | Editor workspace and limited road geometry rendering/editing | `CityViewerApp` component | City Model geometry adapters; persisted API remains available to future editor stages |
-| OSM importer | `backend/app/city/importers/osm/` | Administrative-boundary import from regional PBF or cached polygon chunks; atomic replacement | Full CLI (`make import-almaty-full`), legacy `import_city_from_osm()` | City Model service; OSMnx/PyOsmium (isolated optional `backend[osm]`) |
+| Subsystem         | Location                                    | Responsibility                                                                                | Public entry point                                                    | Depends on                                                                            |
+| ----------------- | ------------------------------------------- | --------------------------------------------------------------------------------------------- | --------------------------------------------------------------------- | ------------------------------------------------------------------------------------- |
+| City Model v1     | `backend/app/city/`                         | Persisted city/road-network domain model                                                      | `city_service` (validate/create/get/list), REST `/api/v1/cities*`     | PostgreSQL                                                                            |
+| Traffic Engine v1 | `simulation/pixel_lane_simulation/traffic/` | Static network/routing/congestion analysis                                                    | `analyze_city()` / `TrafficEngine.analyze()`                          | Nothing in this repo (its own `CityInput` contract only)                              |
+| Traffic adapter   | `backend/app/traffic/`                      | Translates City -> Traffic Engine input, serializes result                                    | REST `POST /api/v1/cities/{id}/traffic-analysis`                      | City Model, Traffic Engine                                                            |
+| Map/editor v2     | `frontend/src/features/city-viewer/`        | Editor workspace and limited road geometry rendering/editing                                  | `CityViewerApp` component                                             | City Model geometry adapters; persisted API remains available to future editor stages |
+| OSM importer      | `backend/app/city/importers/osm/`           | Administrative-boundary import from regional PBF or cached polygon chunks; atomic replacement | Full CLI (`make import-almaty-full`), legacy `import_city_from_osm()` | City Model service; OSMnx/PyOsmium (isolated optional `backend[osm]`)                 |
 
 **Planned** (not implemented, see their sections under "High-level
 components" below): 2D Editor, SUMO adapter, external hardware
@@ -278,6 +278,7 @@ analysis is persisted (no `analysis_runs`/`traffic_metrics_history` table);
 it is computed on demand each call.
 
 **Known v1 limitations** (all deliberate, to be revisited alongside SUMO):
+
 - Static traffic assignment only -- no dynamic equilibrium, no rerouting
   as congestion changes.
 - No vehicle-level or timestep simulation.
@@ -355,15 +356,16 @@ this is an analysis/editing tool, not a navigation product.
 **Coordinate handling.** WGS84 cities pass `Point.x/y` (lon/lat) straight
 through to MapLibre. LOCAL_CARTESIAN cities (no real-world reference) are
 anchored at an arbitrary (0, 0) via an inverse-equirectangular projection
-purely so they have *some* valid position to render at -- this placement
+purely so they have _some_ valid position to render at -- this placement
 is explicitly not geographically meaningful.
 
-**Geometry editing (foundation).** A road's existing vertices can be
-selected, dragged, and have midpoints added/removed via Terra Draw
-(`terra-draw` + `terra-draw-maplibre-gl-adapter`), then persisted with
-`PATCH /api/v1/cities/{id}/roads/{id}/geometry`. This is intentionally
-narrow: replacing one road's polyline, not a general lane/turn/intersection
-editor.
+**Geometry editing (foundation).** The current local editor can select and
+drag existing vertices, insert vertices before/between/after segments, and
+derive independently smoothed corners through MapLibre-backed interaction.
+The reusable Terra Draw adapter and `PATCH /api/v1/cities/{id}/roads/{id}/geometry`
+support explicit source-polyline persistence, but the local editor MVP does
+not auto-save. This remains intentionally narrow: no persisted lane/turn/
+intersection editor.
 
 **Selection & bottlenecks.** Clicking a road/intersection/traffic light on
 the map shows its details in a bottom panel (a traffic light selects its
@@ -391,6 +393,7 @@ background. See `frontend/src/features/city-viewer/map/README.md` for
 the full rationale and the exact thresholds.
 
 **Known v2 limitations:**
+
 - No congestion-level color overlay on the new map yet (v1's congestion
   coloring was not carried over in this pass -- see "Next steps" below).
 - No 3D buildings, satellite imagery, turn-by-turn navigation UI,
@@ -439,11 +442,12 @@ while still importing a dense, realistic network (roughly 180
 intersections, 400+ roads, dozens of signalized intersections).
 
 **What is and isn't real:**
+
 - Road geometry, names, one-way/lane counts, and speed limits: real OSM
   data, mapped through documented fallbacks when a tag is missing (see
   `backend/app/city/importers/osm/defaults.py`).
-- Traffic signal *presence* (`highway=traffic_signals`): real. Traffic
-  signal *timing*: **not real** -- a synthetic single "always green" phase
+- Traffic signal _presence_ (`highway=traffic_signals`): real. Traffic
+  signal _timing_: **not real** -- a synthetic single "always green" phase
   placeholder, since OSM has no timing data. Clearly labeled as such in
   the imported data and in `mapper.py`.
 - Traffic demand/volume: **not imported at all** -- OpenStreetMap has no
@@ -509,7 +513,7 @@ signals, and other structural edits are still planned.
 The v1 Traffic Engine (network graph, routing, static flow assignment,
 congestion/bottleneck analysis) is implemented and independently testable
 without a running frontend or SUMO -- see "Traffic Engine v1" above.
-Traffic *optimization* (signal timing, route optimization) is not
+Traffic _optimization_ (signal timing, route optimization) is not
 implemented yet.
 
 ### Simulation adapter/service boundary **(planned -- SUMO specifically)**

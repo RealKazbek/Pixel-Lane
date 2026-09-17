@@ -12,21 +12,23 @@ Pixel Lane is an early-stage smart-city and urban traffic-management platform fo
 
 ## Status
 
-| Capability | Status |
-| --- | --- |
-| City Model v1 / PostgreSQL | Implemented |
-| Traffic Engine v1 static analysis | Implemented |
-| Almaty OSM import | Implemented |
+| Capability                                     | Status      |
+| ---------------------------------------------- | ----------- |
+| City Model v1 / PostgreSQL                     | Implemented |
+| Traffic Engine v1 static analysis              | Implemented |
+| Almaty OSM import                              | Implemented |
 | MapLibre map and limited road geometry editing | Implemented |
-| Map congestion overlay | Pending |
-| SUMO, adaptive signals, advanced editing | Planned |
+| Map congestion overlay                         | Pending     |
+| SUMO, adaptive signals, advanced editing       | Planned     |
 
 ## What it does today
 
 - Stores cities, roads, lanes, intersections, traffic lights, rules, parking, and demand in PostgreSQL.
 - Runs framework-independent static routing, capacity, congestion, and bottleneck analysis.
 - Imports a bounded real OpenStreetMap road-network sample for central Almaty.
-- Renders the City Model in MapLibre; Terra Draw temporarily edits an existing road polyline before the backend persists it.
+- Renders the City Model in MapLibre; the current editor MVP edits a local
+  road polyline through the production geometry pipeline, while the generic
+  backend geometry endpoint remains available for explicit persistence flows.
 
 ## Architecture
 
