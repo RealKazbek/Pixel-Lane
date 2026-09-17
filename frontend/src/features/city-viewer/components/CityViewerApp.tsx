@@ -7,6 +7,8 @@ import { buildEditorWorkspace } from "../editor/editorWorkspace";
 import { EDITOR_WORLD_BOUNDS } from "../editor/editorWorld";
 import { PixelLaneMap } from "../map/PixelLaneMap";
 import { DEFAULT_LAYER_VISIBILITY, type MapSelection } from "../map/types";
+import type { MapMode } from "../map/types";
+import { EditorToolbar } from "../map/EditorToolbar";
 
 /** City Model is currently an editor document, not a city picker/viewer. */
 export function CityViewerApp() {
@@ -14,6 +16,7 @@ export function CityViewerApp() {
   const [city, setCity] = useState(buildEditorWorkspace);
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [selected, setSelected] = useState<MapSelection | null>(null);
+  const [mode, setMode] = useState<MapMode>("view");
   const [scale, setScale] = useState({ denominator: 2000, barMeters: 100 });
   const handleRoadGeometryChange = useCallback(
     (roadId: string, points: { x: number; y: number }[]) => {
@@ -57,7 +60,7 @@ export function CityViewerApp() {
           layerVisibility={DEFAULT_LAYER_VISIBILITY}
           fitSignal={0}
           editorWorld={EDITOR_WORLD_BOUNDS}
-          mode="edit-geometry"
+          mode={mode}
           editorAction={null}
           onEditorStatusChange={() => undefined}
           onRoadSaved={() => undefined}
@@ -76,6 +79,9 @@ export function CityViewerApp() {
               {isFullscreen ? "↙" : "↗"}
             </span>
           </button>
+        </div>
+        <div className="pointer-events-none absolute left-3 top-3">
+          <EditorToolbar mode={mode} onSetMode={setMode} />
         </div>
         <div className="pointer-events-none absolute bottom-3 right-3 rounded-md border border-border-subtle bg-surface/90 px-2.5 py-1.5 text-[10px] font-medium text-foreground shadow-sm backdrop-blur">
           <div>{t("scale", { denominator: scale.denominator })}</div>

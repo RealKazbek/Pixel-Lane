@@ -43,6 +43,24 @@ export function createGeometryEditor(map: MapLibreMap): GeometryEditor {
     adapter: new TerraDrawMapLibreGLAdapter({ map }),
     modes: [
       new TerraDrawSelectMode({
+        pointerDistance: 18,
+        cursors: {
+          pointerOverCoordinate: "grab",
+          pointerOverResizeHandle: "grab",
+          dragStart: "grabbing",
+          dragEnd: "grab",
+        },
+        styles: {
+          selectedPointColor: "#ffffff",
+          selectedPointWidth: 14,
+          selectedPointOpacity: 1,
+          selectedPointOutlineColor: "#2563eb",
+          selectedPointOutlineWidth: 3,
+          selectedPointOutlineOpacity: 1,
+          selectedLineStringColor: "#2563eb",
+          selectedLineStringWidth: 2,
+          selectedLineStringOpacity: 0,
+        },
         flags: {
           linestring: {
             feature: {
