@@ -8,6 +8,7 @@ import {
   createEditorRoad,
 } from "../editor/editorWorkspace";
 import type { Point } from "../types/city";
+import { updateRoadEndpoint } from "../map/editor/endpointEditing";
 import { EDITOR_WORLD_BOUNDS } from "../editor/editorWorld";
 import { PixelLaneMap } from "../map/PixelLaneMap";
 import { DEFAULT_LAYER_VISIBILITY, type MapSelection } from "../map/types";
@@ -52,6 +53,28 @@ export function CityViewerApp() {
     setSelected(selection);
     setSelectedEndpoint(null);
   }, []);
+  const handleEndpointDrag = useCallback(
+    (endpoint: "A" | "B", point: Point) => {
+      if (selected?.type !== "road") return;
+      setCity((current) => ({
+        ...current,
+        roads: current.roads.map((road) => {
+          if (road.id !== selected.id) return road;
+          const points = road.geometry.points;
+          if (points.length !== 2) return road;
+          const next = updateRoadEndpoint(
+            points as [Point, Point],
+            endpoint === "A" ? 0 : 1,
+            point,
+          );
+          return next
+            ? { ...road, geometry: { ...road.geometry, points: next } }
+            : road;
+        }),
+      }));
+    },
+    [selected],
+  );
   const handleDrawPoint = useCallback(
     (point: Point) => {
       if (!drawStartPoint) {
@@ -118,6 +141,7 @@ export function CityViewerApp() {
           onSelect={handleSelect}
           selectedEndpoint={selectedEndpoint}
           onEndpointSelect={setSelectedEndpoint}
+          onEndpointDrag={handleEndpointDrag}
           basemapEnabled={false}
           mapStyleUrl={mapStyleUrl}
           overlayVisible
