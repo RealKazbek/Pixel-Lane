@@ -27,7 +27,9 @@ export function CityViewerApp() {
   return (
     <main
       className={`relative flex min-h-0 flex-1 overflow-hidden ${
-        isFullscreen ? "fixed inset-0 z-50 h-dvh w-screen bg-background" : ""
+        isFullscreen
+          ? "!fixed !inset-0 !z-[1000] h-dvh w-screen bg-background"
+          : ""
       }`}
     >
       <div className="relative flex min-w-0 flex-1 overflow-hidden">
