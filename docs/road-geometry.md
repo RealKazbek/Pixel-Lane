@@ -180,7 +180,7 @@ intersections array size a client ever holds.
 ## 10. Road Geometry Lab
 
 `/dev/road-lab` (`frontend/src/app/dev/road-lab/`,
-`frontend/src/features/city-viewer/dev/roadLab/`) renders ten
+`frontend/src/features/city-viewer/dev/roadLab/`) renders eleven
 deterministic, isolated primitives through the *exact same* pipeline
 Demo City and Real Almaty use -- `fixtures.ts` builds a small in-memory
 `City` (never touching the backend/database) and `RoadLabApp.tsx` passes
@@ -191,7 +191,10 @@ Fixtures (each in its own grid cell, generously spaced):
 `01 Straight`, `02 Curve`, `03 T Junction`, `04 Four-Way`,
 `05 Y Junction`, `06 Merge`, `07 Split`, `08 Lane Transition`
 (4 -> 3 -> 2 lanes across two chained taper nodes), `09 Median` (two
-physically-separated one-way carriageways), `10 Turn Pocket`.
+physically-separated one-way carriageways), `10 Turn Pocket`, `11 Minimal
+Primitive` (PL-005.01: two points, one straight centerline, one
+fixed-width surface, zero lanes -- the smallest road primitive the
+pipeline supports).
 
 **Adding a new primitive:** add a `buildTestNN...` function in
 `fixtures.ts` following the existing ones' shape (it receives a
