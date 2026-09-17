@@ -29,6 +29,9 @@ export function CityViewerApp() {
   );
   const [scale, setScale] = useState({ denominator: 2000, barMeters: 100 });
   const [drawStartPoint, setDrawStartPoint] = useState<Point | null>(null);
+  const [crosshair, setCrosshair] = useState<{ x: number; y: number } | null>(
+    null,
+  );
   const handleRoadGeometryChange = useCallback(
     (roadId: string, points: { x: number; y: number }[]) => {
       setCity((current) => ({
@@ -90,7 +93,18 @@ export function CityViewerApp() {
           : ""
       }`}
     >
-      <div className="relative flex min-w-0 flex-1 overflow-hidden">
+      <div
+        className="relative flex min-w-0 flex-1 overflow-hidden"
+        onPointerMove={(event) => {
+          if (session.activeTool !== "draw-road") return;
+          const rect = event.currentTarget.getBoundingClientRect();
+          setCrosshair({
+            x: event.clientX - rect.left,
+            y: event.clientY - rect.top,
+          });
+        }}
+        onPointerLeave={() => setCrosshair(null)}
+      >
         <PixelLaneMap
           city={city}
           selected={selected}
@@ -129,7 +143,7 @@ export function CityViewerApp() {
             </span>
           </button>
         </div>
-        <div className="pointer-events-none absolute left-3 top-3">
+        <div className="pointer-events-none absolute left-20 top-3 sm:left-24">
           <EditorToolbar
             session={session}
             onEnterEdit={() => dispatch({ type: "enter-edit" })}
@@ -137,6 +151,21 @@ export function CityViewerApp() {
             onSetTool={(tool) => dispatch({ type: "set-tool", tool })}
           />
         </div>
+        {session.activeTool === "draw-road" && crosshair && (
+          <div
+            className="pointer-events-none absolute inset-0"
+            aria-hidden="true"
+          >
+            <div
+              className="absolute inset-y-0 w-px bg-foreground/25"
+              style={{ left: crosshair.x }}
+            />
+            <div
+              className="absolute inset-x-0 h-px bg-foreground/25"
+              style={{ top: crosshair.y }}
+            />
+          </div>
+        )}
         {session.activeTool === "draw-road" && (
           <div className="pointer-events-none absolute left-1/2 top-3 -translate-x-1/2 rounded-md border border-border-subtle bg-surface/90 px-3 py-1.5 text-xs text-foreground shadow-sm backdrop-blur">
             {drawStartPoint ? t("drawFinish") : t("drawStart")}

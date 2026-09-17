@@ -27,7 +27,7 @@ import {
   type EditorStatus,
 } from "./editor/useGeometryEditor";
 import type { ApplyRoadEditError } from "./editor/applyRoadEdit";
-import { fromLngLat } from "./adapters/coordinates";
+import { fromLngLat, toLngLat } from "./adapters/coordinates";
 import type { Point } from "../types/city";
 import {
   computeCityBounds,
@@ -147,6 +147,9 @@ export function PixelLaneMap({
   const editor = useGeometryEditor();
   const appliedStyleKeyRef = useRef<string | null>(null);
   const [gridZoom, setGridZoom] = useState(16);
+  const [endpointScreenPoints, setEndpointScreenPoints] = useState<
+    { label: string; x: number; y: number }[]
+  >([]);
 
   // `next-themes`'s resolved appearance ("system" already resolved to
   // "light"/"dark") -- the one sanctioned exception to "consume the
@@ -700,5 +703,53 @@ export function PixelLaneMap({
       mode === "edit-geometry" ? "crosshair" : "";
   }, [mode, isLoaded, mapRef]);
 
-  return <div ref={containerRef} className="city-model-map h-full w-full" />;
+  useEffect(() => {
+    const map = mapRef.current;
+    const road =
+      selected?.type === "road"
+        ? city.roads.find((candidate) => candidate.id === selected.id)
+        : null;
+    if (!map || !isLoaded || mode !== "edit-geometry" || !road) {
+      setEndpointScreenPoints([]);
+      return;
+    }
+    const update = () => {
+      setEndpointScreenPoints(
+        road.geometry.points.slice(0, 2).map((point, index) => {
+          const projected = map.project(
+            toLngLat(city.coordinate_system, point),
+          );
+          return {
+            label: index === 0 ? "A" : "B",
+            x: projected.x,
+            y: projected.y,
+          };
+        }),
+      );
+    };
+    update();
+    map.on("move", update);
+    map.on("resize", update);
+    return () => {
+      map.off("move", update);
+      map.off("resize", update);
+    };
+  }, [city, isLoaded, mapRef, mode, selected]);
+
+  return (
+    <div className="city-model-map relative h-full w-full">
+      <div ref={containerRef} className="absolute inset-0" />
+      <div className="pointer-events-none absolute inset-0" aria-hidden="true">
+        {endpointScreenPoints.map((endpoint) => (
+          <span
+            key={endpoint.label}
+            className="absolute -translate-x-1/2 -translate-y-1/2 rounded-full border border-white bg-primary px-1.5 py-0.5 text-[11px] font-bold leading-none text-white shadow-sm"
+            style={{ left: endpoint.x, top: endpoint.y }}
+          >
+            {endpoint.label}
+          </span>
+        ))}
+      </div>
+    </div>
+  );
 }
