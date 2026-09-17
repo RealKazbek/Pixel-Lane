@@ -85,6 +85,12 @@
     "cancel": "Отмена",
     "fitToView": "Вписать в экран"
   },
+  "properties": {
+    "title": "Выбранная дорога",
+    "street": "Улица",
+    "width": "Ширина",
+    "meters": "м"
+  },
   "fullscreen": {
     "smoothing": "Сглаживание",
     "drawStart": "Создание дороги: выберите начальную точку",

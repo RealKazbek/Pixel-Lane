@@ -85,6 +85,12 @@
     "cancel": "Бас тарту",
     "fitToView": "Экранға сыйдыру"
   },
+  "properties": {
+    "title": "Таңдалған жол",
+    "street": "Көше",
+    "width": "Ені",
+    "meters": "м"
+  },
   "fullscreen": {
     "smoothing": "Тегістеу",
     "drawStart": "Жол жасау: бастапқы нүктені таңдаңыз",

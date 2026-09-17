@@ -196,6 +196,14 @@ rendered by the same `PixelLaneMap` and road-surface pipeline as the Lab;
 Demo City and Real Almaty remain backend/import fixtures, but are not loaded
 by the City Model editor page.
 
+PL-005.05 established the multi-vertex editor foundation. PL-005.06 adds a
+selected-road properties panel for street name and physical width. Width uses
+the existing `width_m` City Model field and the width-aware geometry pipeline;
+lane, speed, parking, bus, and road-type properties remain deferred. The
+current local workspace previews property changes locally, while the backend
+also exposes a validated properties update path for persisted City Model
+flows.
+
 The Stage 1 editor world is an explicit local-cartesian rectangle from
 `(-400, -300)` to `(600, 300)`. The three review roads live inside that
 stable 1000m × 600m world. Its grid is generated as MapLibre line geometry

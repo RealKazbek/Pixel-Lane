@@ -16,6 +16,7 @@ import { EDITOR_WORLD_BOUNDS } from "../editor/editorWorld";
 import { PixelLaneMap } from "../map/PixelLaneMap";
 import { DEFAULT_LAYER_VISIBILITY, type MapSelection } from "../map/types";
 import { EditorToolbar } from "../map/EditorToolbar";
+import { RoadPropertiesPanel } from "../map/RoadPropertiesPanel";
 import {
   INITIAL_EDITOR_SESSION,
   reduceEditorSession,
@@ -55,6 +56,18 @@ export function CityViewerApp() {
       }));
     },
     [],
+  );
+  const handleRoadPropertiesChange = useCallback(
+    (changes: { name?: string; width_m?: number }) => {
+      if (selected?.type !== "road") return;
+      setCity((current) => ({
+        ...current,
+        roads: current.roads.map((road) =>
+          road.id === selected.id ? { ...road, ...changes } : road,
+        ),
+      }));
+    },
+    [selected],
   );
   const handleSelect = useCallback((selection: MapSelection | null) => {
     setSelected(selection);
@@ -198,6 +211,13 @@ export function CityViewerApp() {
           onScaleChange={setScale}
           onRoadGeometryChange={handleRoadGeometryChange}
         />
+        {selectedRoad && (
+          <RoadPropertiesPanel
+            key={selectedRoad.id}
+            road={selectedRoad}
+            onChange={handleRoadPropertiesChange}
+          />
+        )}
         <div className="pointer-events-none absolute inset-x-3 top-3 flex justify-end">
           <button
             type="button"
