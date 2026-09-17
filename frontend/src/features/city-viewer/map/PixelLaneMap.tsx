@@ -10,6 +10,7 @@
  */
 
 import { useCallback, useEffect, useMemo, useRef } from "react";
+import { useState } from "react";
 import { useTheme } from "next-themes";
 import type {
   LngLatBoundsLike,
@@ -59,6 +60,8 @@ import { SOURCE_IDS, LAYER_IDS } from "./layers/layerIds";
 import { resolveMapStyle } from "./styles/mapStyle";
 import { resolveMapTheme } from "./styles/mapTheme";
 import type { City } from "../types/city";
+import type { EditorWorldBounds } from "../editor/editorWorld";
+import { buildEditorGrid } from "./grid";
 import type { LayerVisibility, MapMode, MapSelection } from "./types";
 
 export interface EditorAction {
@@ -93,6 +96,7 @@ interface PixelLaneMapProps {
    * show a subtle loading/error indicator (see CityViewerApp.tsx) --
    * this component itself never renders any chrome. */
   onViewportStatusChange?: (status: ViewportDataStatus) => void;
+  editorWorld?: EditorWorldBounds;
 }
 
 export function PixelLaneMap({
@@ -110,6 +114,7 @@ export function PixelLaneMap({
   onEditorStatusChange,
   onRoadSaved,
   onViewportStatusChange,
+  editorWorld,
 }: PixelLaneMapProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   // Entity detail responses must not recenter the map.
@@ -121,6 +126,7 @@ export function PixelLaneMap({
   );
   const editor = useGeometryEditor();
   const appliedStyleKeyRef = useRef<string | null>(null);
+  const [gridZoom, setGridZoom] = useState(16);
 
   // `next-themes`'s resolved appearance ("system" already resolved to
   // "light"/"dark") -- the one sanctioned exception to "consume the
@@ -184,6 +190,9 @@ export function PixelLaneMap({
       }));
 
     return {
+      grid: editorWorld
+        ? buildEditorGrid(editorWorld, city.coordinate_system, gridZoom)
+        : { type: "FeatureCollection", features: [] },
       roads: buildRoadFeatureCollection({
         roads: visibleRoads,
         coordinate_system: city.coordinate_system,
@@ -247,7 +256,20 @@ export function PixelLaneMap({
     city.bus_stops,
     city.crosswalks,
     city.roads,
+    editorWorld,
+    gridZoom,
   ]);
+
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map || !isLoaded || !editorWorld) return;
+    const updateGridZoom = () => setGridZoom(map.getZoom());
+    updateGridZoom();
+    map.on("zoomend", updateGridZoom);
+    return () => {
+      map.off("zoomend", updateGridZoom);
+    };
+  }, [editorWorld, isLoaded, mapRef]);
   const styleKey =
     basemapEnabled && mapStyleUrl ? mapStyleUrl : "pixel-lane-empty";
 
