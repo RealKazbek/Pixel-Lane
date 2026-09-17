@@ -52,6 +52,19 @@ describe("smoothCenterline", () => {
     expect(firstSharp[firstSharp.length - 1]).toEqual(input[input.length - 1]);
   });
 
+  it("uses per-corner values even when the road-wide fallback is zero", () => {
+    const input: LngLat[] = [
+      [0, 0],
+      [0.001, 0.001],
+      [0.002, 0],
+    ];
+    const sharp = smoothCenterline(input, undefined, 0, [0, 0, 0]);
+    const rounded = smoothCenterline(input, undefined, 0, [0, 1, 0]);
+    expect(rounded).not.toEqual(sharp);
+    expect(rounded[0]).toEqual(input[0]);
+    expect(rounded[rounded.length - 1]).toEqual(input[input.length - 1]);
+  });
+
   it("smooths a bent 3-point road without leaving the original endpoints", () => {
     const input: LngLat[] = [
       [0, 0],
