@@ -77,7 +77,7 @@
     "editGeometryTooltip": "Edit the selected road's geometry",
     "editGeometryDisabledTooltip": "Select a road first",
     "drawRoad": "Draw road",
-    "drawRoadTooltip": "In development — road creation is not yet connected to the backend",
+    "drawRoadTooltip": "Create a road on the map",
     "toolGroupLabel": "Tools",
     "viewGroupLabel": "View",
     "apply": "Apply",
@@ -86,6 +86,8 @@
     "fitToView": "Fit to view"
   },
   "fullscreen": {
+    "drawStart": "Create road: choose a start point",
+    "drawFinish": "Start point set — choose an end point",
     "enter": "Expand workspace",
     "exit": "Exit workspace",
     "scale": "Scale 1:{denominator}",

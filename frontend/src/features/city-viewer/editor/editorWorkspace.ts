@@ -1,4 +1,4 @@
-import type { City } from "../types/city";
+import type { City, Point, Road } from "../types/city";
 
 /** The initial, intentionally local editor document for PL-005.01. */
 export function buildEditorWorkspace(): City {
@@ -32,11 +32,15 @@ export function buildEditorWorkspace(): City {
   };
 }
 
-function makeEditorRoad(
+export function createEditorRoad(
   id: string,
   name: string,
-  points: [{ x: number; y: number }, { x: number; y: number }],
-) {
+  points: [Point, Point],
+): Road {
+  return makeEditorRoad(id, name, points);
+}
+
+function makeEditorRoad(id: string, name: string, points: [Point, Point]) {
   return {
     id,
     city_id: "editor-workspace",

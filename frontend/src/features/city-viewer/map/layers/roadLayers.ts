@@ -71,6 +71,11 @@ export function buildRoadLayers(
     ["feature-state", "selected"],
     false,
   ] as unknown as ExpressionSpecification;
+  const isHovered: ExpressionSpecification = [
+    "boolean",
+    ["feature-state", "hovered"],
+    false,
+  ] as unknown as ExpressionSpecification;
 
   // Bridge/tunnel/level metadata (`is_bridge`, `is_tunnel`, `level` on
   // each feature) is preserved end-to-end for future rendering passes
@@ -97,6 +102,8 @@ export function buildRoadLayers(
         "case",
         isSelected,
         theme.selected,
+        isHovered,
+        theme.selectedSurface,
         matchOnHierarchy(theme.roadCasing, theme.roadCasing.OTHER),
       ] as ExpressionSpecification,
       "line-width": casingWidth,
@@ -114,6 +121,8 @@ export function buildRoadLayers(
       "line-color": [
         "case",
         isSelected,
+        theme.selectedSurface,
+        isHovered,
         theme.selectedSurface,
         matchOnHierarchy(theme.roadAsphalt, theme.roadAsphalt.OTHER),
       ] as ExpressionSpecification,
@@ -156,7 +165,7 @@ export function buildRoadLayers(
       // MapLibre permits feature-state in paint expressions, but not in a
       // layer filter. Keeping unselected features transparent preserves the
       // same visual result without invalidating the entire layer.
-      "line-opacity": ["case", isSelected, 0.25, 0] as ExpressionSpecification,
+      "line-opacity": ["case", isSelected, 0.25, isHovered, 0.16, 0] as ExpressionSpecification,
     },
   };
 
