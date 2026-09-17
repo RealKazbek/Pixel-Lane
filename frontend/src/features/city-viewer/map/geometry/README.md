@@ -35,9 +35,9 @@ detail of one of those.
   approach, used by `junctionSolver.ts` in place of a constant-width
   envelope when `isMergeCandidate` says a degree-2 node looks like a
   merge (see that file's docstring for the heuristic and its limits).
-- `curveSmoothing.ts` -- Catmull-Rom centerline resampling. Never applied
-  to a source polyline with fewer than 3 vertices, so a straight road
-  never gets curved.
+- `curveSmoothing.ts` -- render-only, independently clamped quadratic corner
+  arcs driven by per-vertex smoothing values. Never applied to a source
+  polyline with fewer than 3 vertices, so a straight road never gets curved.
 - `laneConnection.ts` -- explicit lane-to-lane connector curve through a
   junction (a tangent-continuous cubic Bezier), distinct from decorative
   lane-separator markings -- see docs/road-geometry.md 6 for why this
@@ -56,7 +56,7 @@ detail of one of those.
   degrades gracefully for all of them; see its own regression tests
   (`../__tests__/junctionSolver.test.ts`) for one fixture per case.
 - `Intersection.connected_road_ids` (the City Model's real topology) is
-  the only source of truth for *which* roads should be merged into one
+  the only source of truth for _which_ roads should be merged into one
   junction surface. Nothing in this module infers connectivity from
   geometry -- see `roadSurfaceGeometry.ts`'s docstring.
 - `PLATE_DILATION_M` in `junctionSolver.ts` (a ~3cm outward nudge before
@@ -70,7 +70,7 @@ detail of one of those.
 
 A new geometry primitive (e.g. a real tangent-circle fillet instead of
 the current Bezier-bulge approximation, or lane-through-junction
-clipping) belongs here, not in `adapters/`. A new *rendering* concern
+clipping) belongs here, not in `adapters/`. A new _rendering_ concern
 (paint expressions, zoom gating, icons) belongs in `map/layers/`/
 `map/styles/` instead -- see the top-level `map/README.md`.
 

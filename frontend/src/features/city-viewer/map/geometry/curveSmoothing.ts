@@ -1,9 +1,8 @@
 /**
- * Catmull-Rom centerline smoothing -- resamples an already-curved
- * centerline into a smooth curve without introducing curvature that
- * wasn't already there.
+ * Render-only polyline corner smoothing using independently sampled
+ * quadratic arcs.
  *
- * A straight 2-point road is a no-op by construction (Catmull-Rom needs
+ * A straight 2-point road is a no-op by construction (corner smoothing needs
  * a bend to have anything to smooth), so this never curves a road that
  * was straight in the source data -- matches the task's "do not
  * arbitrarily curve every real road" requirement without a separate
@@ -24,10 +23,7 @@ export interface SmoothingOptions {
   /** How many interpolated points to insert per original segment. */
   samplesPerSegment: number;
   /** Maximum lateral distance (degrees, same units as the input
-   * coordinates) a smoothed point may deviate from the straight chord
-   * between its two nearest original vertices -- bounds how much a
-   * single sharp source vertex can bow the curve, so smoothing softens a
-   * bend instead of distorting the route. */
+   * coordinates) a smoothed point may deviate from the straight chord. */
   maxTangentInfluence: number;
 }
 

@@ -7,8 +7,12 @@ The toolbar's master "Overlay" toggle shows/hides everything at once (a debuggin
 Road casing/surface, markings, selection, junctions, signals, and labels have an explicit draw order. Selection uses MapLibre feature-state, not source mutation. Labels choose one longest segment per street name; pass-through topology nodes are shown only at detailed zoom.
 
 ```text
-City Model → GeoJSON adapter → MapLibre → Terra Draw temporary edit
-→ Apply → PATCH road geometry → City Model → refetch
+City Model/editor state → derived centerline → GeoJSON adapter → MapLibre
 ```
 
-Only an existing road polyline can currently be edited. No lane, intersection, signal, new-road, or congestion-overlay editor exists. See the implementation [map README](../frontend/src/features/city-viewer/map/README.md).
+The current editor MVP keeps local vertex insertion, dragging, and per-corner
+smoothing in React state and renders the result through the production
+geometry adapters. The generic geometry PATCH API persists source polyline
+vertices, but the current editor workspace does not auto-save local edits and
+the API has no smoothing-metadata field yet. No lane, intersection, signal,
+or congestion-overlay editor exists. See the implementation [map README](../frontend/src/features/city-viewer/map/README.md).
