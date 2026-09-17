@@ -12,6 +12,7 @@ import { useEffect, useRef, useState } from "react";
 import {
   Map as MapLibreMap,
   NavigationControl,
+  ScaleControl,
   setWorkerUrl,
   type StyleSpecification,
 } from "maplibre-gl";
@@ -28,6 +29,7 @@ export interface MapLibreMapOptions {
   zoom: number;
   showAttribution?: boolean;
   navigationControlPosition?: "top-right" | "top-left";
+  showScaleControl?: boolean;
 }
 
 export function useMapLibreMap(
@@ -55,6 +57,12 @@ export function useMapLibreMap(
       new NavigationControl({ showCompass: false }),
       initialOptions.current.navigationControlPosition ?? "top-right",
     );
+    if (initialOptions.current.showScaleControl) {
+      map.addControl(
+        new ScaleControl({ maxWidth: 100, unit: "metric" }),
+        "bottom-right",
+      );
+    }
     map.on("load", () => setIsLoaded(true));
     mapRef.current = map;
     const resizeObserver = new ResizeObserver(() => map.resize());

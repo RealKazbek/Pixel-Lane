@@ -87,10 +87,6 @@
     "enter": "Expand workspace",
     "exit": "Exit workspace"
   },
-  "workspace": {
-    "world": "World: {width} × {height} m",
-    "grid": "Grid: {size} m"
-  },
   "editor": {
     "minPointsError": "A road needs at least 2 points.",
     "saveFailed": "Failed to save the edited road geometry."

@@ -204,7 +204,7 @@ export function buildRoadLabelLayer(theme: MapThemeColors): LayerSpecification {
     paint: {
       "text-color": theme.roadLabel,
       "text-halo-color": theme.roadLabelHalo,
-      "text-halo-width": 1.6,
+      "text-halo-width": 2.2,
       "text-opacity": 1,
     },
   };

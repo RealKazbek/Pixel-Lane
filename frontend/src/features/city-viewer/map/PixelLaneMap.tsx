@@ -30,6 +30,7 @@ import type { ApplyRoadEditError } from "./editor/applyRoadEdit";
 import {
   computeCityBounds,
   computeReferenceLatitude,
+  computeEditorWorldBounds,
 } from "./adapters/cityBounds";
 import {
   buildIntersectionFeatureCollection,
@@ -62,7 +63,6 @@ import { resolveMapTheme } from "./styles/mapTheme";
 import type { City } from "../types/city";
 import type { EditorWorldBounds } from "../editor/editorWorld";
 import { buildEditorGrid } from "./grid";
-import { gridIntervalForZoom } from "./grid";
 import type { LayerVisibility, MapMode, MapSelection } from "./types";
 
 export interface EditorAction {
@@ -98,7 +98,6 @@ interface PixelLaneMapProps {
    * this component itself never renders any chrome. */
   onViewportStatusChange?: (status: ViewportDataStatus) => void;
   editorWorld?: EditorWorldBounds;
-  onGridIntervalChange?: (interval: number) => void;
 }
 
 export function PixelLaneMap({
@@ -117,12 +116,16 @@ export function PixelLaneMap({
   onRoadSaved,
   onViewportStatusChange,
   editorWorld,
-  onGridIntervalChange,
 }: PixelLaneMapProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   // Entity detail responses must not recenter the map.
-  const boundsKey = JSON.stringify(city.bounds ?? null);
-  const bounds = useMemo(() => computeCityBounds(city), [city.id, boundsKey]); // eslint-disable-line react-hooks/exhaustive-deps
+  const bounds = useMemo(
+    () =>
+      editorWorld
+        ? computeEditorWorldBounds(editorWorld, city.coordinate_system)
+        : computeCityBounds(city),
+    [city, editorWorld],
+  );
   const referenceLatitude = useMemo(
     () => computeReferenceLatitude(city),
     [city],
@@ -145,6 +148,7 @@ export function PixelLaneMap({
   const { mapRef, isLoaded } = useMapLibreMap(containerRef, {
     style: resolveMapStyle(basemapEnabled, mapStyleUrl, "transparent"),
     navigationControlPosition: editorWorld ? "top-left" : "top-right",
+    showScaleControl: Boolean(editorWorld),
     // A reasonable initial guess only -- the fit-to-view effect below runs
     // right after load and corrects this to the city's actual bounds. Still
     // worth getting right: it's what's briefly visible before that fit runs.
@@ -270,14 +274,13 @@ export function PixelLaneMap({
     const updateGridZoom = () => {
       const zoom = map.getZoom();
       setGridZoom(zoom);
-      onGridIntervalChange?.(gridIntervalForZoom(zoom));
     };
     updateGridZoom();
     map.on("zoomend", updateGridZoom);
     return () => {
       map.off("zoomend", updateGridZoom);
     };
-  }, [editorWorld, isLoaded, mapRef, onGridIntervalChange]);
+  }, [editorWorld, isLoaded, mapRef]);
   const styleKey =
     basemapEnabled && mapStyleUrl ? mapStyleUrl : "pixel-lane-empty";
 
@@ -404,9 +407,9 @@ export function PixelLaneMap({
   useEffect(() => {
     const map = mapRef.current;
     if (!map || !isLoaded || !bounds) return;
-    map.fitBounds(bounds, { padding: 48, duration: 0 });
+    map.fitBounds(bounds, { padding: editorWorld ? 16 : 48, duration: 0 });
     // eslint-disable-next-line react-hooks/exhaustive-deps -- fitSignal is a manual trigger
-  }, [isLoaded, bounds, fitSignal]);
+  }, [isLoaded, bounds, editorWorld, fitSignal]);
 
   // Independent "jump to a specific area" camera request -- e.g. the
   // Road Geometry Lab's fixture list. Only reacts to `token` changing,

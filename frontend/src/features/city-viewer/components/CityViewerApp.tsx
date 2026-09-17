@@ -1,27 +1,19 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useTranslations } from "next-intl";
 import { mapStyleUrl } from "@/lib/config";
 import { buildEditorWorkspace } from "../editor/editorWorkspace";
 import { EDITOR_WORLD_BOUNDS } from "../editor/editorWorld";
 import { PixelLaneMap } from "../map/PixelLaneMap";
 import { DEFAULT_LAYER_VISIBILITY, type MapSelection } from "../map/types";
-import { gridIntervalForZoom } from "../map/grid";
 
 /** City Model is currently an editor document, not a city picker/viewer. */
 export function CityViewerApp() {
   const t = useTranslations("cityModel.fullscreen");
-  const workspaceT = useTranslations("cityModel.workspace");
   const city = useMemo(() => buildEditorWorkspace(), []);
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [selected, setSelected] = useState<MapSelection | null>(null);
-  const [gridInterval, setGridInterval] = useState(() =>
-    gridIntervalForZoom(16),
-  );
-  const handleGridIntervalChange = useCallback((interval: number) => {
-    setGridInterval(interval);
-  }, []);
 
   useEffect(() => {
     if (!isFullscreen) return;
@@ -53,7 +45,6 @@ export function CityViewerApp() {
           editorAction={null}
           onEditorStatusChange={() => undefined}
           onRoadSaved={() => undefined}
-          onGridIntervalChange={handleGridIntervalChange}
         />
         <div className="pointer-events-none absolute inset-x-3 top-3 flex justify-end">
           <button
@@ -67,15 +58,6 @@ export function CityViewerApp() {
               {isFullscreen ? "↙" : "↗"}
             </span>
           </button>
-        </div>
-        <div className="pointer-events-none absolute bottom-3 left-3 rounded-md border border-border-subtle bg-surface/85 px-2 py-1 text-[10px] leading-4 text-muted-foreground shadow-sm backdrop-blur">
-          <div>
-            {workspaceT("world", {
-              width: EDITOR_WORLD_BOUNDS.maxX - EDITOR_WORLD_BOUNDS.minX,
-              height: EDITOR_WORLD_BOUNDS.maxY - EDITOR_WORLD_BOUNDS.minY,
-            })}
-          </div>
-          <div>{workspaceT("grid", { size: gridInterval })}</div>
         </div>
       </div>
     </main>

@@ -1,5 +1,5 @@
-export const LABEL_MIN_FONT_SIZE = 8;
-export const LABEL_MAX_FONT_SIZE = 13;
+export const LABEL_MIN_FONT_SIZE = 9;
+export const LABEL_MAX_FONT_SIZE = 16;
 export const LABEL_GLYPH_WIDTH_FACTOR = 0.62;
 export const LABEL_ENDPOINT_PADDING_PX = 12;
 
