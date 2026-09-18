@@ -144,6 +144,18 @@ direction-based defaults (dashed for same-direction lanes, double-solid for
 opposing lanes) and yellow outer edges. Boundary arrays remain ordered by
 adjacent lane index and are preserved when lane count changes where possible.
 
+### PL-005.11 endpoint topology
+
+The local editor reuses `Intersection` as the one canonical road-endpoint node;
+it does not introduce an `EditorNode` or infer a graph from geometry. A snap
+adds the involved road IDs to `Intersection.connected_road_ids` and sets both
+endpoint coordinates to `Intersection.position`. Consequently, identical
+coordinates without the shared intersection ID remain disconnected, while one
+shared ID requires one canonical rendered position. Only road start/end
+vertices participate. This local transform is the topology foundation for the
+next connected-road-chain stage, but it is not yet auto-persisted and does not
+provide segment snapping, splitting, or explicit detach UX.
+
 Added by migration `f3b7c1d92a58`, on top of Part 1. This is normalized
 lane metadata. The editor's derived lane geometry and basic markings are
 documented in the PL-005.07–.09 section above; backend lane rows remain

@@ -16,6 +16,7 @@ import type {
   LngLatBoundsLike,
   Map as MapLibreMap,
   MapLayerMouseEvent,
+  MapMouseEvent,
 } from "maplibre-gl";
 import { useMapLibreMap } from "./hooks/useMapLibreMap";
 import {
@@ -65,6 +66,15 @@ import { resolveMapStyle } from "./styles/mapStyle";
 import { resolveMapTheme } from "./styles/mapTheme";
 import type { City } from "../types/city";
 import type { EditorWorldBounds } from "../editor/editorWorld";
+import {
+  buildEndpointSnapTargets,
+  findEndpointSnapCandidate,
+  findRoadEndpointNode,
+  roadEndpointForVertex,
+  type EndpointSnapCandidate,
+  type EndpointSnapTarget,
+  type ScreenEndpointSnapTarget,
+} from "../editor/endpointSnapping";
 import { buildEditorGrid } from "./grid";
 import type { LayerVisibility, MapMode, MapSelection } from "./types";
 
@@ -79,6 +89,11 @@ interface PixelLaneMapProps {
   selectedVertexIndex?: number | null;
   onVertexSelect?: (index: number) => void;
   onVertexDrag?: (index: number, point: Point) => void;
+  onVertexDragEnd?: (
+    index: number,
+    snapTarget: EndpointSnapTarget | null,
+    previousNodeId: string | null,
+  ) => void;
   onInsertPoint?: (segmentIndex: number, point: Point) => void;
   onSelect: (selection: MapSelection | null) => void;
   basemapEnabled: boolean;
@@ -95,7 +110,8 @@ interface PixelLaneMapProps {
   focusBounds?: { bounds: LngLatBoundsLike; token: number } | null;
   mode: MapMode;
   activeTool?: "select" | "draw-road";
-  onDrawPoint?: (point: Point) => void;
+  snapLabel?: string;
+  onDrawPoint?: (point: Point, snapTarget: EndpointSnapTarget | null) => void;
   editorAction: EditorAction | null;
   onEditorStatusChange: (
     status: EditorStatus,
@@ -120,6 +136,7 @@ export function PixelLaneMap({
   selectedVertexIndex = null,
   onVertexSelect,
   onVertexDrag,
+  onVertexDragEnd,
   onInsertPoint,
   onSelect,
   basemapEnabled,
@@ -130,6 +147,7 @@ export function PixelLaneMap({
   focusBounds,
   mode,
   activeTool = "select",
+  snapLabel = "Snap",
   onDrawPoint,
   editorAction,
   onEditorStatusChange,
@@ -162,6 +180,23 @@ export function PixelLaneMap({
     { segmentIndex: number; point: Point; x: number; y: number }[]
   >([]);
   const [draggingEndpoint, setDraggingEndpoint] = useState<string | null>(null);
+  const [snapCandidate, setSnapCandidate] =
+    useState<EndpointSnapCandidate | null>(null);
+
+  const projectSnapTargets = useCallback(
+    (map: MapLibreMap): ScreenEndpointSnapTarget[] =>
+      buildEndpointSnapTargets(city).map((target) => {
+        const projected = map.project(
+          toLngLat(city.coordinate_system, target.point),
+        );
+        return {
+          ...target,
+          screenX: projected.x,
+          screenY: projected.y,
+        };
+      }),
+    [city],
+  );
 
   // `next-themes`'s resolved appearance ("system" already resolved to
   // "light"/"dark") -- the one sanctioned exception to "consume the
@@ -467,14 +502,24 @@ export function PixelLaneMap({
     const map = mapRef.current;
     if (!map || !isLoaded) return;
 
-    const handleIntersectionClick = (event: MapLayerMouseEvent) => {
-      if (activeTool === "draw-road") {
-        onDrawPoint?.(
-          fromLngLat(city.coordinate_system, [
+    const resolveDrawPoint = (event: MapMouseEvent) => {
+      const candidate = findEndpointSnapCandidate(
+        event.point,
+        projectSnapTargets(map),
+        null,
+      );
+      const point = candidate
+        ? candidate.point
+        : fromLngLat(city.coordinate_system, [
             event.lngLat.lng,
             event.lngLat.lat,
-          ]),
-        );
+          ]);
+      onDrawPoint?.(point, candidate);
+      setSnapCandidate(null);
+    };
+    const handleIntersectionClick = (event: MapLayerMouseEvent) => {
+      if (activeTool === "draw-road") {
+        resolveDrawPoint(event);
         return;
       }
       const feature = event.features?.[0];
@@ -484,12 +529,7 @@ export function PixelLaneMap({
     };
     const handleRoadClick = (event: MapLayerMouseEvent) => {
       if (activeTool === "draw-road") {
-        onDrawPoint?.(
-          fromLngLat(city.coordinate_system, [
-            event.lngLat.lng,
-            event.lngLat.lat,
-          ]),
-        );
+        resolveDrawPoint(event);
         return;
       }
       const feature = event.features?.[0];
@@ -499,12 +539,7 @@ export function PixelLaneMap({
     };
     const handleTrafficLightClick = (event: MapLayerMouseEvent) => {
       if (activeTool === "draw-road") {
-        onDrawPoint?.(
-          fromLngLat(city.coordinate_system, [
-            event.lngLat.lng,
-            event.lngLat.lat,
-          ]),
-        );
+        resolveDrawPoint(event);
         return;
       }
       const intersectionId = event.features?.[0]?.properties?.intersection_id;
@@ -522,12 +557,7 @@ export function PixelLaneMap({
           LAYER_IDS.trafficLights,
         ].filter((id) => map.getLayer(id));
         if (!map.queryRenderedFeatures(event.point, { layers }).length)
-          onDrawPoint?.(
-            fromLngLat(city.coordinate_system, [
-              event.lngLat.lng,
-              event.lngLat.lat,
-            ]),
-          );
+          resolveDrawPoint(event);
         return;
       }
       const layers = [
@@ -539,6 +569,15 @@ export function PixelLaneMap({
       ].filter((id) => map.getLayer(id));
       if (!map.queryRenderedFeatures(event.point, { layers }).length)
         onSelect(null);
+    };
+    const handleDrawMove = (event: MapMouseEvent) => {
+      if (activeTool !== "draw-road") return;
+      setSnapCandidate(
+        findEndpointSnapCandidate(event.point, projectSnapTargets(map), null),
+      );
+    };
+    const clearDrawSnap = () => {
+      if (activeTool === "draw-road") setSnapCandidate(null);
     };
     let hoveredRoadId: string | null = null;
     const handleRoadHover = (event: MapLayerMouseEvent) => {
@@ -584,6 +623,8 @@ export function PixelLaneMap({
     map.on("mouseout", LAYER_IDS.roadSurfaceFill, clearRoadHover);
     map.on("click", LAYER_IDS.trafficLights, handleTrafficLightClick);
     map.on("click", handleBackgroundClick);
+    map.on("mousemove", handleDrawMove);
+    map.on("mouseout", clearDrawSnap);
 
     return () => {
       map.off("click", LAYER_IDS.intersections, handleIntersectionClick);
@@ -596,6 +637,8 @@ export function PixelLaneMap({
       map.off("mouseout", LAYER_IDS.roadSurfaceFill, clearRoadHover);
       map.off("click", LAYER_IDS.trafficLights, handleTrafficLightClick);
       map.off("click", handleBackgroundClick);
+      map.off("mousemove", handleDrawMove);
+      map.off("mouseout", clearDrawSnap);
     };
   }, [
     isLoaded,
@@ -604,6 +647,7 @@ export function PixelLaneMap({
     activeTool,
     onDrawPoint,
     city.coordinate_system,
+    projectSnapTargets,
     mode,
   ]);
 
@@ -794,6 +838,19 @@ export function PixelLaneMap({
     <div className="city-model-map relative h-full w-full">
       <div ref={containerRef} className="h-full w-full" />
       <div className="pointer-events-none absolute inset-0" aria-hidden="true">
+        {snapCandidate && (activeTool === "draw-road" || draggingEndpoint) && (
+          <span
+            className="absolute h-5 w-5 -translate-x-1/2 -translate-y-1/2 rounded-full border-2 border-primary bg-primary/20 shadow-sm ring-4 ring-primary/20"
+            style={{
+              left: snapCandidate.screenX,
+              top: snapCandidate.screenY,
+            }}
+          >
+            <span className="absolute left-1/2 top-full mt-1 -translate-x-1/2 whitespace-nowrap rounded bg-surface px-1.5 py-0.5 text-[10px] font-semibold text-primary shadow-sm">
+              {snapLabel}
+            </span>
+          </span>
+        )}
         {vertexScreenPoints.map((vertex) => (
           <span
             key={vertex.index}
@@ -809,19 +866,48 @@ export function PixelLaneMap({
               if (!rect) return;
               map.dragPan.disable();
               setDraggingEndpoint(String(index));
+              const roadEndpoint = selectedRoad
+                ? roadEndpointForVertex(selectedRoad, index)
+                : null;
+              const previousNodeId =
+                selectedRoad && roadEndpoint
+                  ? (findRoadEndpointNode(
+                      city.intersections,
+                      selectedRoad,
+                      roadEndpoint,
+                    )?.id ?? null)
+                  : null;
+              const snapTargets = roadEndpoint ? projectSnapTargets(map) : [];
+              let activeSnapTarget: EndpointSnapTarget | null = null;
               const move = (moveEvent: PointerEvent) => {
-                const point = map.unproject([
-                  moveEvent.clientX - rect.left,
-                  moveEvent.clientY - rect.top,
-                ]);
-                onVertexDrag?.(
-                  index,
-                  fromLngLat(city.coordinate_system, [point.lng, point.lat]),
-                );
+                const screenPoint = {
+                  x: moveEvent.clientX - rect.left,
+                  y: moveEvent.clientY - rect.top,
+                };
+                const candidate = roadEndpoint
+                  ? findEndpointSnapCandidate(
+                      screenPoint,
+                      snapTargets,
+                      selectedRoad?.id ?? null,
+                    )
+                  : null;
+                activeSnapTarget = candidate;
+                setSnapCandidate(candidate);
+                if (candidate) {
+                  onVertexDrag?.(index, candidate.point);
+                } else {
+                  const point = map.unproject([screenPoint.x, screenPoint.y]);
+                  onVertexDrag?.(
+                    index,
+                    fromLngLat(city.coordinate_system, [point.lng, point.lat]),
+                  );
+                }
               };
               const finish = () => {
                 map.dragPan.enable();
                 setDraggingEndpoint(null);
+                setSnapCandidate(null);
+                onVertexDragEnd?.(index, activeSnapTarget, previousNodeId);
                 window.removeEventListener("pointermove", move);
                 window.removeEventListener("pointerup", finish);
               };

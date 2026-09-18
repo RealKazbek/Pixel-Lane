@@ -29,6 +29,13 @@ import {
   type RoadPresetId,
 } from "../editor/roadPresets";
 import {
+  addRoadWithEndpointSnaps,
+  finalizeEndpointDrag,
+  findRoadEndpointNode,
+  roadEndpointForVertex,
+  type EndpointSnapTarget,
+} from "../editor/endpointSnapping";
+import {
   INITIAL_EDITOR_SESSION,
   reduceEditorSession,
 } from "../map/editor/editorState";
@@ -47,7 +54,10 @@ export function CityViewerApp() {
     INITIAL_EDITOR_SESSION,
   );
   const [scale, setScale] = useState({ denominator: 2000, barMeters: 100 });
-  const [drawStartPoint, setDrawStartPoint] = useState<Point | null>(null);
+  const [drawStartPoint, setDrawStartPoint] = useState<{
+    point: Point;
+    snapTarget: EndpointSnapTarget | null;
+  } | null>(null);
   const [crosshair, setCrosshair] = useState<{ x: number; y: number } | null>(
     null,
   );
@@ -55,6 +65,16 @@ export function CityViewerApp() {
     selected?.type === "road"
       ? city.roads.find((road) => road.id === selected.id)
       : null;
+  const selectedRoadNodeIds = selectedRoad
+    ? {
+        start:
+          findRoadEndpointNode(city.intersections, selectedRoad, "start")?.id ??
+          null,
+        end:
+          findRoadEndpointNode(city.intersections, selectedRoad, "end")?.id ??
+          null,
+      }
+    : null;
   const handleRoadGeometryChange = useCallback(
     (roadId: string, points: { x: number; y: number }[]) => {
       setCity((current) => ({
@@ -153,6 +173,31 @@ export function CityViewerApp() {
     },
     [selected],
   );
+  const handleEndpointDragEnd = useCallback(
+    (
+      vertexIndex: number,
+      snapTarget: EndpointSnapTarget | null,
+      previousNodeId: string | null,
+    ) => {
+      if (selected?.type !== "road") return;
+      setCity((current) => {
+        const road = current.roads.find(
+          (candidate) => candidate.id === selected.id,
+        );
+        if (!road) return current;
+        const endpoint = roadEndpointForVertex(road, vertexIndex);
+        if (!endpoint) return current;
+        return finalizeEndpointDrag(
+          current,
+          road.id,
+          endpoint,
+          snapTarget,
+          previousNodeId,
+        );
+      });
+    },
+    [selected],
+  );
   const handleInsertPoint = useCallback(
     (segmentIndex: number, point: Point) => {
       if (selected?.type !== "road") return;
@@ -185,21 +230,30 @@ export function CityViewerApp() {
     [selected],
   );
   const handleDrawPoint = useCallback(
-    (point: Point) => {
+    (point: Point, snapTarget: EndpointSnapTarget | null) => {
       if (!drawStartPoint) {
-        setDrawStartPoint(point);
+        setDrawStartPoint({ point, snapTarget });
         return;
       }
-      const dx = point.x - drawStartPoint.x;
-      const dy = point.y - drawStartPoint.y;
+      const dx = point.x - drawStartPoint.point.x;
+      const dy = point.y - drawStartPoint.point.y;
       if (Math.hypot(dx, dy) < 1) return;
       const id = `editor-road-${Date.now()}`;
       const road = createEditorRoad(
         id,
         `Road ${String.fromCharCode(65 + city.roads.length)}`,
-        [drawStartPoint, point],
+        [drawStartPoint.point, point],
       );
-      setCity((current) => ({ ...current, roads: [...current.roads, road] }));
+      setCity((current) => {
+        return (
+          addRoadWithEndpointSnaps(
+            current,
+            road,
+            drawStartPoint.snapTarget,
+            snapTarget,
+          ) ?? current
+        );
+      });
       setSelected({ type: "road", id });
       setDrawStartPoint(null);
       dispatch({ type: "set-tool", tool: "select" });
@@ -251,6 +305,7 @@ export function CityViewerApp() {
           selectedVertexIndex={selectedVertexIndex}
           onVertexSelect={setSelectedVertexIndex}
           onVertexDrag={handleEndpointDrag}
+          onVertexDragEnd={handleEndpointDragEnd}
           onInsertPoint={handleInsertPoint}
           basemapEnabled={false}
           mapStyleUrl={mapStyleUrl}
@@ -266,6 +321,7 @@ export function CityViewerApp() {
           activeTool={
             session.activeTool === "draw-road" ? "draw-road" : "select"
           }
+          snapLabel={t("snap")}
           onDrawPoint={handleDrawPoint}
           editorAction={null}
           onEditorStatusChange={() => undefined}
@@ -277,6 +333,7 @@ export function CityViewerApp() {
           <RoadPropertiesPanel
             key={selectedRoad.id}
             road={selectedRoad}
+            endpointNodeIds={selectedRoadNodeIds ?? { start: null, end: null }}
             onApplyPreset={handleApplyRoadPreset}
             onChange={handleRoadPropertiesChange}
           />

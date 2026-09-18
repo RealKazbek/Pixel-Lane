@@ -111,6 +111,10 @@
     "leftEdge": "Left edge",
     "rightEdge": "Right edge",
     "lanePair": "Lane {left} / {right}",
+    "topology": "Topology",
+    "startNode": "Start node",
+    "endNode": "End node",
+    "notConnected": "Not connected",
     "marking": {
       "NONE": "None",
       "DASHED_WHITE": "Dashed",
@@ -121,6 +125,7 @@
   },
   "fullscreen": {
     "smoothing": "Smoothing",
+    "snap": "Snap",
     "drawStart": "Create road: choose a start point",
     "drawFinish": "Start point set — choose an end point",
     "enter": "Expand workspace",

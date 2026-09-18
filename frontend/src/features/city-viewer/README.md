@@ -35,6 +35,10 @@ does not depend on React or Next.js.
 - Road presets are declarative templates over existing road/lane/marking
   fields. They are applied once, remain manually editable, and never become a
   second road classification or rendering source.
+- Endpoint connectivity is explicit: snapped roads share one existing City
+  Model `Intersection` identity and its canonical position. Coincident endpoint
+  coordinates without that shared node remain disconnected. Screen-space
+  candidate detection and snap feedback are derived UI behavior only.
 
 ## Where to add new code
 
