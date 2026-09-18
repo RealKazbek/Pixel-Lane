@@ -27,6 +27,7 @@ export const MIN_EDITOR_ROAD_WIDTH_M = 2.5;
 
 interface RoadPropertiesPanelProps {
   road: Road;
+  endpointNodeIds: { start: string | null; end: string | null };
   onApplyPreset: (presetId: RoadPresetId) => void;
   onChange: (changes: {
     name?: string;
@@ -42,6 +43,7 @@ interface RoadPropertiesPanelProps {
 
 export function RoadPropertiesPanel({
   road,
+  endpointNodeIds,
   onApplyPreset,
   onChange,
 }: RoadPropertiesPanelProps) {
@@ -275,6 +277,27 @@ export function RoadPropertiesPanel({
           <span className="text-muted-foreground">{t("meters")}</span>
         </div>
       </label>
+      <details className="mt-3 border-t border-border-subtle pt-3">
+        <summary className="cursor-pointer font-medium">
+          {t("topology")}
+        </summary>
+        <dl className="mt-2 grid grid-cols-[auto_1fr] gap-x-2 gap-y-1 text-[11px]">
+          <dt className="text-muted-foreground">{t("startNode")}</dt>
+          <dd
+            className="truncate font-mono"
+            title={endpointNodeIds.start ?? undefined}
+          >
+            {endpointNodeIds.start ?? t("notConnected")}
+          </dd>
+          <dt className="text-muted-foreground">{t("endNode")}</dt>
+          <dd
+            className="truncate font-mono"
+            title={endpointNodeIds.end ?? undefined}
+          >
+            {endpointNodeIds.end ?? t("notConnected")}
+          </dd>
+        </dl>
+      </details>
     </section>
   );
 }

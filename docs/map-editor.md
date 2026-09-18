@@ -25,7 +25,21 @@ lane boundaries, and edge markings; identity, name, source geometry, control
 points, and smoothing are preserved. Presets are templates, not persistent
 road classes: exact semantic matches show the preset name and any manual
 override shows Custom. Full persisted turn/intersection/signal editing remains
-outside the current checkpoint. See the implementation [map
+outside the current checkpoint.
+
+PL-005.11 adds endpoint-only snapping for road creation and endpoint dragging.
+Candidates are existing road endpoints or their existing City Model
+`Intersection`, selected by nearest distance inside a centralized 18 px
+screen-space tolerance. A small target ring and Snap label are shown only
+while a valid candidate is active. Committing a snap creates or reuses one
+`Intersection`, adds both roads to its `connected_road_ids`, and copies its
+canonical position to both road endpoints. Visual overlap does not equal
+connectivity; shared node identity defines connectivity. Already connected
+endpoints return to their node when released without another snap because the
+editor has no explicit detach command yet. Segment snapping, automatic road
+splitting, and T-junction creation remain later stages. The selected-road
+inspector exposes a collapsed Topology section so this identity can be checked
+during manual acceptance. See the implementation [map
 README](../frontend/src/features/city-viewer/map/README.md).
 
 PL-005.06 adds the first selected-road properties surface: street name and

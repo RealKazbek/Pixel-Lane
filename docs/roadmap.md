@@ -35,11 +35,11 @@ direction this roadmap serves.
 ### PL-005 — Parametric Road Network Editor v0.1
 
 This umbrella capability remains **In progress**. The completed checkpoint is
-PL-005.01–PL-005.10 (straight road primitives, endpoint/vertex editing, road
+PL-005.01–PL-005.11 (straight road primitives, endpoint/vertex editing, road
 creation, curved and multi-segment geometry, width configuration, lane count,
-lane direction, basic lane markings, and reusable road presets). The next
-staged increment is **PL-005.11**. This checkpoint does not imply that the full
-persisted lane/intersection editor is complete.
+lane direction, basic lane markings, reusable road presets, and explicit
+endpoint snapping). The next staged increment is **PL-005.12**. This checkpoint
+does not imply that the full persisted lane/intersection editor is complete.
 
 ## v0.2 — Traffic Simulation Core
 

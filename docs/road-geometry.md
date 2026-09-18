@@ -219,6 +219,17 @@ Road. They do not create a renderer-only profile or a new road type. Geometry,
 identity, name, and smoothing stay unchanged, while the existing centerline,
 lane, marking, and surface adapters derive the updated rendered result.
 
+PL-005.11 connects road endpoints through the existing semantic
+`Intersection` entity. A snapped pair therefore has both geometrically equal
+endpoint coordinates and one shared topological node ID. The node position is
+canonical: snapping to an existing node uses that position for every involved
+endpoint. Coincident coordinates on roads without a shared `Intersection`
+remain disconnected. Only first/last polyline vertices are topology endpoints;
+intermediate curve vertices are never promoted to nodes. Detection uses the
+nearest eligible endpoint within 18 screen pixels, independent of zoom. Road
+surfaces, markings, and the temporary snap ring remain derived from semantic
+state and cannot establish connectivity themselves.
+
 The Stage 1 editor world is an explicit local-cartesian rectangle from
 `(-400, -300)` to `(600, 300)`. The three review roads live inside that
 stable 1000m × 600m world. Its grid is generated as MapLibre line geometry

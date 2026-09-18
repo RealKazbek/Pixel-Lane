@@ -18,7 +18,8 @@ UI, simulation, and hardware concerns.
   document containing three production-generated Stage 1 road primitives.
   The current PL-005 checkpoint supports road creation, endpoint/vertex
   editing, curved multi-segment geometry, width and lane configuration,
-  derived basic markings, and reusable semantic road presets; the separate
+  derived basic markings, reusable semantic road presets, and endpoint
+  snapping backed by explicit City Model `Intersection` identity; the separate
   Road Geometry Lab remains the engineering surface for fixtures. No full
   persisted lane/intersection editor exists.
 - `backend/` — FastAPI + Pydantic + SQLAlchemy + Alembic, PostgreSQL.
@@ -367,14 +368,21 @@ drag existing vertices, insert vertices before/between/after segments, and
 derive independently smoothed corners through MapLibre-backed interaction.
 The reusable Terra Draw adapter and `PATCH /api/v1/cities/{id}/roads/{id}/geometry`
 support explicit source-polyline persistence, but the local editor MVP does
-not auto-save. PL-005.01–PL-005.10 extend this foundation with road creation,
+not auto-save. PL-005.01–PL-005.11 extend this foundation with road creation,
 width configuration, ordered lane count/direction editing, configurable basic
-lane/edge markings, and road presets. Presets are declarative templates that
-write those existing semantic fields; they are not road entity types and do
-not remain attached to a road. The City Model source road and lane metadata
-remain authoritative; centerlines, surfaces, lane boundaries, and markings
-are derived render views. This remains intentionally narrow: no full
-persisted turn/intersection editor.
+lane/edge markings, road presets, and endpoint snapping. Presets are
+declarative templates that write those existing semantic fields; they are not
+road entity types and do not remain attached to a road. Snapping reuses the
+City Model `Intersection` as the canonical topological node: connected roads
+are listed in one `connected_road_ids` set and their snapped endpoints use the
+node's canonical position. Equal endpoint coordinates without that shared
+identity do not establish connectivity. Candidate detection is derived in
+screen space and never inferred from rendered road surfaces or GeoJSON. The
+City Model source road, lane, and intersection metadata remain authoritative;
+centerlines, surfaces, lane boundaries, markings, and snap indicators are
+derived render views. This remains intentionally narrow: there is no segment
+snapping, automatic road splitting, detach interaction, or full persisted
+turn/intersection editor.
 
 **Selection & bottlenecks.** Clicking a road/intersection/traffic light on
 the map shows its details in a bottom panel (a traffic light selects its
