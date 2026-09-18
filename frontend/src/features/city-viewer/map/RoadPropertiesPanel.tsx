@@ -17,11 +17,17 @@ import {
   MIN_EDITOR_LANE_WIDTH_M,
   MAX_EDITOR_LANE_WIDTH_M,
 } from "../editor/laneConfiguration";
+import {
+  matchRoadPreset,
+  ROAD_PRESETS,
+  type RoadPresetId,
+} from "../editor/roadPresets";
 
 export const MIN_EDITOR_ROAD_WIDTH_M = 2.5;
 
 interface RoadPropertiesPanelProps {
   road: Road;
+  onApplyPreset: (presetId: RoadPresetId) => void;
   onChange: (changes: {
     name?: string;
     width_m?: number;
@@ -36,10 +42,12 @@ interface RoadPropertiesPanelProps {
 
 export function RoadPropertiesPanel({
   road,
+  onApplyPreset,
   onChange,
 }: RoadPropertiesPanelProps) {
   const t = useTranslations("cityModel.properties");
   const [name, setName] = useState(road.name);
+  const matchedPreset = matchRoadPreset(road);
   const laneCount = Math.max(MIN_EDITOR_LANE_COUNT, road.lanes.length);
   const laneWidth = laneWidthMeters(road);
   const width = road.width_m ?? laneCount * laneWidth;
@@ -84,10 +92,40 @@ export function RoadPropertiesPanel({
   };
 
   return (
-    <section className="pointer-events-auto absolute right-3 top-16 z-20 w-56 rounded-lg border border-border-subtle bg-surface/95 p-3 text-xs text-foreground shadow-lg backdrop-blur">
+    <section className="pointer-events-auto absolute right-3 top-16 z-20 max-h-[calc(100%-5rem)] w-56 overflow-y-auto rounded-lg border border-border-subtle bg-surface/95 p-3 text-xs text-foreground shadow-lg backdrop-blur">
       <h2 className="mb-3 text-sm font-semibold">{t("title")}</h2>
       <label className="block">
-        <span className="mb-1 block text-muted-foreground">{t("street")}</span>
+        <span className="mb-1 block text-muted-foreground">{t("preset")}</span>
+        <select
+          value={matchedPreset?.id ?? "custom"}
+          onChange={(event) => {
+            if (event.target.value !== "custom") {
+              onApplyPreset(event.target.value as RoadPresetId);
+            }
+          }}
+          className="w-full rounded-md border border-border-subtle bg-background px-2 py-1.5 text-foreground outline-none focus-visible:ring-2 focus-visible:ring-primary"
+          aria-describedby="road-preset-description"
+        >
+          <option value="custom">{t("presetCustom")}</option>
+          {ROAD_PRESETS.map((preset) => (
+            <option key={preset.id} value={preset.id}>
+              {t(`presets.${preset.label}`)}
+            </option>
+          ))}
+        </select>
+        <span
+          id="road-preset-description"
+          className="mt-1 block text-[11px] leading-snug text-muted-foreground"
+        >
+          {matchedPreset
+            ? t(`presets.${matchedPreset.description}`)
+            : t("presetCustomDescription")}
+        </span>
+      </label>
+      <label className="block">
+        <span className="mb-1 mt-3 block text-muted-foreground">
+          {t("street")}
+        </span>
         <input
           value={name}
           onChange={(event) => {

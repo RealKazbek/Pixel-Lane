@@ -24,6 +24,11 @@ import { EditorToolbar } from "../map/EditorToolbar";
 import { RoadPropertiesPanel } from "../map/RoadPropertiesPanel";
 import { buildLaneConfiguration } from "../editor/laneConfiguration";
 import {
+  applyRoadPreset,
+  getRoadPreset,
+  type RoadPresetId,
+} from "../editor/roadPresets";
+import {
   INITIAL_EDITOR_SESSION,
   reduceEditorSession,
 } from "../map/editor/editorState";
@@ -107,6 +112,20 @@ export function CityViewerApp() {
             lane_boundary_markings:
               lane_boundary_markings ?? road.lane_boundary_markings,
           };
+        }),
+      }));
+    },
+    [selected],
+  );
+  const handleApplyRoadPreset = useCallback(
+    (presetId: RoadPresetId) => {
+      if (selected?.type !== "road") return;
+      const preset = getRoadPreset(presetId);
+      setCity((current) => ({
+        ...current,
+        roads: current.roads.map((road) => {
+          if (road.id !== selected.id) return road;
+          return applyRoadPreset(road, preset) ?? road;
         }),
       }));
     },
@@ -258,6 +277,7 @@ export function CityViewerApp() {
           <RoadPropertiesPanel
             key={selectedRoad.id}
             road={selectedRoad}
+            onApplyPreset={handleApplyRoadPreset}
             onChange={handleRoadPropertiesChange}
           />
         )}

@@ -15,9 +15,12 @@ UI, simulation, and hardware concerns.
 - `frontend/` — Next.js (App Router, TypeScript strict, Tailwind). The
   localized City Model page is an **editor-first MapLibre workspace**
   (`src/features/city-viewer/`): it starts from a clean local editor
-  document containing three production-generated Stage 1 road primitives. The separate
-  Road Geometry Lab remains the engineering surface for fixtures. No auth or
-  full lane/intersection editor exists.
+  document containing three production-generated Stage 1 road primitives.
+  The current PL-005 checkpoint supports road creation, endpoint/vertex
+  editing, curved multi-segment geometry, width and lane configuration,
+  derived basic markings, and reusable semantic road presets; the separate
+  Road Geometry Lab remains the engineering surface for fixtures. No full
+  persisted lane/intersection editor exists.
 - `backend/` — FastAPI + Pydantic + SQLAlchemy + Alembic, PostgreSQL.
   App wiring (settings, DB session/engine, error handling, a body-size
   safeguard) plus two real domain modules: **City Model v1** (`app/city/`)
@@ -364,8 +367,14 @@ drag existing vertices, insert vertices before/between/after segments, and
 derive independently smoothed corners through MapLibre-backed interaction.
 The reusable Terra Draw adapter and `PATCH /api/v1/cities/{id}/roads/{id}/geometry`
 support explicit source-polyline persistence, but the local editor MVP does
-not auto-save. This remains intentionally narrow: no persisted lane/turn/
-intersection editor.
+not auto-save. PL-005.01–PL-005.10 extend this foundation with road creation,
+width configuration, ordered lane count/direction editing, configurable basic
+lane/edge markings, and road presets. Presets are declarative templates that
+write those existing semantic fields; they are not road entity types and do
+not remain attached to a road. The City Model source road and lane metadata
+remain authoritative; centerlines, surfaces, lane boundaries, and markings
+are derived render views. This remains intentionally narrow: no full
+persisted turn/intersection editor.
 
 **Selection & bottlenecks.** Clicking a road/intersection/traffic light on
 the map shows its details in a bottom panel (a traffic light selects its

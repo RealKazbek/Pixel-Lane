@@ -32,6 +32,15 @@ direction this roadmap serves.
 | One authoritative City Model shared by rendering, editing, analytics                       | Implemented; **shared by simulation is Planned** — no simulation engine consumes the City Model yet                                             |
 | Full lane/intersection structural editor (draw new roads, edit lanes/signals from the map) | Planned — current editor has a local MVP for drawing roads and inserting/moving vertices, but no persisted structural lane/intersection editing |
 
+### PL-005 — Parametric Road Network Editor v0.1
+
+This umbrella capability remains **In progress**. The completed checkpoint is
+PL-005.01–PL-005.10 (straight road primitives, endpoint/vertex editing, road
+creation, curved and multi-segment geometry, width configuration, lane count,
+lane direction, basic lane markings, and reusable road presets). The next
+staged increment is **PL-005.11**. This checkpoint does not imply that the full
+persisted lane/intersection editor is complete.
+
 ## v0.2 — Traffic Simulation Core
 
 | Item                                                                            | Status                                                                                                                                                                                                                                                            |

@@ -10,12 +10,23 @@ Road casing/surface, markings, selection, junctions, signals, and labels have an
 City Model/editor state → derived centerline → GeoJSON adapter → MapLibre
 ```
 
-The current editor MVP keeps local vertex insertion, dragging, and per-corner
-smoothing in React state and renders the result through the production
-geometry adapters. The generic geometry PATCH API persists source polyline
-vertices, but the current editor workspace does not auto-save local edits and
-the API has no smoothing-metadata field yet. No lane, intersection, signal,
-or congestion-overlay editor exists. See the implementation [map README](../frontend/src/features/city-viewer/map/README.md).
+The current editor MVP keeps road creation, vertex insertion/dragging, and
+per-corner smoothing in React state and renders the result through the
+production geometry adapters. The generic geometry PATCH API persists source
+polyline vertices, but the current editor workspace does not auto-save local
+edits and the API has no smoothing-metadata field yet. PL-005.07–.09 add
+ordered lane count/direction configuration and basic derived markings: lane
+separators can be dashed, solid, or double-solid, while optional edge lines
+can be absent, white, or yellow. These are derived from the City Model road
+centerline, width, and lane metadata; arbitrary marking polygons are not the
+source of truth. PL-005.10 adds four inspector presets (two-way two/four-lane
+and one-way two/three-lane). Applying one replaces only width, lane directions,
+lane boundaries, and edge markings; identity, name, source geometry, control
+points, and smoothing are preserved. Presets are templates, not persistent
+road classes: exact semantic matches show the preset name and any manual
+override shows Custom. Full persisted turn/intersection/signal editing remains
+outside the current checkpoint. See the implementation [map
+README](../frontend/src/features/city-viewer/map/README.md).
 
 PL-005.06 adds the first selected-road properties surface: street name and
 physical width in meters. Width is already a City Model field with a backend

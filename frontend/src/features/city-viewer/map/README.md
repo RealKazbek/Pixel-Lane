@@ -157,10 +157,17 @@ traffic-light details view yet).
 The current local editor follows one direction only:
 
 ```
-editor state changes (vertex insertion/drag or corner smoothing)
+editor state changes (geometry, manual road properties, or a road preset)
   -> derived centerline and GeoJSON are rebuilt
   -> MapLibre renders the local City Model view
 ```
+
+Road presets live in `editor/roadPresets.ts`. They apply the existing width,
+ordered lane directions, lane-boundary markings, and edge-marking fields to a
+Road, then leave it unlocked for normal manual editing. Exact matching is
+deterministic; changing any preset-owned field makes the inspector show
+Custom. No preset ID is stored on the Road and no rendered GeoJSON is patched
+directly.
 
 The reusable `geometryEditor`/`applyRoadEdit` adapter still supports explicit
 PATCH persistence of source polyline vertices for backend-backed flows. The

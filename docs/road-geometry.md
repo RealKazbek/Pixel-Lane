@@ -212,6 +212,13 @@ same-direction boundaries are dashed and direction changes use a stronger
 solid center separator. Lane-level turn, transit, parking, speed, and
 intersection-connection editing remain deferred.
 
+PL-005.10 adds declarative road presets on top of that same contract. The
+initial two-way two/four-lane and one-way two/three-lane templates apply lane
+width, ordered directions, internal separators, and edge lines to the semantic
+Road. They do not create a renderer-only profile or a new road type. Geometry,
+identity, name, and smoothing stay unchanged, while the existing centerline,
+lane, marking, and surface adapters derive the updated rendered result.
+
 The Stage 1 editor world is an explicit local-cartesian rectangle from
 `(-400, -300)` to `(600, 300)`. The three review roads live inside that
 stable 1000m × 600m world. Its grid is generated as MapLibre line geometry
