@@ -87,6 +87,19 @@
   },
   "properties": {
     "title": "Selected road",
+    "preset": "Road preset",
+    "presetCustom": "Custom",
+    "presetCustomDescription": "Manual road configuration",
+    "presets": {
+      "twoWay2": "Two-way 2-lane",
+      "twoWay2Description": "One lane in each direction",
+      "twoWay4": "Two-way 4-lane",
+      "twoWay4Description": "Two lanes in each direction",
+      "oneWay2": "One-way 2-lane",
+      "oneWay2Description": "Two lanes in one direction",
+      "oneWay3": "One-way 3-lane",
+      "oneWay3Description": "Three lanes in one direction"
+    },
     "street": "Street",
     "width": "Width",
     "meters": "m",

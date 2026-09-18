@@ -87,6 +87,19 @@
   },
   "properties": {
     "title": "Таңдалған жол",
+    "preset": "Жол үлгісі",
+    "presetCustom": "Арнайы",
+    "presetCustomDescription": "Қолмен бапталатын жол конфигурациясы",
+    "presets": {
+      "twoWay2": "Екі бағытты, 2 жолақ",
+      "twoWay2Description": "Әр бағытта бір жолақтан",
+      "twoWay4": "Екі бағытты, 4 жолақ",
+      "twoWay4Description": "Әр бағытта екі жолақтан",
+      "oneWay2": "Бір бағытты, 2 жолақ",
+      "oneWay2Description": "Бір бағытта екі жолақ",
+      "oneWay3": "Бір бағытты, 3 жолақ",
+      "oneWay3Description": "Бір бағытта үш жолақ"
+    },
     "street": "Көше",
     "width": "Ені",
     "meters": "м",

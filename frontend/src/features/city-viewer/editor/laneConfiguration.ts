@@ -11,6 +11,7 @@ export const MAX_EDITOR_LANE_COUNT = 12;
 export const MIN_EDITOR_LANE_WIDTH_M = 2.5;
 export const MAX_EDITOR_LANE_WIDTH_M = 6;
 export const MAX_EDITOR_ROAD_WIDTH_M = 60;
+export const DEFAULT_EDITOR_LANE_WIDTH_M = 3.5;
 
 export function defaultBoundaryMarking(
   left: LaneDirection,
@@ -56,7 +57,10 @@ export function clampLaneWidthMeters(value: number): number {
 
 export function laneWidthMeters(road: Pick<Road, "lanes" | "width_m">): number {
   const count = Math.max(MIN_EDITOR_LANE_COUNT, road.lanes.length);
-  const width = road.width_m && road.width_m > 0 ? road.width_m / count : 3.5;
+  const width =
+    road.width_m && road.width_m > 0
+      ? road.width_m / count
+      : DEFAULT_EDITOR_LANE_WIDTH_M;
   return clampLaneWidthMeters(width);
 }
 

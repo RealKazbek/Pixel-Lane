@@ -32,6 +32,9 @@ does not depend on React or Next.js.
   insertion controls, and interaction state are derived or editor-only.
 - Current road creation and vertex/smoothing changes are local MVP behavior
   unless an explicit persistence flow is invoked.
+- Road presets are declarative templates over existing road/lane/marking
+  fields. They are applied once, remain manually editable, and never become a
+  second road classification or rendering source.
 
 ## Where to add new code
 
