@@ -37,8 +37,8 @@
 
 import bearing from "@turf/bearing";
 import buffer from "@turf/buffer";
-import destination from "@turf/destination";
 import distance from "@turf/distance";
+import destination from "@turf/destination";
 import {
   featureCollection as turfFeatureCollection,
   point as turfPoint,
@@ -81,7 +81,8 @@ const BULGE_SAMPLES = 4;
 // A curb return must remain local to the two adjacent approach edges. A
 // larger fraction makes the center read as a circular plaza, especially when
 // one side road arrives at an acute angle.
-const MAX_BULGE_FRACTION_OF_EDGE = 0.18;
+const MAX_BULGE_FRACTION_OF_EDGE = 0.1;
+const PLATE_DILATION_M = 0.03;
 /** A hairline dilation applied to the junction plate before unioning it
  * with the incident road envelopes. The plate's own vertices are derived
  * from those same envelopes' edge points, which occasionally makes the
@@ -92,8 +93,6 @@ const MAX_BULGE_FRACTION_OF_EDGE = 0.18;
  * vertices/edges between the two inputs -- nudging the plate outward by
  * a sub-visual amount first avoids that failure mode without changing
  * the rendered shape in any perceptible way. */
-const PLATE_DILATION_M = 0.03;
-
 function unionAll(polygons: PolygonFeature[]): PolygonFeature | null {
   if (polygons.length === 0) return null;
   let merged: PolygonFeature | null = polygons[0];
@@ -120,7 +119,7 @@ function quadraticBezier(
   ];
 }
 
-function bulgeArc(
+function localCornerReturn(
   p: LngLat,
   q: LngLat,
   nodePosition: LngLat,
@@ -333,7 +332,7 @@ export function solveJunction(
       MIN_CORNER_RADIUS_M,
       MAX_CORNER_RADIUS_M,
     );
-    smoothedRing.push(...bulgeArc(p, q, nodePosition, radius));
+    smoothedRing.push(...localCornerReturn(p, q, nodePosition, radius));
   }
   smoothedRing.push(smoothedRing[0]);
 
@@ -343,7 +342,6 @@ export function solveJunction(
     geometry: { type: "Polygon", coordinates: [smoothedRing] },
   };
   const dilatedPlate = safeDilate(plate, PLATE_DILATION_M) ?? plate;
-
   const merged = unionAll([dilatedPlate, ...envelopePolygons]);
   return merged ? { polygon: merged, memberRoadIds } : null;
 }
