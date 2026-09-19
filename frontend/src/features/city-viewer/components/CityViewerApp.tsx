@@ -42,8 +42,7 @@ import {
   reduceEditorSession,
 } from "../map/editor/editorState";
 import {
-  getCities,
-  getCityForMap,
+  getDemoCity,
   updateIntersection,
   updateRoadGeometry,
   updateRoadProperties,
@@ -79,10 +78,9 @@ export function CityViewerApp() {
 
   useEffect(() => {
     let cancelled = false;
-    getCities()
-      .then((cities) => (cities[0] ? getCityForMap(cities[0].id) : null))
+    getDemoCity()
       .then((loaded) => {
-        if (cancelled || !loaded) return;
+        if (cancelled) return;
         setCity(loaded);
         hydratedRef.current = true;
       })

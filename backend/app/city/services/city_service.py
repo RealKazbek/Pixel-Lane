@@ -10,9 +10,20 @@ from uuid import UUID
 
 from sqlalchemy.orm import Session
 
-from app.city.domain.enums import CyclewayType, LaneCountQuality, MedianType, ParkingLaneOrientation
+from app.city.domain.enums import (
+    CoordinateSystem,
+    CyclewayType,
+    LaneCountQuality,
+    MedianType,
+    ParkingLaneOrientation,
+)
 from app.city.domain.geometry import Point, Polyline
 from app.city.errors import CityValidationError
+from app.city.examples.demo_district import (
+    DEMO_DISTRICT_CITY_ID,
+    DEMO_DISTRICT_CITY_NAME,
+    DEMO_DISTRICT_DESCRIPTION,
+)
 from app.city.repositories import city_repository, spatial_repository
 from app.city.schemas.city import (
     CityCreate,
@@ -114,6 +125,22 @@ def get_city(db: Session, city_id: UUID) -> CityRead | None:
     if city is None:
         return None
     return to_city_read(city)
+
+
+def get_or_create_demo_city(db: Session) -> CityRead:
+    """Resolve the one editor city without overwriting existing data."""
+    existing = get_city(db, DEMO_DISTRICT_CITY_ID)
+    if existing is not None:
+        return existing
+    return create_city(
+        db,
+        CityCreate(
+            id=DEMO_DISTRICT_CITY_ID,
+            name=DEMO_DISTRICT_CITY_NAME,
+            description=DEMO_DISTRICT_DESCRIPTION,
+            coordinate_system=CoordinateSystem.LOCAL_CARTESIAN,
+        ),
+    )
 
 
 def list_cities(db: Session, *, limit: int = 50, offset: int = 0) -> list[CitySummary]:

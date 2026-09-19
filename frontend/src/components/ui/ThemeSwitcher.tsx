@@ -1,11 +1,9 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
 import { useTheme } from "next-themes";
 import { useTranslations } from "next-intl";
 
-const MODES = ["light", "dark", "system"] as const;
-type Mode = (typeof MODES)[number];
+type Mode = "light" | "dark" | "system";
 
 // Icons, not first-letter abbreviations: initials collide across
 // locales (e.g. Kazakh "Жарық"/"Жүйелік" both start with "Ж").
@@ -61,16 +59,6 @@ export function ThemeSwitcher({
 }) {
   const { theme, setTheme } = useTheme();
   const t = useTranslations("common.themeSwitcher");
-  const [open, setOpen] = useState(false);
-  const rootRef = useRef<HTMLDivElement>(null);
-  useEffect(() => {
-    if (!open) return;
-    const close = (event: MouseEvent) => {
-      if (!rootRef.current?.contains(event.target as Node)) setOpen(false);
-    };
-    document.addEventListener("mousedown", close);
-    return () => document.removeEventListener("mousedown", close);
-  }, [open]);
 
   // `theme` is undefined on the server and on the very first client
   // render (next-themes reads localStorage after mount); both render
@@ -80,41 +68,17 @@ export function ThemeSwitcher({
   const active: Mode = (theme as Mode) ?? "system";
 
   void variant;
+  const nextMode: Mode =
+    active === "dark" ? "light" : active === "light" ? "system" : "dark";
   return (
-    <div ref={rootRef} className="relative">
-      <button
-        type="button"
-        onClick={() => setOpen((value) => !value)}
-        aria-expanded={open}
-        aria-haspopup="menu"
-        aria-label={t("label")}
-        className="inline-flex items-center rounded-md border border-border-subtle p-2 text-foreground transition-colors hover:bg-surface-raised focus-visible:outline-2 focus-visible:outline-primary"
-      >
-        {MODE_ICON[active]}
-      </button>
-      {open && (
-        <div
-          role="menu"
-          className="absolute right-0 top-full z-30 mt-1 min-w-28 rounded-md border border-border-subtle bg-surface p-1 shadow-lg"
-        >
-          {MODES.map((mode) => (
-            <button
-              key={mode}
-              type="button"
-              role="menuitemradio"
-              aria-checked={active === mode}
-              onClick={() => {
-                setTheme(mode);
-                setOpen(false);
-              }}
-              className={`flex w-full items-center gap-2 rounded px-2 py-1.5 text-left text-xs ${active === mode ? "bg-primary/10 text-primary" : "text-foreground hover:bg-surface-raised"}`}
-            >
-              {MODE_ICON[mode]}
-              {t(mode)}
-            </button>
-          ))}
-        </div>
-      )}
-    </div>
+    <button
+      type="button"
+      onClick={() => setTheme(nextMode)}
+      aria-label={t(active)}
+      title={t(active)}
+      className="inline-flex items-center rounded-md border border-border-subtle p-2 text-foreground transition-colors hover:bg-surface-raised focus-visible:outline-2 focus-visible:outline-primary"
+    >
+      {MODE_ICON[active]}
+    </button>
   );
 }

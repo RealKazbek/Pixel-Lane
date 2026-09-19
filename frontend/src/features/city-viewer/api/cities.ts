@@ -20,6 +20,10 @@ export function getCity(cityId: string): Promise<City> {
   return apiRequest<City>(`/api/v1/cities/${cityId}`);
 }
 
+export function getDemoCity(): Promise<City> {
+  return apiRequest<City>("/api/v1/cities/demo");
+}
+
 export async function getCityForMap(cityId: string): Promise<City> {
   const metadata = await apiRequest<
     Omit<
