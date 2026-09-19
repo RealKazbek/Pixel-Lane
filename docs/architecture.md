@@ -22,8 +22,8 @@ UI, simulation, and hardware concerns.
   snapping, and semantic centerline segment snapping with automatic road
   splitting backed by explicit City Model `Intersection` identity; the
   separate Road Geometry Lab remains the engineering surface for fixtures.
-  PL-005.12 connected-road-chain and PL-005.15 T-junction geometry remain
-  unimplemented. No full persisted lane/intersection editor exists.
+  PL-005.15 T-junction geometry remains unimplemented. No full persisted
+  lane/intersection editor exists.
 - `backend/` — FastAPI + Pydantic + SQLAlchemy + Alembic, PostgreSQL.
   App wiring (settings, DB session/engine, error handling, a body-size
   safeguard) plus two real domain modules: **City Model v1** (`app/city/`)
@@ -382,9 +382,9 @@ identity do not establish connectivity. Candidate detection is derived in
 screen space and never inferred from rendered road surfaces or GeoJSON. The
 City Model source road, lane, and intersection metadata remain authoritative;
 centerlines, surfaces, lane boundaries, markings, and snap indicators are
-derived render views. This remains intentionally narrow: there is no segment
-snapping, automatic road splitting, detach interaction, or full persisted
-turn/intersection editor.
+derived render views. This remains intentionally narrow: there is no detach
+interaction, T-junction surface geometry, lane-to-lane connections, or full
+persisted turn/intersection editor.
 
 **Selection & bottlenecks.** Clicking a road/intersection/traffic light on
 the map shows its details in a bottom panel (a traffic light selects its

@@ -9,6 +9,7 @@ import {
   finalizeEndpointDrag,
   findEndpointSnapCandidate,
   findRoadEndpointNode,
+  moveConnectedRoadNode,
   type EndpointSnapTarget,
   type RoadEndpoint,
   type ScreenEndpointSnapTarget,
@@ -222,11 +223,70 @@ describe("endpoint snap detection", () => {
 });
 
 describe("endpoint snap topology", () => {
+  it("moves every road connected to one shared node", () => {
+    const city = makeCity([
+      makeRoad("road-ab", 0, 100),
+      makeRoad("road-bc", 100, 200),
+      makeRoad("road-bd", 100, 300),
+    ]);
+    const connected = applyEndpointSnap(
+      city,
+      "road-bc",
+      "start",
+      endpointTarget("road-ab", "end", { x: 100, y: 0 }),
+    );
+    if (!connected) throw new Error("Expected connected city");
+    const withThirdRoad = applyEndpointSnap(
+      connected,
+      "road-bd",
+      "start",
+      endpointTarget(
+        "road-ab",
+        "end",
+        { x: 100, y: 0 },
+        connected.intersections[0].id,
+      ),
+    );
+    if (!withThirdRoad) throw new Error("Expected three-road node");
+
+    const moved = moveConnectedRoadNode(withThirdRoad, "road-ab", "end", {
+      x: 120,
+      y: 25,
+    });
+    expect(moved.intersections[0].position).toEqual({ x: 120, y: 25 });
+    expect(moved.roads.map((road) => road.geometry.points[0])).toEqual([
+      { x: 0, y: 0 },
+      { x: 120, y: 25 },
+      { x: 120, y: 25 },
+    ]);
+    expect(moved.roads.map((road) => road.id)).toEqual([
+      "road-ab",
+      "road-bc",
+      "road-bd",
+    ]);
+  });
+
   it("splits a target segment and shares the new node with the moving road", () => {
     const city = makeCity([
       makeRoad("road-a", 0, 100),
       makeRoad("road-b", 200, 300),
     ]);
+    city.roads[0] = {
+      ...city.roads[0],
+      name: "Main Road",
+      width_m: 12,
+      lanes: [
+        {
+          id: "lane-a",
+          road_id: "road-a",
+          index: 0,
+          direction: "FORWARD",
+          allowed_movements: [],
+          lane_type: "GENERAL",
+          speed_limit_kmh: null,
+        },
+      ],
+    };
     const target = buildRoadSegmentSnapTargets(city).find(
       (candidate) => candidate.roadId === "road-a",
     );
@@ -248,6 +308,23 @@ describe("endpoint snap topology", () => {
       { x: 50, y: 0 },
       { x: 100, y: 0 },
     ]);
+    expect(result?.roads[0].name).toBe("Main Road");
+    expect(result?.roads[1].name).toBe("Main Road");
+    expect(result?.roads[0].width_m).toBe(12);
+    expect(result?.roads[1].width_m).toBe(12);
+    expect(result?.roads[0].lanes).toEqual(result?.roads[1].lanes);
+    expect(
+      result?.roads.every((road) =>
+        road.geometry.points.every(
+          (point, index, points) =>
+            index === 0 ||
+            Math.hypot(
+              point.x - points[index - 1].x,
+              point.y - points[index - 1].y,
+            ) >= 1,
+        ),
+      ),
+    ).toBe(true);
     expect(result?.roads[2].geometry.points[0]).toEqual({ x: 50, y: 0 });
     expect(result?.intersections).toHaveLength(1);
     expect(result?.intersections[0].connected_road_ids).toEqual([

@@ -33,7 +33,7 @@ Candidates include existing road endpoints and explicit City Model
 screen-space tolerance. The incremental PL-005.13/PL-005.14 implementation
 also projects onto semantic centerline segments and splits a target road when
 an interior point is selected; those stages are documented here as implemented
-editor behavior, without claiming PL-005.12 or PL-005.15. A small target ring
+editor behavior, without claiming PL-005.15. A small target ring
 and Snap label are shown only while a valid candidate is active. Committing an
 endpoint snap creates or reuses one `Intersection`; committing an interior
 segment snap creates a node, preserves the target road configuration across

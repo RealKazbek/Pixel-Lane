@@ -226,6 +226,19 @@ function splitRoadAtPoint(
   ];
 }
 
+function nextSplitRoadId(
+  city: City,
+  roadId: string,
+  segmentIndex: number,
+): string {
+  const existingIds = new Set(city.roads.map((road) => road.id));
+  const base = `${roadId}-split-${segmentIndex}`;
+  if (!existingIds.has(base)) return base;
+  let suffix = 2;
+  while (existingIds.has(`${base}-${suffix}`)) suffix += 1;
+  return `${base}-${suffix}`;
+}
+
 function setRoadEndpoint(
   road: Road,
   endpoint: RoadEndpoint,
@@ -237,6 +250,48 @@ function setRoadEndpoint(
     point,
   );
   return points ? { ...road, geometry: { ...road.geometry, points } } : road;
+}
+
+export function moveConnectedRoadNode(
+  city: City,
+  roadId: string,
+  endpoint: RoadEndpoint,
+  point: Point,
+): City {
+  const road = city.roads.find((candidate) => candidate.id === roadId);
+  if (!road) return city;
+  const node = findRoadEndpointNode(city.intersections, road, endpoint);
+  if (!node) {
+    return {
+      ...city,
+      roads: city.roads.map((candidate) =>
+        candidate.id === roadId
+          ? setRoadEndpoint(candidate, endpoint, point)
+          : candidate,
+      ),
+    };
+  }
+
+  const connectedRoadIds = new Set(node.connected_road_ids);
+  return {
+    ...city,
+    roads: city.roads.map((candidate) => {
+      if (!connectedRoadIds.has(candidate.id)) return candidate;
+      let next = candidate;
+      if (samePoint(endpointPoint(candidate, "start"), node.position)) {
+        next = setRoadEndpoint(next, "start", point);
+      }
+      if (samePoint(endpointPoint(candidate, "end"), node.position)) {
+        next = setRoadEndpoint(next, "end", point);
+      }
+      return next;
+    }),
+    intersections: city.intersections.map((intersection) =>
+      intersection.id === node.id
+        ? { ...intersection, position: { ...point } }
+        : intersection,
+    ),
+  };
 }
 
 function removeRoadFromPreviousNode(
@@ -361,7 +416,7 @@ export function applyEndpointSnap(
       segmentRoad,
       segmentTarget.segmentIndex,
       canonicalPoint,
-      `${segmentRoad.id}-split-${segmentTarget.segmentIndex}`,
+      nextSplitRoadId(city, segmentRoad.id, segmentTarget.segmentIndex),
     );
     if (!split) return null;
     const [firstRoad, secondRoad] = split;

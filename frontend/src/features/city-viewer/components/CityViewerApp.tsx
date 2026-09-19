@@ -32,6 +32,7 @@ import {
   addRoadWithEndpointSnaps,
   finalizeEndpointDrag,
   findRoadEndpointNode,
+  moveConnectedRoadNode,
   roadEndpointForVertex,
   type EndpointSnapTarget,
 } from "../editor/endpointSnapping";
@@ -158,18 +159,34 @@ export function CityViewerApp() {
   const handleEndpointDrag = useCallback(
     (vertexIndex: number, point: Point) => {
       if (selected?.type !== "road") return;
-      setCity((current) => ({
-        ...current,
-        roads: current.roads.map((road) => {
-          if (road.id !== selected.id) return road;
-          const points = road.geometry.points;
-          if (points.length < 2) return road;
-          const next = updatePolylineVertex(points, vertexIndex, point);
-          return next
-            ? { ...road, geometry: { ...road.geometry, points: next } }
-            : road;
-        }),
-      }));
+      setCity((current) => {
+        const road = current.roads.find(
+          (candidate) => candidate.id === selected.id,
+        );
+        if (!road || road.geometry.points.length < 2) return current;
+        const endpoint = roadEndpointForVertex(road, vertexIndex);
+        if (endpoint) {
+          return moveConnectedRoadNode(current, road.id, endpoint, point);
+        }
+        const next = updatePolylineVertex(
+          road.geometry.points,
+          vertexIndex,
+          point,
+        );
+        return next
+          ? {
+              ...current,
+              roads: current.roads.map((candidate) =>
+                candidate.id === road.id
+                  ? {
+                      ...candidate,
+                      geometry: { ...candidate.geometry, points: next },
+                    }
+                  : candidate,
+              ),
+            }
+          : current;
+      });
     },
     [selected],
   );
