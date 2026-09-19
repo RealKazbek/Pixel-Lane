@@ -123,6 +123,21 @@
       "SOLID_YELLOW": "Yellow"
     }
   },
+  "intersectionProperties": {
+    "title": "Selected intersection",
+    "id": "Intersection ID",
+    "type": "Junction type",
+    "connectedRoads": "Connected roads",
+    "approaches": "Approaches",
+    "cornerRadius": "Corner radius",
+    "connectedRoadList": "Connected road list",
+    "topologySummary": "Topology node {id}; geometry is derived from shared road endpoints.",
+    "typeT": "T",
+    "typeFourWay": "Four-way",
+    "typeY": "Y / angled",
+    "typeMultiLeg": "Generic multi-leg",
+    "typeGeneric": "Generic"
+  },
   "fullscreen": {
     "smoothing": "Smoothing",
     "snap": "Snap",

@@ -86,12 +86,10 @@ works for any count/angle):
 1. Trim each incident road's centerline back by a **node radius**
    (derived from the widest incident road) so independently-buffered
    envelopes stop short of the node instead of overlapping neighbors.
-2. Take the left/right envelope-edge points at each road's trim cut, plus
-   the node position, and compute their **convex hull** -- always a
-   simple (non-self-intersecting) polygon regardless of how many roads
-   meet or at what angle, which is what makes one algorithm cover
-   2-road/T/X/Y/acute/asymmetric junctions without special-casing any of
-   them.
+2. Take the left/right envelope-edge points at each road's trim cut and sort
+   them by their bearing around the node. This preserves the actual approach
+   boundaries; it deliberately avoids a convex hull, whose long chords can
+   create an oversized central blob at acute angles.
 3. Round every hull edge that connects two _different_ roads' edge
    points into a smooth outward-bulging curb-return fillet (a quadratic
    Bezier through an outward control point, capped at 40% of the edge's

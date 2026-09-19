@@ -37,7 +37,6 @@
 
 import bearing from "@turf/bearing";
 import buffer from "@turf/buffer";
-import convex from "@turf/convex";
 import destination from "@turf/destination";
 import distance from "@turf/distance";
 import {
@@ -285,25 +284,32 @@ export function solveJunction(
     return merged ? { polygon: merged, memberRoadIds } : null;
   }
 
-  let hull: GeoJSON.Feature<GeoJSON.Polygon> | null = null;
-  try {
-    // @turf/convex can throw (or return null) on pathological/collinear
-    // input -- both are treated the same as "no usable hull."
-    hull = convex(
-      turfFeatureCollection(taggedPoints.map((p) => turfPoint(p.coord))),
-    );
-  } catch {
-    hull = null;
-  }
+  // Build the plate from the actual approach boundary points in angular
+  // order. A convex hull is tempting here, but it bridges across acute
+  // approaches with a distant chord and creates the oversized oval/blob
+  // seen in angled junctions. The ordered offset edges preserve the local
+  // road boundaries; the final union only fills the trimmed approach seams.
+  const boundaryPoints = taggedPoints
+    .filter((point) => point.roadId !== "__node__")
+    .sort((a, b) => {
+      const angleA = bearing(turfPoint(nodePosition), turfPoint(a.coord));
+      const angleB = bearing(turfPoint(nodePosition), turfPoint(b.coord));
+      return angleA - angleB || a.roadId.localeCompare(b.roadId);
+    });
 
-  if (!hull) {
+  if (boundaryPoints.length < 3) {
     const merged = unionAll(envelopePolygons);
     return merged ? { polygon: merged, memberRoadIds } : null;
   }
 
-  const hullRing = hull.geometry.coordinates[0] as LngLat[];
+  const hullRing = [
+    ...boundaryPoints.map((point) => point.coord),
+    boundaryPoints[0].coord,
+  ];
   const keyOf = (c: LngLat) => `${c[0].toFixed(9)},${c[1].toFixed(9)}`;
-  const tagByKey = new Map(taggedPoints.map((p) => [keyOf(p.coord), p.roadId]));
+  const tagByKey = new Map(
+    boundaryPoints.map((p) => [keyOf(p.coord), p.roadId]),
+  );
   const roadById = new Map(incident.map((r) => [r.roadId, r]));
 
   const smoothedRing: LngLat[] = [];

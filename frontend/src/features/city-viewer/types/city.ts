@@ -150,6 +150,8 @@ export interface Intersection {
   connected_lane_ids: string[];
   control_type: IntersectionControlType;
   traffic_light_id: string | null;
+  /** Derived-junction presentation setting; topology remains authoritative. */
+  junction_corner_radius_m?: number;
 }
 
 export interface SignalGroup {

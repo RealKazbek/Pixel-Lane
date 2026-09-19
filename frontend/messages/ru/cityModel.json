@@ -123,6 +123,21 @@
       "SOLID_YELLOW": "Жёлтая"
     }
   },
+  "intersectionProperties": {
+    "title": "Выбранный перекрёсток",
+    "id": "ID перекрёстка",
+    "type": "Тип узла",
+    "connectedRoads": "Связанные дороги",
+    "approaches": "Подходы",
+    "cornerRadius": "Радиус закругления",
+    "connectedRoadList": "Список связанных дорог",
+    "topologySummary": "Топологический узел {id}; геометрия выведена из общих концов дорог.",
+    "typeT": "Т-образный",
+    "typeFourWay": "Четырёхсторонний",
+    "typeY": "Y / под углом",
+    "typeMultiLeg": "Многосторонний",
+    "typeGeneric": "Общий"
+  },
   "fullscreen": {
     "smoothing": "Сглаживание",
     "snap": "Привязка",

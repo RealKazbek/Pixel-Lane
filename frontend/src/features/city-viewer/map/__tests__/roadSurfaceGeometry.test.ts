@@ -100,6 +100,8 @@ describe("buildRoadSurfaceFeatureCollection", () => {
 
     expect(fc.features).toHaveLength(1);
     expect(fc.features[0].properties.is_junction).toBe(true);
+    expect(fc.features[0].id).toBe(intersection.id);
+    expect(fc.features[0].properties.intersection_id).toBe(intersection.id);
     expect(fc.features[0].properties.id).toBeUndefined();
     expect(isFinitePolygon(fc.features[0].geometry)).toBe(true);
   });
