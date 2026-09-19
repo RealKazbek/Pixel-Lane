@@ -585,11 +585,29 @@ export function PixelLaneMap({
       onDrawPoint?.(point, candidate);
       setSnapCandidate(null);
     };
+    const intersectionAtCore = (event: MapMouseEvent): string | null => {
+      const hit = city.intersections
+        .filter((intersection) => intersection.connected_road_ids.length >= 2)
+        .map((intersection) => {
+          const screen = map.project(
+            toLngLat(city.coordinate_system, intersection.position),
+          );
+          return {
+            id: intersection.id,
+            distance: Math.hypot(screen.x - event.point.x, screen.y - event.point.y),
+          };
+        })
+        .filter((candidate) => candidate.distance <= 14)
+        .sort((left, right) => left.distance - right.distance || left.id.localeCompare(right.id))[0];
+      return hit?.id ?? null;
+    };
     const handleIntersectionClick = (event: MapLayerMouseEvent) => {
       if (activeTool === "draw-road") {
         resolveDrawPoint(event);
         return;
       }
+      const coreId = intersectionAtCore(event);
+      if (!coreId) return;
       const feature = event.features?.[0];
       if (feature?.properties?.intersection_id) {
         onSelect({
@@ -605,6 +623,11 @@ export function PixelLaneMap({
     const handleRoadClick = (event: MapLayerMouseEvent) => {
       if (activeTool === "draw-road") {
         resolveDrawPoint(event);
+        return;
+      }
+      const coreId = intersectionAtCore(event);
+      if (coreId) {
+        onSelect({ type: "intersection", id: coreId });
         return;
       }
       const feature = event.features?.[0];
@@ -734,6 +757,7 @@ export function PixelLaneMap({
     activeTool,
     onDrawPoint,
     city.coordinate_system,
+    city.intersections,
     projectSnapTargets,
     mode,
   ]);
