@@ -101,6 +101,20 @@ works for any count/angle):
 4. Union the resulting plate with every incident road's trimmed (or, for
    a detected merge/slip approach, tapered) envelope.
 
+This is the PL-005.15–PL-005.18 geometry milestone. Incident approaches are
+sorted by local outward bearing, never by road creation or database order.
+The same degree-independent pipeline handles T/Y and four-way nodes as well
+as skewed and arbitrary-angle layouts. A junction surface is derived from
+the shared topology node, semantic centerlines, and road widths; it is not a
+competing persisted source of truth.
+
+Boundary transitions use a deterministic quadratic fillet. The requested
+corner radius is bounded to the safe 1.5–12 m range (default 6 m), and each
+fillet is capped by its boundary edge length. This prevents acute or
+nearly-parallel approaches from producing miter spikes, crossing arcs, or
+invalid coordinates. Lane-to-lane turn connections and intersection
+markings remain later work (PL-005.19+).
+
 A ~3cm plate dilation before the final union works around a numerical-
 robustness limitation of the polygon-clipping library behind
 `@turf/union` when two inputs share an exactly-coincident vertex (common

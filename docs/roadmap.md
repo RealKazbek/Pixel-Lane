@@ -38,10 +38,11 @@ This umbrella capability remains **In progress**. The completed checkpoint is
 PL-005.01–PL-005.14 (straight road primitives, endpoint/vertex editing, road
 creation, curved and multi-segment geometry, width configuration, lane count,
 lane direction, basic lane markings, reusable road presets, connected-node
-chains, semantic segment snapping, and automatic road splitting). PL-005.15
-and the full persisted lane/intersection editor remain incomplete. This
-checkpoint does not imply that the full persisted lane/intersection editor is
-complete.
+chains, semantic segment snapping, and automatic road splitting). PL-005.15–
+PL-005.18 are implemented for derived T/Y, four-way, arbitrary-angle, and
+bounded-radius junction surfaces. PL-005.19+ and the full persisted
+lane/intersection editor remain incomplete. This checkpoint does not imply
+that the full persisted lane/intersection editor is complete.
 
 ## v0.2 — Traffic Simulation Core
 
