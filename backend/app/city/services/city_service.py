@@ -19,10 +19,10 @@ from app.city.domain.enums import (
 )
 from app.city.domain.geometry import Point, Polyline
 from app.city.errors import CityValidationError
-from app.city.examples.demo_district import (
-    DEMO_DISTRICT_CITY_ID,
-    DEMO_DISTRICT_CITY_NAME,
-    DEMO_DISTRICT_DESCRIPTION,
+from app.city.examples.demo_city import (
+    DEMO_CITY_DESCRIPTION,
+    DEMO_CITY_ID,
+    DEMO_CITY_NAME,
 )
 from app.city.repositories import city_repository, spatial_repository
 from app.city.schemas.city import (
@@ -129,15 +129,15 @@ def get_city(db: Session, city_id: UUID) -> CityRead | None:
 
 def get_or_create_demo_city(db: Session) -> CityRead:
     """Resolve the one editor city without overwriting existing data."""
-    existing = get_city(db, DEMO_DISTRICT_CITY_ID)
+    existing = get_city(db, DEMO_CITY_ID)
     if existing is not None:
         return existing
     return create_city(
         db,
         CityCreate(
-            id=DEMO_DISTRICT_CITY_ID,
-            name=DEMO_DISTRICT_CITY_NAME,
-            description=DEMO_DISTRICT_DESCRIPTION,
+            id=DEMO_CITY_ID,
+            name=DEMO_CITY_NAME,
+            description=DEMO_CITY_DESCRIPTION,
             coordinate_system=CoordinateSystem.LOCAL_CARTESIAN,
         ),
     )

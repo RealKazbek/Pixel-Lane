@@ -350,26 +350,19 @@ had. Real Almaty now renders with exactly Part 1's clean casing/surface
 real per-lane rendering is revisited with a geometry-smoothing approach
 that's actually safe for raw import data.
 
-**Demo City (`app/city/examples/demo_district.py`).** A deterministic
-Python generator -- not hand-written JSON like the two smaller existing
-examples, and not a giant frontend constant -- that builds a `CityCreate`
-using the same domain schemas a real import produces (`RoadCreate`,
-`LaneCreate`, `IntersectionCreate`, `TrafficLightCreate`,
-`ParkingZoneCreate`, `TrafficDemandCreate`). Same pipeline as Real
-Almaty end to end: `CityCreate` → `city_service.create_city` →
-`city_builder.build_city` → PostgreSQL → the same `CityRead`/`MapRoad`
-API → the same GeoJSON adapters → the same MapLibre layers. No
-`if (demoCity) { ... }` branch anywhere in the renderer -- the only
-distinguishing signal is `coordinate_system`, exactly as above.
+**Demo City (`app/city/examples/demo_city.py`).** The editor resolves one
+stable, intentionally empty PostgreSQL city. `make seed-demo-city` creates
+it once if missing and never inserts fixture roads or overwrites saved work.
+The City Model is reconstructed from this backend resource after refresh or
+restart; an empty city is a valid state.
 
-Seed it with `make seed-demo-city` (idempotent: fixed deterministic id
-via uuid5, re-running reports "already seeded" rather than duplicating).
-It then appears in the existing city list (`GET /cities`) and the
-existing sidebar `CityList` picker automatically -- no new city-selector
-UI was needed.
+The former synthetic renderer showcase remains available only as an explicit
+backend example/test payload in `app/city/examples/demo_district.py`. It is
+not imported by the application resolver or startup path. Its old streets,
+lane demonstrations, and junctions are not part of the editor's Demo City.
 
-**What the Demo District ("Demo District", ~400m x 300m) covers**, using
-only existing domain concepts:
+The retired Demo District covered, for historical test purposes, concepts
+such as:
 
 - Two-way street (Samal Street), one-way street (Bereke Lane).
 - 4-lane undivided secondary arterial (Zhastar Street) with a genuine

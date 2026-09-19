@@ -42,8 +42,7 @@ help:
 	@echo "make simulation-typecheck - typecheck simulation"
 	@echo "make simulation-test     - run simulation package tests"
 	@echo "make import-almaty       - import the Almaty, Kazakhstan OSM demo city"
-	@echo "make seed-demo-city      - seed the synthetic Demo District (renderer showcase)"
-	@echo "                           (one-time: pip install -e '.[osm]' in backend/.venv first)"
+	@echo "make seed-demo-city      - create the empty canonical Demo City (idempotent)"
 
 # --- Project lifecycle (Docker Compose) --------------------------------
 

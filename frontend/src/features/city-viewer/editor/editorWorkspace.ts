@@ -32,6 +32,25 @@ export function buildEditorWorkspace(): City {
   };
 }
 
+/** Empty pre-load state; backend Demo City data is authoritative. */
+export function buildEmptyEditorCity(): City {
+  const now = new Date(0).toISOString();
+  return {
+    id: "",
+    name: "",
+    description: "",
+    coordinate_system: "LOCAL_CARTESIAN",
+    created_at: now,
+    updated_at: now,
+    roads: [],
+    intersections: [],
+    traffic_lights: [],
+    parking_zones: [],
+    bus_stops: [],
+    crosswalks: [],
+  };
+}
+
 export function createEditorRoad(
   id: string,
   name: string,

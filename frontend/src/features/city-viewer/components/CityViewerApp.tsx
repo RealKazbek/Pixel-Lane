@@ -4,7 +4,7 @@ import { useCallback, useEffect, useReducer, useRef, useState } from "react";
 import { useTranslations } from "next-intl";
 import { mapStyleUrl } from "@/lib/config";
 import {
-  buildEditorWorkspace,
+  buildEmptyEditorCity,
   createEditorRoad,
 } from "../editor/editorWorkspace";
 import type {
@@ -51,7 +51,7 @@ import {
 /** City Model is currently an editor document, not a city picker/viewer. */
 export function CityViewerApp() {
   const t = useTranslations("cityModel.fullscreen");
-  const [city, setCity] = useState(buildEditorWorkspace);
+  const [city, setCity] = useState(buildEmptyEditorCity);
   const [cityLoadError, setCityLoadError] = useState(false);
   const hydratedRef = useRef(false);
   const [saveState, setSaveState] = useState<"saved" | "saving" | "error">(

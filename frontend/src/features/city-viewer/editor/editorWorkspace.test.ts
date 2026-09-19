@@ -1,6 +1,14 @@
 import { describe, expect, it } from "vitest";
 import { buildRoadSurfaceFeatureCollection } from "../map/adapters/roadSurfaceGeometry";
-import { buildEditorWorkspace } from "./editorWorkspace";
+import { buildEditorWorkspace, buildEmptyEditorCity } from "./editorWorkspace";
+
+describe("buildEmptyEditorCity", () => {
+  it("does not inject legacy roads before the backend city loads", () => {
+    const city = buildEmptyEditorCity();
+    expect(city.roads).toEqual([]);
+    expect(city.intersections).toEqual([]);
+  });
+});
 
 describe("buildEditorWorkspace", () => {
   it("starts clean with three production-backed minimal roads", () => {
