@@ -231,6 +231,7 @@ export interface CitySummary {
 export interface MapLaneSummary {
   index: number;
   lane_type: LaneType;
+  allowed_movements?: MovementType[];
   allowed_turns?: TurnLaneType[] | null;
   lane_change?: LaneChangePermission | null;
 }

@@ -203,3 +203,8 @@ The current editor includes PL-005.12 connected-road-chain, PL-005.13
 semantic centerline snap, PL-005.14 automatic split, and the derived
 PL-005.15–PL-005.18 junction surface pipeline. It does not implement
 lane-to-lane connections or PL-005.19+ intersection behavior.
+
+The lane-connectivity milestone adds derived lane connection curves and stop
+lines from semantic lane direction/permission data. They are hidden by
+default; the City Model editor's “Lane connections” control enables the debug
+layer without changing road selection or topology.

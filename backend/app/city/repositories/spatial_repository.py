@@ -43,6 +43,8 @@ def find_map_roads(db: Session, city_id: UUID, bbox: BBox, zoom: float):
                     Lane.index,
                     "lane_type",
                     Lane.lane_type,
+                    "allowed_movements",
+                    Lane.allowed_movements,
                     "allowed_turns",
                     Lane.allowed_turns,
                     "lane_change",

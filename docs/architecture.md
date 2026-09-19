@@ -23,9 +23,11 @@ UI, simulation, and hardware concerns.
   splitting backed by explicit City Model `Intersection` identity; the
   separate Road Geometry Lab remains the engineering surface for fixtures.
   PL-005.15–PL-005.18 derived junction geometry is implemented for connected
-  T/Y, four-way, and arbitrary-angle nodes with bounded corner radii. No full
-  persisted lane/intersection editor exists; lane-to-lane turn geometry is
-  intentionally a later stage.
+  T/Y, four-way, and arbitrary-angle nodes with bounded corner radii. The
+  PL-005.19–PL-005.24 lane-connectivity milestone derives deterministic lane
+  connections, debug curves, turn arrows, and stop lines from lane semantics.
+  No full persisted lane/intersection editor or signal/turn conflict engine
+  exists; lane add/drop remains a later stage.
 - `backend/` — FastAPI + Pydantic + SQLAlchemy + Alembic, PostgreSQL.
   App wiring (settings, DB session/engine, error handling, a body-size
   safeguard) plus two real domain modules: **City Model v1** (`app/city/`)

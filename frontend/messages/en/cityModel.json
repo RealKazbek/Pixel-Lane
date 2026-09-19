@@ -132,7 +132,8 @@
     "exit": "Exit workspace",
     "scale": "Scale 1:{denominator}",
     "scaleBarMeters": "{value} m",
-    "scaleBarKm": "{value} km"
+    "scaleBarKm": "{value} km",
+    "laneConnections": "Lane connections"
   },
   "editor": {
     "minPointsError": "A road needs at least 2 points.",
@@ -147,6 +148,8 @@
     "trafficLights": "Traffic lights",
     "trafficLightsTooltip": "Show or hide traffic lights",
     "amenities": "Amenities",
-    "amenitiesTooltip": "Show or hide bus stops and pedestrian crossings"
+    "amenitiesTooltip": "Show or hide bus stops and pedestrian crossings",
+    "laneConnectivity": "Lane connections",
+    "laneConnectivityTooltip": "Show or hide lane connections and stop lines"
   }
 }

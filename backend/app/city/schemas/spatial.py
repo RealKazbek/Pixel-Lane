@@ -15,6 +15,7 @@ from app.city.domain.enums import (
     LaneCountQuality,
     LaneType,
     MedianType,
+    MovementType,
     ParkingLaneOrientation,
     RoadType,
     TurnLaneType,
@@ -30,6 +31,7 @@ class MapLaneSummary(BaseModel):
 
     index: int
     lane_type: LaneType
+    allowed_movements: list[MovementType] = Field(default_factory=list)
     allowed_turns: list[TurnLaneType] | None = None
     lane_change: LaneChangePermission | None = None
 

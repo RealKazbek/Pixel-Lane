@@ -65,6 +65,10 @@ import { SOURCE_IDS, LAYER_IDS } from "./layers/layerIds";
 import { resolveMapStyle } from "./styles/mapStyle";
 import { resolveMapTheme } from "./styles/mapTheme";
 import type { City } from "../types/city";
+import {
+  buildLaneConnectionFeatureCollection,
+  buildStopLineFeatureCollection,
+} from "../domain/laneConnectivity";
 import type { EditorWorldBounds } from "../editor/editorWorld";
 import {
   buildEndpointSnapTargets,
@@ -359,6 +363,14 @@ export function PixelLaneMap({
         city.coordinate_system,
         visibleIntersections,
       ),
+      laneConnections:
+        city.coordinate_system === "LOCAL_CARTESIAN"
+          ? buildLaneConnectionFeatureCollection(city.roads, city.intersections)
+          : { type: "FeatureCollection", features: [] },
+      stopLines:
+        city.coordinate_system === "LOCAL_CARTESIAN"
+          ? buildStopLineFeatureCollection(city.roads, city.intersections)
+          : { type: "FeatureCollection", features: [] },
       roadSurfaces: buildRoadSurfaceFeatureCollection(
         visibleRoads,
         visibleIntersections,
@@ -382,6 +394,7 @@ export function PixelLaneMap({
     visibleRoads,
     visibleIntersections,
     city.coordinate_system,
+    city.intersections,
     city.bus_stops,
     city.crosswalks,
     city.roads,

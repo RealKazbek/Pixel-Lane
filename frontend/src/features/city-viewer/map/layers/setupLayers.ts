@@ -50,6 +50,10 @@ import type {
   BusStopFeatureCollection,
   CrosswalkFeatureCollection,
 } from "../adapters/cityAmenitiesToGeoJson";
+import type {
+  LaneConnectionFeatureCollection,
+  StopLineFeatureCollection,
+} from "../../domain/laneConnectivity";
 
 export interface PixelLaneGeoJson {
   grid: GeoJSON.FeatureCollection<GeoJSON.LineString>;
@@ -61,6 +65,8 @@ export interface PixelLaneGeoJson {
   laneBoundaries: LaneBoundaryFeatureCollection;
   turnArrows: TurnArrowFeatureCollection;
   laneUseMarkings: LaneUseMarkingFeatureCollection;
+  laneConnections: LaneConnectionFeatureCollection;
+  stopLines: StopLineFeatureCollection;
   roadSurfaces: RoadSurfaceFeatureCollection;
   busStops: BusStopFeatureCollection;
   crosswalks: CrosswalkFeatureCollection;
@@ -148,6 +154,18 @@ export function addPixelLaneSourcesAndLayers(
     map.addSource(SOURCE_IDS.laneUseMarkings, {
       type: "geojson",
       data: data.laneUseMarkings,
+    });
+  }
+  if (!map.getSource(SOURCE_IDS.laneConnections)) {
+    map.addSource(SOURCE_IDS.laneConnections, {
+      type: "geojson",
+      data: data.laneConnections,
+    });
+  }
+  if (!map.getSource(SOURCE_IDS.stopLines)) {
+    map.addSource(SOURCE_IDS.stopLines, {
+      type: "geojson",
+      data: data.stopLines,
     });
   }
   if (!map.getSource(SOURCE_IDS.roadSurfaces)) {
@@ -248,6 +266,12 @@ export function updatePixelLaneData(
   const laneUseMarkingsSource = map.getSource(SOURCE_IDS.laneUseMarkings);
   if (laneUseMarkingsSource instanceof GeoJSONSource)
     laneUseMarkingsSource.setData(data.laneUseMarkings);
+  const laneConnectionsSource = map.getSource(SOURCE_IDS.laneConnections);
+  if (laneConnectionsSource instanceof GeoJSONSource)
+    laneConnectionsSource.setData(data.laneConnections);
+  const stopLinesSource = map.getSource(SOURCE_IDS.stopLines);
+  if (stopLinesSource instanceof GeoJSONSource)
+    stopLinesSource.setData(data.stopLines);
 
   const roadSurfacesSource = map.getSource(SOURCE_IDS.roadSurfaces);
   if (roadSurfacesSource instanceof GeoJSONSource)

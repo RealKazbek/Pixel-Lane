@@ -172,6 +172,33 @@ export function buildLaneDetailLayers(
     },
   };
 
+  const laneConnections: LayerSpecification = {
+    id: LAYER_IDS.laneConnections,
+    type: "line",
+    source: SOURCE_IDS.laneConnections,
+    minzoom: LANE_DETAIL_MIN_ZOOM,
+    layout: { "line-cap": "round", "line-join": "round" },
+    paint: {
+      "line-color": theme.laneMarking,
+      "line-width": 2,
+      "line-dasharray": [2, 2],
+      "line-opacity": 0.85,
+    },
+  };
+
+  const stopLines: LayerSpecification = {
+    id: LAYER_IDS.stopLines,
+    type: "line",
+    source: SOURCE_IDS.stopLines,
+    minzoom: LANE_DETAIL_MIN_ZOOM,
+    layout: { "line-cap": "butt", "line-join": "round" },
+    paint: {
+      "line-color": theme.laneMarking,
+      "line-width": 2.5,
+      "line-opacity": 0.95,
+    },
+  };
+
   const laneParkingLine: LayerSpecification = {
     id: LAYER_IDS.laneParkingLine,
     type: "line",
@@ -230,5 +257,7 @@ export function buildLaneDetailLayers(
     laneBoundaryCenter,
     laneBusLabel,
     turnArrows,
+    laneConnections,
+    stopLines,
   ];
 }

@@ -132,7 +132,8 @@
     "exit": "Выйти из рабочего режима",
     "scale": "Масштаб 1:{denominator}",
     "scaleBarMeters": "{value} м",
-    "scaleBarKm": "{value} км"
+    "scaleBarKm": "{value} км",
+    "laneConnections": "Связи полос"
   },
   "editor": {
     "minPointsError": "Дороге нужно минимум 2 точки.",
@@ -147,6 +148,8 @@
     "trafficLights": "Светофоры",
     "trafficLightsTooltip": "Показать или скрыть светофоры",
     "amenities": "Инфраструктура",
-    "amenitiesTooltip": "Показать или скрыть автобусные остановки и пешеходные переходы"
+    "amenitiesTooltip": "Показать или скрыть автобусные остановки и пешеходные переходы",
+    "laneConnectivity": "Связи полос",
+    "laneConnectivityTooltip": "Показать или скрыть связи полос и стоп-линии"
   }
 }

@@ -55,6 +55,7 @@ export function CityViewerApp() {
     INITIAL_EDITOR_SESSION,
   );
   const [scale, setScale] = useState({ denominator: 2000, barMeters: 100 });
+  const [laneConnectivityVisible, setLaneConnectivityVisible] = useState(false);
   const [drawStartPoint, setDrawStartPoint] = useState<{
     point: Point;
     snapTarget: EndpointSnapTarget | null;
@@ -327,7 +328,10 @@ export function CityViewerApp() {
           basemapEnabled={false}
           mapStyleUrl={mapStyleUrl}
           overlayVisible
-          layerVisibility={DEFAULT_LAYER_VISIBILITY}
+          layerVisibility={{
+            ...DEFAULT_LAYER_VISIBILITY,
+            laneConnectivity: laneConnectivityVisible,
+          }}
           fitSignal={0}
           editorWorld={EDITOR_WORLD_BOUNDS}
           mode={
@@ -356,6 +360,15 @@ export function CityViewerApp() {
           />
         )}
         <div className="pointer-events-none absolute inset-x-3 top-3 flex justify-end">
+          <button
+            type="button"
+            onClick={() => setLaneConnectivityVisible((value) => !value)}
+            aria-pressed={laneConnectivityVisible}
+            title={t("laneConnections")}
+            className={`pointer-events-auto mr-2 rounded-md border px-2 py-1 text-xs shadow-sm backdrop-blur ${laneConnectivityVisible ? "border-blue-600 bg-blue-600 text-white" : "border-border-subtle bg-surface/90 text-foreground"}`}
+          >
+            {t("laneConnections")}
+          </button>
           <button
             type="button"
             onClick={() => setIsFullscreen((value) => !value)}

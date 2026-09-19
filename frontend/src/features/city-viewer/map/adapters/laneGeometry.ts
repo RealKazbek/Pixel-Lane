@@ -60,6 +60,7 @@ import type {
   Intersection,
   ParkingLaneOrientation,
   TurnLaneType,
+  MovementType,
   LaneBoundaryMarking,
   RoadEdgeMarking,
 } from "../../types/city";
@@ -139,9 +140,22 @@ const TURN_ARROW_GLYPHS: Record<TurnLaneType, string> = {
  * default arrow. */
 function turnArrowGlyph(
   tokens: TurnLaneType[] | null | undefined,
+  movements: MovementType[] | undefined,
 ): string | null {
-  if (!tokens || tokens.length === 0) return null;
-  const glyph = tokens.map((t) => TURN_ARROW_GLYPHS[t]).join("");
+  const glyph =
+    tokens && tokens.length > 0
+      ? tokens.map((t) => TURN_ARROW_GLYPHS[t]).join("")
+      : (movements ?? [])
+          .map(
+            (movement) =>
+              ({
+                LEFT: "←",
+                STRAIGHT: "↑",
+                RIGHT: "→",
+                U_TURN: "↺",
+              })[movement],
+          )
+          .join("");
   return glyph.length > 0 ? glyph : null;
 }
 
@@ -474,7 +488,12 @@ export function buildTurnArrowFeatureCollection(
     const coords = line.geometry.coordinates;
     const roadBearing = bearing(coords[0], coords[coords.length - 1]);
     for (const lane of lanes) {
-      const arrow = turnArrowGlyph(lane.allowed_turns);
+      const arrow = turnArrowGlyph(
+        lane.allowed_turns,
+        lane.allowed_turns && lane.allowed_turns.length > 0
+          ? lane.allowed_movements
+          : undefined,
+      );
       if (!arrow) continue;
       const offset = safeOffset(
         line,

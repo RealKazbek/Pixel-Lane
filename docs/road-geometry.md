@@ -115,6 +115,24 @@ nearly-parallel approaches from producing miter spikes, crossing arcs, or
 invalid coordinates. Lane-to-lane turn connections and intersection
 markings remain later work (PL-005.19+).
 
+## 6. Lane connectivity milestone (PL-005.19–PL-005.24)
+
+Lane direction and `allowed_movements` are semantic City Model inputs. The
+editor derives deterministic `LaneConnection` records at shared
+intersections by pairing equal-count lanes in index order and rejecting
+forbidden or directionally invalid movements:
+
+```
+Lane → turn permission → LaneConnection → derived curve/debug layer
+                         └──────────────→ derived turn arrow
+Junction + approach geometry → derived stop line
+```
+
+Connection curves and stop lines are GeoJSON render products, never topology
+inputs or hand-authored intersection paths. The lane-connection debug layer
+is disabled by default and can be enabled with “Lane connections”. Complex
+lane add/drop and signal/turn conflict resolution remain PL-005.25+.
+
 A ~3cm plate dilation before the final union works around a numerical-
 robustness limitation of the polygon-clipping library behind
 `@turf/union` when two inputs share an exactly-coincident vertex (common

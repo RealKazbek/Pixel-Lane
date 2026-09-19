@@ -12,6 +12,7 @@ export interface LayerVisibility {
   intersections: boolean;
   trafficLights: boolean;
   amenities: boolean;
+  laneConnectivity: boolean;
 }
 
 export const DEFAULT_LAYER_VISIBILITY: LayerVisibility = {
@@ -19,4 +20,5 @@ export const DEFAULT_LAYER_VISIBILITY: LayerVisibility = {
   intersections: true,
   trafficLights: true,
   amenities: true,
+  laneConnectivity: false,
 };

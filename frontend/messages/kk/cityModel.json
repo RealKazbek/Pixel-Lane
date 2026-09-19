@@ -132,7 +132,8 @@
     "exit": "Жұмыс режимінен шығу",
     "scale": "Масштаб 1:{denominator}",
     "scaleBarMeters": "{value} м",
-    "scaleBarKm": "{value} км"
+    "scaleBarKm": "{value} км",
+    "laneConnections": "Жолақ байланыстары"
   },
   "editor": {
     "minPointsError": "Жол үшін кемінде 2 нүкте қажет.",
@@ -147,6 +148,8 @@
     "trafficLights": "Бағдаршамдар",
     "trafficLightsTooltip": "Бағдаршамдарды көрсету немесе жасыру",
     "amenities": "Инфрақұрылым",
-    "amenitiesTooltip": "Автобус аялдамалары мен жаяу жүргіншілер өткелдерін көрсету немесе жасыру"
+    "amenitiesTooltip": "Автобус аялдамалары мен жаяу жүргіншілер өткелдерін көрсету немесе жасыру",
+    "laneConnectivity": "Жолақ байланыстары",
+    "laneConnectivityTooltip": "Жолақ байланыстары мен тоқтау сызықтарын көрсету немесе жасыру"
   }
 }

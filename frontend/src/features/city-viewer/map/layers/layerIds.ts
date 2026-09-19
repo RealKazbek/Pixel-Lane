@@ -11,6 +11,8 @@ export const SOURCE_IDS = {
   laneBoundaries: "pixel-lane-lane-boundaries",
   turnArrows: "pixel-lane-turn-arrows",
   laneUseMarkings: "pixel-lane-lane-use-markings",
+  laneConnections: "pixel-lane-lane-connections",
+  stopLines: "pixel-lane-stop-lines",
   roadSurfaces: "pixel-lane-road-surfaces",
   busStops: "pixel-lane-bus-stops",
   crosswalks: "pixel-lane-crosswalks",
@@ -40,6 +42,8 @@ export const LAYER_IDS = {
   laneParkingLine: "pixel-lane-lane-parking-line",
   laneParkingLabel: "pixel-lane-lane-parking-label",
   laneCyclewayLine: "pixel-lane-lane-cycleway-line",
+  laneConnections: "pixel-lane-lane-connections",
+  stopLines: "pixel-lane-stop-lines",
   busStops: "pixel-lane-bus-stops",
   crosswalks: "pixel-lane-crosswalks",
 } as const;
@@ -69,6 +73,8 @@ export const LAYER_DRAW_ORDER: readonly string[] = [
   LAYER_IDS.laneBoundaryCenter,
   LAYER_IDS.laneBusLabel,
   LAYER_IDS.turnArrows,
+  LAYER_IDS.laneConnections,
+  LAYER_IDS.stopLines,
   LAYER_IDS.selection,
   LAYER_IDS.intersections,
   LAYER_IDS.intersectionDetails,
@@ -104,6 +110,7 @@ export const LAYER_GROUPS = {
   intersections: [LAYER_IDS.intersections, LAYER_IDS.intersectionDetails],
   trafficLights: [LAYER_IDS.trafficLights],
   amenities: [LAYER_IDS.busStops, LAYER_IDS.crosswalks],
+  laneConnectivity: [LAYER_IDS.laneConnections, LAYER_IDS.stopLines],
 } as const;
 
 export type LayerGroupId = keyof typeof LAYER_GROUPS;
