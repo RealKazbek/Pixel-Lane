@@ -78,7 +78,10 @@ export interface JunctionGeometryOptions {
 }
 
 const BULGE_SAMPLES = 4;
-const MAX_BULGE_FRACTION_OF_EDGE = 0.4;
+// A curb return must remain local to the two adjacent approach edges. A
+// larger fraction makes the center read as a circular plaza, especially when
+// one side road arrives at an acute angle.
+const MAX_BULGE_FRACTION_OF_EDGE = 0.18;
 /** A hairline dilation applied to the junction plate before unioning it
  * with the incident road envelopes. The plate's own vertices are derived
  * from those same envelopes' edge points, which occasionally makes the
@@ -125,7 +128,7 @@ function bulgeArc(
 ): LngLat[] {
   const edgeLen = distance(turfPoint(p), turfPoint(q), { units: "meters" });
   if (edgeLen < 0.01) return [];
-  const bulge = Math.min(radius, edgeLen * MAX_BULGE_FRACTION_OF_EDGE);
+  const bulge = Math.min(radius * 0.5, edgeLen * MAX_BULGE_FRACTION_OF_EDGE);
   const mid: LngLat = [(p[0] + q[0]) / 2, (p[1] + q[1]) / 2];
   const outwardBearingDeg = bearing(turfPoint(nodePosition), turfPoint(mid));
   const control = destination(turfPoint(mid), bulge, outwardBearingDeg, {
