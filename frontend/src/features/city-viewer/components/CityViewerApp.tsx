@@ -49,6 +49,7 @@ import {
   updateRoadGeometry,
   updateRoadProperties,
   createRoad,
+  buildRoadPropertiesPayload,
 } from "../api/cities";
 
 /** City Model is currently an editor document, not a city picker/viewer. */
@@ -117,17 +118,7 @@ export function CityViewerApp() {
           persistedRoads.map((road) =>
             Promise.all([
               updateRoadGeometry(city.id, road.id, road.geometry),
-              updateRoadProperties(city.id, road.id, {
-                name: road.name,
-                width_m: road.width_m ?? 8,
-                lane_count: Math.max(road.lanes.length, 1),
-                lane_width_m:
-                  (road.width_m ?? 8) / Math.max(road.lanes.length, 1),
-                lane_directions: road.lanes.map((lane) => lane.direction),
-                left_edge_marking: road.left_edge_marking ?? "SOLID_YELLOW",
-                right_edge_marking: road.right_edge_marking ?? "SOLID_YELLOW",
-                lane_boundary_markings: road.lane_boundary_markings ?? [],
-              }),
+              updateRoadProperties(city.id, road.id, buildRoadPropertiesPayload(road)),
             ]),
           ),
         );

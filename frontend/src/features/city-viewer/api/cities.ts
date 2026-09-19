@@ -167,3 +167,25 @@ export function updateRoadProperties(
     { method: "PATCH", body: JSON.stringify(properties) },
   );
 }
+
+export function buildRoadPropertiesPayload(road: Road) {
+  const laneCount = Math.max(road.lanes.length, 1);
+  const requestedWidth = road.width_m ?? laneCount * 4;
+  const laneWidth = Math.min(6, Math.max(2.5, requestedWidth / laneCount));
+  return {
+    name: road.name,
+    width_m: laneWidth * laneCount,
+    lane_count: laneCount,
+    lane_width_m: laneWidth,
+    lane_directions: road.lanes.map((lane) => lane.direction),
+    left_edge_marking: road.left_edge_marking ?? "SOLID_YELLOW",
+    right_edge_marking: road.right_edge_marking ?? "SOLID_YELLOW",
+    lane_boundary_markings: road.lane_boundary_markings ?? [],
+  } as const;
+}
+
+export function deleteRoad(cityId: string, roadId: string): Promise<void> {
+  return apiRequest<void>(`/api/v1/cities/${cityId}/roads/${roadId}`, {
+    method: "DELETE",
+  });
+}

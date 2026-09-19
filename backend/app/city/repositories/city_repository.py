@@ -137,6 +137,33 @@ def create_road(db: Session, city_id: UUID, payload: RoadCreate) -> Road | None:
     return road
 
 
+def delete_road(db: Session, city_id: UUID, road_id: UUID) -> bool:
+    road = db.execute(
+        select(Road).where(Road.city_id == city_id, Road.id == road_id)
+    ).scalar_one_or_none()
+    if road is None:
+        return False
+    city = db.execute(select(City).where(City.id == city_id)).scalar_one()
+    for intersection in list(city.intersections):
+        if road not in intersection.connected_roads:
+            continue
+        intersection.connected_roads = [
+            candidate
+            for candidate in intersection.connected_roads
+            if candidate.id != road_id
+        ]
+        if len(intersection.connected_roads) < 2:
+            db.delete(intersection)
+    db.delete(road)
+    db.execute(update(City).where(City.id == city_id).values(updated_at=func.now()))
+    try:
+        db.commit()
+    except Exception:
+        db.rollback()
+        raise
+    return True
+
+
 def update_road_properties(
     db: Session, city_id: UUID, road_id: UUID, properties: RoadPropertiesUpdate
 ) -> Road | None:

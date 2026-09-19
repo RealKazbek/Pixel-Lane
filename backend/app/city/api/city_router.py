@@ -180,6 +180,12 @@ def get_road(city_id: UUID, road_id: UUID, db: Session = Depends(get_db)) -> Roa
     return road
 
 
+@router.delete("/{city_id}/roads/{road_id}", status_code=status.HTTP_204_NO_CONTENT)
+def delete_road(city_id: UUID, road_id: UUID, db: Session = Depends(get_db)) -> None:
+    if not city_service.delete_road(db, city_id, road_id):
+        raise HTTPException(status_code=404, detail="Road not found")
+
+
 @router.get("/{city_id}/intersections/{intersection_id}", response_model=IntersectionRead)
 def get_intersection(
     city_id: UUID, intersection_id: UUID, db: Session = Depends(get_db)

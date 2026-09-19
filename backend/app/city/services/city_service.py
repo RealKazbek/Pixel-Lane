@@ -166,6 +166,10 @@ def create_road(db: Session, city_id: UUID, payload: RoadCreate) -> RoadRead | N
     return to_road_read(road) if road is not None else None
 
 
+def delete_road(db: Session, city_id: UUID, road_id: UUID) -> bool:
+    return city_repository.delete_road(db, city_id, road_id)
+
+
 def find_roads_in_bbox(
     db: Session, city_id: UUID, bbox: BBox, zoom: float = 20
 ) -> list[RoadRead] | None:
