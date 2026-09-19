@@ -11,8 +11,8 @@ from app.city.schemas.city import (
     CitySummary,
     CityValidationResult,
 )
-from app.city.schemas.intersection import IntersectionRead, IntersectionUpdate
-from app.city.schemas.road import RoadGeometryUpdate, RoadPropertiesUpdate, RoadRead
+from app.city.schemas.intersection import IntersectionCreate, IntersectionRead, IntersectionUpdate
+from app.city.schemas.road import RoadCreate, RoadGeometryUpdate, RoadPropertiesUpdate, RoadRead
 from app.city.schemas.spatial import BBox, MapRoad
 from app.city.services import city_service
 from app.db.session import get_db
@@ -124,6 +124,14 @@ def update_road_geometry(
     return road
 
 
+@router.post("/{city_id}/roads", response_model=RoadRead, status_code=status.HTTP_201_CREATED)
+def create_road(city_id: UUID, payload: RoadCreate, db: Session = Depends(get_db)) -> RoadRead:
+    road = city_service.create_road(db, city_id, payload)
+    if road is None:
+        raise HTTPException(status_code=404, detail="City not found")
+    return road
+
+
 @router.patch("/{city_id}/roads/{road_id}/properties", response_model=RoadRead)
 def update_road_properties(
     city_id: UUID,
@@ -195,4 +203,17 @@ def update_intersection(
         raise HTTPException(status_code=422, detail="INTERSECTION_ROAD_NOT_FOUND") from exc
     if intersection is None:
         raise HTTPException(status_code=404, detail="Intersection not found")
+    return intersection
+
+
+@router.post("/{city_id}/intersections", response_model=IntersectionRead, status_code=201)
+def create_intersection(
+    city_id: UUID, payload: IntersectionCreate, db: Session = Depends(get_db)
+) -> IntersectionRead:
+    try:
+        intersection = city_service.create_intersection(db, city_id, payload)
+    except ValueError as exc:
+        raise HTTPException(status_code=422, detail="INTERSECTION_ROAD_NOT_FOUND") from exc
+    if intersection is None:
+        raise HTTPException(status_code=404, detail="City not found")
     return intersection

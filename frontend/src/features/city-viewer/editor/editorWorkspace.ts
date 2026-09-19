@@ -1,5 +1,13 @@
 import type { City, Point, Road } from "../types/city";
 
+export function createEditorEntityId(seed: string): string {
+  let hash = 2166136261;
+  for (const char of seed) hash = Math.imul(hash ^ char.charCodeAt(0), 16777619);
+  const hex = Math.abs(hash).toString(16).padStart(8, "0");
+  const tail = `${hex}${hex}${hex}${hex}`.slice(0, 32);
+  return `${tail.slice(0, 8)}-${tail.slice(8, 12)}-4${tail.slice(13, 16)}-8${tail.slice(17, 20)}-${tail.slice(20)}`;
+}
+
 /** The initial, intentionally local editor document for PL-005.01. */
 export function buildEditorWorkspace(): City {
   const now = new Date(0).toISOString();

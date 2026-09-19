@@ -5,6 +5,7 @@ import { useTranslations } from "next-intl";
 import { mapStyleUrl } from "@/lib/config";
 import {
   buildEmptyEditorCity,
+  createEditorEntityId,
   createEditorRoad,
 } from "../editor/editorWorkspace";
 import type {
@@ -43,9 +44,11 @@ import {
 } from "../map/editor/editorState";
 import {
   getDemoCity,
+  createIntersection,
   updateIntersection,
   updateRoadGeometry,
   updateRoadProperties,
+  createRoad,
 } from "../api/cities";
 
 /** City Model is currently an editor document, not a city picker/viewer. */
@@ -54,6 +57,8 @@ export function CityViewerApp() {
   const [city, setCity] = useState(buildEmptyEditorCity);
   const [cityLoadError, setCityLoadError] = useState(false);
   const hydratedRef = useRef(false);
+  const pendingRoadCreatesRef = useRef(new Set<string>());
+  const persistedIntersectionIdsRef = useRef(new Set<string>());
   const [saveState, setSaveState] = useState<"saved" | "saving" | "error">(
     "saved",
   );
@@ -82,6 +87,9 @@ export function CityViewerApp() {
       .then((loaded) => {
         if (cancelled) return;
         setCity(loaded);
+        persistedIntersectionIdsRef.current = new Set(
+          loaded.intersections.map((intersection) => intersection.id),
+        );
         hydratedRef.current = true;
       })
       .catch(() => {
@@ -94,8 +102,10 @@ export function CityViewerApp() {
 
   useEffect(() => {
     if (!hydratedRef.current) return;
+    if (pendingRoadCreatesRef.current.size > 0) return;
     const timer = window.setTimeout(async () => {
       const persistedRoads = city.roads.filter((road) =>
+        !pendingRoadCreatesRef.current.has(road.id) &&
         /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(
           road.id,
         ),
@@ -128,14 +138,20 @@ export function CityViewerApp() {
                 intersection.id,
               ),
             )
-            .map((intersection) =>
-              updateIntersection(city.id, intersection.id, {
+            .map((intersection) => {
+              const payload = {
                 position: intersection.position,
                 connected_road_ids: intersection.connected_road_ids,
                 connected_lane_ids: intersection.connected_lane_ids,
                 control_type: intersection.control_type,
-              }),
-            ),
+              };
+              return persistedIntersectionIdsRef.current.has(intersection.id)
+                ? updateIntersection(city.id, intersection.id, payload)
+                : createIntersection(city.id, intersection).then((saved) => {
+                    persistedIntersectionIdsRef.current.add(saved.id);
+                    return saved;
+                  });
+            }),
         );
         setSaveState("saved");
       } catch {
@@ -357,27 +373,37 @@ export function CityViewerApp() {
       const dx = point.x - drawStartPoint.point.x;
       const dy = point.y - drawStartPoint.point.y;
       if (Math.hypot(dx, dy) < 1) return;
-      const id = `editor-road-${Date.now()}`;
+      const id = createEditorEntityId(`editor-road-${Date.now()}`);
       const road = createEditorRoad(
         id,
         `Road ${String.fromCharCode(65 + city.roads.length)}`,
         [drawStartPoint.point, point],
       );
-      setCity((current) => {
-        return (
-          addRoadWithEndpointSnaps(
-            current,
-            road,
-            drawStartPoint.snapTarget,
-            snapTarget,
-          ) ?? current
-        );
-      });
+      const nextCity = addRoadWithEndpointSnaps(
+        city,
+        road,
+        drawStartPoint.snapTarget,
+        snapTarget,
+      );
+      if (!nextCity) return;
+      setCity(nextCity);
+      pendingRoadCreatesRef.current.add(road.id);
+      void createRoad(city.id, road).then((savedRoad) => {
+        pendingRoadCreatesRef.current.delete(road.id);
+        setCity((current) => ({
+          ...current,
+          roads: current.roads.map((candidate) =>
+            candidate.id === road.id ? { ...candidate, ...savedRoad } : candidate,
+          ),
+        }));
+        setSaveState("saved");
+      }).catch(() => setSaveState("error"));
+      setSaveState("saving");
       setSelected({ type: "road", id });
       setDrawStartPoint(null);
       dispatch({ type: "set-tool", tool: "select" });
     },
-    [city.roads.length, drawStartPoint],
+    [city, drawStartPoint],
   );
 
   useEffect(() => {

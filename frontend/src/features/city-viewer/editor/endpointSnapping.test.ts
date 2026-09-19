@@ -180,6 +180,29 @@ describe("endpoint snap detection", () => {
     ).toBeNull();
   });
 
+  it("prefers an existing topology node over a nearer segment projection", () => {
+    const targets: ScreenEndpointSnapTarget[] = [
+      {
+        ...endpointTarget("road-a", "end", { x: 10, y: 0 }, "junction-a"),
+        screenX: 110,
+        screenY: 100,
+      },
+      {
+        kind: "road-segment",
+        targetId: "road:road-a:segment:0",
+        roadId: "road-a",
+        segmentIndex: 0,
+        point: { x: 11, y: 0 },
+        nodeId: null,
+        screenX: 101,
+        screenY: 100,
+      },
+    ];
+    expect(findEndpointSnapCandidate({ x: 101, y: 100 }, targets, "road-b")?.kind).toBe(
+      "road-endpoint",
+    );
+  });
+
   it("creates a segment candidate for every ordered centerline segment", () => {
     const road = makeRoad("road-a", 0, 100);
     road.geometry.points.splice(1, 0, { x: 40, y: 20 });

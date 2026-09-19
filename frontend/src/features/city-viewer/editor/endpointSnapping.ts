@@ -1,5 +1,6 @@
 import type { City, Intersection, Point, Road } from "../types/city";
 import { updatePolylineVertex } from "../map/editor/polylineEditing";
+import { createEditorEntityId } from "./editorWorkspace";
 
 export const ENDPOINT_SNAP_TOLERANCE_PX = 18;
 
@@ -149,8 +150,7 @@ export function findEndpointSnapCandidate(
 ): EndpointSnapCandidate | null {
   if (!Number.isFinite(pointer.x) || !Number.isFinite(pointer.y)) return null;
 
-  return (
-    targets
+  const validTargets = targets
       .filter((target) => {
         if (!movingRoadId) return true;
         if (target.kind === "road-endpoint") {
@@ -175,16 +175,24 @@ export function findEndpointSnapCandidate(
           (left.kind === "road-segment" ? 1 : 0) -
             (right.kind === "road-segment" ? 1 : 0) ||
           left.targetId.localeCompare(right.targetId),
-      )[0] ?? null
+      );
+  // An explicit topology node is authoritative. A nearby segment projection
+  // must never win merely because it is a few pixels closer.
+  return (
+    validTargets.filter((target) => target.kind !== "road-segment")[0] ??
+    validTargets[0] ??
+    null
   );
 }
 
 function editorNodeId(target: RoadEndpointSnapTarget): string {
-  return `${EDITOR_NODE_PREFIX}${target.roadId}-${target.endpoint}`;
+  return createEditorEntityId(`${EDITOR_NODE_PREFIX}${target.roadId}-${target.endpoint}`);
 }
 
 function segmentNodeId(target: RoadSegmentSnapTarget): string {
-  return `editor-node-${target.roadId}-segment-${target.segmentIndex}-${target.point.x}-${target.point.y}`;
+  return createEditorEntityId(
+    `editor-node-${target.roadId}-segment-${target.segmentIndex}-${target.point.x}-${target.point.y}`,
+  );
 }
 
 function splitRoadAtPoint(

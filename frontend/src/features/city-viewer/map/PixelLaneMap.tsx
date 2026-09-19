@@ -607,18 +607,6 @@ export function PixelLaneMap({
         resolveDrawPoint(event);
         return;
       }
-      const junctionFeature = map
-        .queryRenderedFeatures(event.point, {
-          layers: [LAYER_IDS.roadSurfaceFill].filter((id) => map.getLayer(id)),
-        })
-        .find((candidate) => candidate.properties?.intersection_id);
-      if (junctionFeature?.properties?.intersection_id) {
-        onSelect({
-          type: "intersection",
-          id: String(junctionFeature.properties.intersection_id),
-        });
-        return;
-      }
       const feature = event.features?.[0];
       if (feature?.properties?.id) {
         onSelect({ type: "road", id: String(feature.properties.id) });

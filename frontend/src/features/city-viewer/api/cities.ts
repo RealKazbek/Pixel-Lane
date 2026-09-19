@@ -59,6 +59,13 @@ export function getRoad(
   return apiRequest(`/api/v1/cities/${cityId}/roads/${roadId}`, { signal });
 }
 
+export function createRoad(cityId: string, road: Omit<Road, "city_id">): Promise<Road> {
+  return apiRequest<Road>(`/api/v1/cities/${cityId}/roads`, {
+    method: "POST",
+    body: JSON.stringify(road),
+  });
+}
+
 export function getIntersection(
   cityId: string,
   id: string,
@@ -79,6 +86,13 @@ export function updateIntersection(
     `/api/v1/cities/${cityId}/intersections/${intersectionId}`,
     { method: "PATCH", body: JSON.stringify(intersection) },
   );
+}
+
+export function createIntersection(cityId: string, intersection: Intersection): Promise<Intersection> {
+  return apiRequest<Intersection>(`/api/v1/cities/${cityId}/intersections`, {
+    method: "POST",
+    body: JSON.stringify(intersection),
+  });
 }
 
 function bboxQueryParam(bbox: BBox): string {
