@@ -123,6 +123,21 @@
       "SOLID_YELLOW": "Сары"
     }
   },
+  "intersectionProperties": {
+    "title": "Таңдалған қиылыс",
+    "id": "Қиылыс ID",
+    "type": "Түйін түрі",
+    "connectedRoads": "Байланысқан жолдар",
+    "approaches": "Кіреберістер",
+    "cornerRadius": "Бұрыш радиусы",
+    "connectedRoadList": "Байланысқан жолдар тізімі",
+    "topologySummary": "Топологиялық түйін {id}; геометрия жолдардың ортақ ұштарынан туындайды.",
+    "typeT": "T-тәрізді",
+    "typeFourWay": "Төрт бағытты",
+    "typeY": "Y / бұрышты",
+    "typeMultiLeg": "Көп тармақты",
+    "typeGeneric": "Жалпы"
+  },
   "fullscreen": {
     "smoothing": "Тегістеу",
     "snap": "Бекіту",

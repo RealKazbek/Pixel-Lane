@@ -67,6 +67,7 @@ export interface RoadSurfaceProperties {
   hierarchy: RoadHierarchy;
   /** True for a merged multi-road junction polygon. */
   is_junction: boolean;
+  intersection_id?: string;
 }
 
 export type RoadSurfaceFeatureCollection = GeoJSON.FeatureCollection<
@@ -86,7 +87,10 @@ function dominantHierarchy(hierarchies: RoadHierarchy[]): RoadHierarchy {
 
 export function buildRoadSurfaceFeatureCollection(
   roads: AnyRoad[],
-  intersections: Pick<Intersection, "id" | "position" | "connected_road_ids">[],
+  intersections: Pick<
+    Intersection,
+    "id" | "position" | "connected_road_ids" | "junction_corner_radius_m"
+  >[],
   coordinateSystem: CoordinateSystem,
 ): RoadSurfaceFeatureCollection {
   const lineByRoadId = new Map<string, GeoJSON.Feature<GeoJSON.LineString>>();
@@ -154,18 +158,22 @@ export function buildRoadSurfaceFeatureCollection(
     }
     if (incident.length < 2) continue;
 
-    const result = solveJunction(nodePosition, incident);
+    const result = solveJunction(nodePosition, incident, {
+      cornerRadiusM: intersection.junction_corner_radius_m,
+    });
     if (!result) continue;
 
     for (const id of result.memberRoadIds) mergedRoadIds.add(id);
     features.push({
       type: "Feature",
+      id: intersection.id,
       geometry: result.polygon.geometry,
       properties: {
         hierarchy: dominantHierarchy(
           result.memberRoadIds.map((id) => hierarchyByRoadId.get(id)!),
         ),
         is_junction: true,
+        intersection_id: intersection.id,
       },
     });
   }

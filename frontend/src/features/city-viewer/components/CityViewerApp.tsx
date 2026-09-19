@@ -22,6 +22,7 @@ import { PixelLaneMap } from "../map/PixelLaneMap";
 import { DEFAULT_LAYER_VISIBILITY, type MapSelection } from "../map/types";
 import { EditorToolbar } from "../map/EditorToolbar";
 import { RoadPropertiesPanel } from "../map/RoadPropertiesPanel";
+import { IntersectionPropertiesPanel } from "../map/IntersectionPropertiesPanel";
 import { buildLaneConfiguration } from "../editor/laneConfiguration";
 import {
   applyRoadPreset,
@@ -66,6 +67,10 @@ export function CityViewerApp() {
   const selectedRoad =
     selected?.type === "road"
       ? city.roads.find((road) => road.id === selected.id)
+      : null;
+  const selectedIntersection =
+    selected?.type === "intersection"
+      ? city.intersections.find((intersection) => intersection.id === selected.id)
       : null;
   const selectedRoadNodeIds = selectedRoad
     ? {
@@ -149,6 +154,20 @@ export function CityViewerApp() {
           if (road.id !== selected.id) return road;
           return applyRoadPreset(road, preset) ?? road;
         }),
+      }));
+    },
+    [selected],
+  );
+  const handleIntersectionRadiusChange = useCallback(
+    (radius: number) => {
+      if (selected?.type !== "intersection") return;
+      setCity((current) => ({
+        ...current,
+        intersections: current.intersections.map((intersection) =>
+          intersection.id === selected.id
+            ? { ...intersection, junction_corner_radius_m: radius }
+            : intersection,
+        ),
       }));
     },
     [selected],
@@ -357,6 +376,13 @@ export function CityViewerApp() {
             endpointNodeIds={selectedRoadNodeIds ?? { start: null, end: null }}
             onApplyPreset={handleApplyRoadPreset}
             onChange={handleRoadPropertiesChange}
+          />
+        )}
+        {selectedIntersection && (
+          <IntersectionPropertiesPanel
+            intersection={selectedIntersection}
+            roads={city.roads}
+            onCornerRadiusChange={handleIntersectionRadiusChange}
           />
         )}
         <div className="pointer-events-none absolute inset-x-3 top-3 flex justify-end">
