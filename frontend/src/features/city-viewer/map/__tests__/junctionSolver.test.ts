@@ -43,6 +43,16 @@ function isFinitePolygon(
   );
 }
 
+function extent(geometry: GeoJSON.Polygon | GeoJSON.MultiPolygon) {
+  const coordinates = collectCoordinates(geometry);
+  return {
+    minX: Math.min(...coordinates.map((c) => c[0])),
+    maxX: Math.max(...coordinates.map((c) => c[0])),
+    minY: Math.min(...coordinates.map((c) => c[1])),
+    maxY: Math.max(...coordinates.map((c) => c[1])),
+  };
+}
+
 describe("solveJunction", () => {
   it("returns null for fewer than 2 incident roads", () => {
     const line = road([
@@ -364,6 +374,45 @@ describe("solveJunction", () => {
     expect(clamped!.polygon.geometry).toEqual(
       solveJunction(n, incident, { cornerRadiusM: 12 })!.polygon.geometry,
     );
+  });
+
+  it("keeps the through-road boundary stable while local corners change", () => {
+    const n = node(0, 40);
+    const incident = [
+      incidentRoad({
+        roadId: "south",
+        line: road([
+          [0, 0],
+          [0, 40],
+        ]),
+        atEnd: true,
+      }),
+      incidentRoad({
+        roadId: "east",
+        line: road([
+          [0, 40],
+          [40, 40],
+        ]),
+        atEnd: false,
+      }),
+      incidentRoad({
+        roadId: "west",
+        line: road([
+          [-40, 40],
+          [0, 40],
+        ]),
+        atEnd: true,
+      }),
+    ];
+    const tight = solveJunction(n, incident, { cornerRadiusM: 1.5 });
+    const wide = solveJunction(n, incident, { cornerRadiusM: 12 });
+    expect(tight).not.toBeNull();
+    expect(wide).not.toBeNull();
+    const tightExtent = extent(tight!.polygon.geometry);
+    const wideExtent = extent(wide!.polygon.geometry);
+    expect(Math.abs(wideExtent.maxY - tightExtent.maxY)).toBeLessThan(0.0002);
+    expect(Math.abs(wideExtent.minY - tightExtent.minY)).toBeLessThan(0.0002);
+    expect(wide!.polygon.geometry).not.toEqual(tight!.polygon.geometry);
   });
 
   it("never trims a road past its own midpoint on a very short connector", () => {

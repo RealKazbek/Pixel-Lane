@@ -90,12 +90,13 @@ works for any count/angle):
    them by their bearing around the node. This preserves the actual approach
    boundaries; it deliberately avoids a convex hull, whose long chords can
    create an oversized central blob at acute angles.
-3. Round every hull edge that connects two _different_ roads' edge
-   points into a smooth outward-bulging curb-return fillet (a quadratic
-   Bezier through an outward control point, capped at 40% of the edge's
-   own length so it can never self-intersect regardless of junction
-   angle). A hull edge belonging to one road's own left/right pair stays
-   straight -- that's the road's own envelope face.
+3. Treat the ordered edge sequence as the junction boundary: road edge →
+   local corner return → next road edge. Only transitions between different
+   approaches receive a quadratic curb-return fillet. The return is capped
+   at 10% of its own boundary edge length (and by the requested radius), so
+   the radius cannot inflate the entire center into a circular plaza. A
+   transition belonging to one road's own left/right pair stays straight --
+   that is the through-road envelope face.
 4. Union the resulting plate with every incident road's trimmed (or, for
    a detected merge/slip approach, tapered) envelope.
 
@@ -106,7 +107,7 @@ as skewed and arbitrary-angle layouts. A junction surface is derived from
 the shared topology node, semantic centerlines, and road widths; it is not a
 competing persisted source of truth.
 
-Boundary transitions use a deterministic quadratic fillet. The requested
+Boundary transitions use a deterministic, local quadratic fillet. The requested
 corner radius is bounded to the safe 1.5–12 m range (default 6 m), and each
 fillet is capped by its boundary edge length. This prevents acute or
 nearly-parallel approaches from producing miter spikes, crossing arcs, or
