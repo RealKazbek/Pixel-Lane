@@ -22,8 +22,17 @@ export interface ExistingNodeSnapTarget {
   connectedRoadIds: string[];
 }
 
+export interface RoadSegmentSnapTarget {
+  kind: "road-segment";
+  targetId: string;
+  roadId: string;
+  segmentIndex: number;
+  point: Point;
+  nodeId: string | null;
+}
+
 export type EndpointSnapTarget =
-  RoadEndpointSnapTarget | ExistingNodeSnapTarget;
+  RoadEndpointSnapTarget | ExistingNodeSnapTarget | RoadSegmentSnapTarget;
 
 export type ScreenEndpointSnapTarget = EndpointSnapTarget & {
   screenX: number;
@@ -117,6 +126,21 @@ export function buildEndpointSnapTargets(city: City): EndpointSnapTarget[] {
   );
 }
 
+export function buildRoadSegmentSnapTargets(
+  city: City,
+): RoadSegmentSnapTarget[] {
+  return city.roads.flatMap((road) =>
+    road.geometry.points.slice(0, -1).map((point, segmentIndex) => ({
+      kind: "road-segment" as const,
+      targetId: `road:${road.id}:segment:${segmentIndex}`,
+      roadId: road.id,
+      segmentIndex,
+      point: { ...point },
+      nodeId: null,
+    })),
+  );
+}
+
 export function findEndpointSnapCandidate(
   pointer: { x: number; y: number },
   targets: readonly ScreenEndpointSnapTarget[],
@@ -132,6 +156,9 @@ export function findEndpointSnapCandidate(
         if (target.kind === "road-endpoint") {
           return target.roadId !== movingRoadId;
         }
+        if (target.kind === "road-segment") {
+          return target.roadId !== movingRoadId;
+        }
         return !target.connectedRoadIds.includes(movingRoadId);
       })
       .map((target) => ({
@@ -145,6 +172,8 @@ export function findEndpointSnapCandidate(
       .sort(
         (left, right) =>
           left.distancePx - right.distancePx ||
+          (left.kind === "road-segment" ? 1 : 0) -
+            (right.kind === "road-segment" ? 1 : 0) ||
           left.targetId.localeCompare(right.targetId),
       )[0] ?? null
   );
@@ -152,6 +181,49 @@ export function findEndpointSnapCandidate(
 
 function editorNodeId(target: RoadEndpointSnapTarget): string {
   return `${EDITOR_NODE_PREFIX}${target.roadId}-${target.endpoint}`;
+}
+
+function segmentNodeId(target: RoadSegmentSnapTarget): string {
+  return `editor-node-${target.roadId}-segment-${target.segmentIndex}-${target.point.x}-${target.point.y}`;
+}
+
+function splitRoadAtPoint(
+  road: Road,
+  segmentIndex: number,
+  point: Point,
+  secondRoadId: string,
+): [Road, Road] | null {
+  const points = road.geometry.points;
+  if (
+    segmentIndex < 0 ||
+    segmentIndex >= points.length - 1 ||
+    samePoint(point, points[segmentIndex]) ||
+    samePoint(point, points[segmentIndex + 1])
+  ) {
+    return null;
+  }
+  const firstPoints = [...points.slice(0, segmentIndex + 1), { ...point }];
+  const secondPoints = [{ ...point }, ...points.slice(segmentIndex + 1)];
+  const smoothing = road.corner_smoothing ?? [];
+  const firstSmoothing = smoothing.length
+    ? [...smoothing.slice(0, segmentIndex + 1), 0]
+    : road.corner_smoothing;
+  const secondSmoothing = smoothing.length
+    ? [0, ...smoothing.slice(segmentIndex + 1)]
+    : road.corner_smoothing;
+  return [
+    {
+      ...road,
+      geometry: { ...road.geometry, points: firstPoints },
+      corner_smoothing: firstSmoothing,
+    },
+    {
+      ...road,
+      id: secondRoadId,
+      geometry: { ...road.geometry, points: secondPoints },
+      corner_smoothing: secondSmoothing,
+    },
+  ];
 }
 
 function setRoadEndpoint(
@@ -204,24 +276,39 @@ export function applyEndpointSnap(
     target.kind === "road-endpoint"
       ? city.roads.find((road) => road.id === target.roadId)
       : null;
+  const segmentTarget = target.kind === "road-segment" ? target : null;
+  const segmentRoad = segmentTarget
+    ? city.roads.find((road) => road.id === segmentTarget.roadId)
+    : null;
   if (target.kind === "road-endpoint") {
     if (movingRoadId === target.roadId || !targetRoad) return null;
     if (!samePoint(endpointPoint(targetRoad, target.endpoint), target.point)) {
       return null;
     }
   }
+  if (segmentTarget && (!segmentRoad || movingRoadId === segmentRoad.id)) {
+    return null;
+  }
 
-  const existingNode = target.nodeId
+  const targetNodeId =
+    target.kind === "road-segment" ? segmentNodeId(target) : target.nodeId;
+  const existingNode = targetNodeId
     ? city.intersections.find(
-        (intersection) => intersection.id === target.nodeId,
+        (intersection) => intersection.id === targetNodeId,
       )
     : null;
-  if (target.nodeId && !existingNode) return null;
+  if (targetNodeId && !existingNode && target.kind === "road-endpoint") {
+    return null;
+  }
 
   if (target.kind === "existing-node" && !existingNode) return null;
   const nodeId =
     existingNode?.id ??
-    (target.kind === "road-endpoint" ? editorNodeId(target) : target.nodeId);
+    (target.kind === "road-endpoint"
+      ? editorNodeId(target)
+      : target.kind === "road-segment"
+        ? segmentNodeId(target)
+        : target.nodeId);
   const canonicalPoint = existingNode?.position ?? target.point;
   if (
     target.kind === "road-endpoint" &&
@@ -234,6 +321,7 @@ export function applyEndpointSnap(
     ...new Set([
       ...(existingNode?.connected_road_ids ?? []),
       ...(target.kind === "road-endpoint" ? [target.roadId] : []),
+      ...(target.kind === "road-segment" ? [target.roadId] : []),
       movingRoadId,
     ]),
   ].sort();
@@ -263,13 +351,59 @@ export function applyEndpointSnap(
       )
     : [...withoutPrevious, node];
 
+  let nextRoads = city.roads.map((road) =>
+    road.id === movingRoadId
+      ? setRoadEndpoint(road, movingEndpoint, canonicalPoint)
+      : road,
+  );
+  if (segmentTarget && segmentRoad && !existingNode) {
+    const split = splitRoadAtPoint(
+      segmentRoad,
+      segmentTarget.segmentIndex,
+      canonicalPoint,
+      `${segmentRoad.id}-split-${segmentTarget.segmentIndex}`,
+    );
+    if (!split) return null;
+    const [firstRoad, secondRoad] = split;
+    nextRoads = nextRoads.flatMap((road) =>
+      road.id === segmentRoad.id ? [firstRoad, secondRoad] : [road],
+    );
+    const connectedRoadIds = [
+      ...new Set([...node.connected_road_ids, secondRoad.id]),
+    ].sort();
+    const updatedIntersections = nextIntersections.map((intersection) => {
+      if (
+        intersection.id !== nodeId &&
+        intersection.connected_road_ids.includes(segmentRoad.id) &&
+        samePoint(intersection.position, endpointPoint(segmentRoad, "end"))
+      ) {
+        return {
+          ...intersection,
+          connected_road_ids: intersection.connected_road_ids.map((roadId) =>
+            roadId === segmentRoad.id ? secondRoad.id : roadId,
+          ),
+        };
+      }
+      return intersection;
+    });
+    const nextNode = { ...node, connected_road_ids: connectedRoadIds };
+    const nextIntersectionsWithSplit = updatedIntersections.some(
+      (intersection) => intersection.id === nodeId,
+    )
+      ? updatedIntersections.map((intersection) =>
+          intersection.id === nodeId ? nextNode : intersection,
+        )
+      : [...updatedIntersections, nextNode];
+    return {
+      ...city,
+      roads: nextRoads,
+      intersections: nextIntersectionsWithSplit,
+    };
+  }
+
   return {
     ...city,
-    roads: city.roads.map((road) =>
-      road.id === movingRoadId
-        ? setRoadEndpoint(road, movingEndpoint, canonicalPoint)
-        : road,
-    ),
+    roads: nextRoads,
     intersections: nextIntersections,
   };
 }

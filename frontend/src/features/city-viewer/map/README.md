@@ -169,17 +169,18 @@ deterministic; changing any preset-owned field makes the inspector show
 Custom. No preset ID is stored on the Road and no rendered GeoJSON is patched
 directly.
 
-Endpoint snapping lives in `editor/endpointSnapping.ts`, outside React and
-MapLibre. `PixelLaneMap` projects semantic endpoint targets into screen space,
+Snapping lives in `editor/endpointSnapping.ts`, outside React and MapLibre.
+`PixelLaneMap` projects semantic endpoint and centerline-segment targets into
+screen space,
 selects the nearest valid target inside `ENDPOINT_SNAP_TOLERANCE_PX` (18 px),
 and renders a temporary ring/label. On commit, the pure editor transform
 creates or reuses the target's City Model `Intersection`, updates
 `connected_road_ids`, and canonicalizes both endpoint coordinates to the node
-position. The selected-road inspector's collapsed Topology section displays
+position. Interior snaps split the target Road into two ordered Road entities,
+preserving road configuration and curve/control-point order. The selected-road inspector's collapsed Topology section displays
 the start/end node IDs for manual verification. Geometry equality alone never
 creates a connection, and rendered GeoJSON is never consulted for topology.
-Only first/last vertices are eligible; intermediate vertices keep their normal
-curve-editing behavior. An endpoint already on a shared node returns to that
+An endpoint already on a shared node returns to that
 node if released without a replacement snap because explicit detach is not yet
 part of the editor UX.
 
@@ -198,6 +199,7 @@ support this viewport-driven loading. Full Almaty ingestion and measured
 verification status are documented in `docs/osm-import.md` and
 `docs/full-almaty-verification.md`.
 
-Endpoint snapping is intentionally endpoint-only in this iteration: no middle
-segment targets, T-junction generation, automatic splitting, or lane-to-lane
-connections.
+The current editor includes the PL-005.13 semantic centerline snap and
+PL-005.14 automatic split increments. PL-005.12 connected-road-chain behavior,
+PL-005.15 T-junction geometry, and lane-to-lane connections remain out of
+scope.

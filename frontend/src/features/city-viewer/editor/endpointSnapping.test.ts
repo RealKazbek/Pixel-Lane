@@ -4,6 +4,7 @@ import {
   addRoadWithEndpointSnaps,
   applyEndpointSnap,
   buildEndpointSnapTargets,
+  buildRoadSegmentSnapTargets,
   ENDPOINT_SNAP_TOLERANCE_PX,
   finalizeEndpointDrag,
   findEndpointSnapCandidate,
@@ -178,6 +179,23 @@ describe("endpoint snap detection", () => {
     ).toBeNull();
   });
 
+  it("creates a segment candidate for every ordered centerline segment", () => {
+    const road = makeRoad("road-a", 0, 100);
+    road.geometry.points.splice(1, 0, { x: 40, y: 20 });
+    expect(buildRoadSegmentSnapTargets(makeCity([road]))).toEqual([
+      expect.objectContaining({
+        roadId: "road-a",
+        segmentIndex: 0,
+        point: { x: 0, y: 0 },
+      }),
+      expect.objectContaining({
+        roadId: "road-a",
+        segmentIndex: 1,
+        point: { x: 40, y: 20 },
+      }),
+    ]);
+  });
+
   it("excludes an explicit node already connected to the moving road", () => {
     const city = makeCity([makeRoad("road-a", 0, 100)]);
     city.intersections = [
@@ -204,6 +222,69 @@ describe("endpoint snap detection", () => {
 });
 
 describe("endpoint snap topology", () => {
+  it("splits a target segment and shares the new node with the moving road", () => {
+    const city = makeCity([
+      makeRoad("road-a", 0, 100),
+      makeRoad("road-b", 200, 300),
+    ]);
+    const target = buildRoadSegmentSnapTargets(city).find(
+      (candidate) => candidate.roadId === "road-a",
+    );
+    if (!target) throw new Error("Expected segment target");
+    const segmentTarget = { ...target, point: { x: 50, y: 0 } };
+
+    const result = applyEndpointSnap(city, "road-b", "start", segmentTarget);
+    expect(result).not.toBeNull();
+    expect(result?.roads.map((road) => road.id)).toEqual([
+      "road-a",
+      "road-a-split-0",
+      "road-b",
+    ]);
+    expect(result?.roads[0].geometry.points).toEqual([
+      { x: 0, y: 0 },
+      { x: 50, y: 0 },
+    ]);
+    expect(result?.roads[1].geometry.points).toEqual([
+      { x: 50, y: 0 },
+      { x: 100, y: 0 },
+    ]);
+    expect(result?.roads[2].geometry.points[0]).toEqual({ x: 50, y: 0 });
+    expect(result?.intersections).toHaveLength(1);
+    expect(result?.intersections[0].connected_road_ids).toEqual([
+      "road-a",
+      "road-a-split-0",
+      "road-b",
+    ]);
+  });
+
+  it("preserves multi-segment ordering when splitting the nearest segment", () => {
+    const targetRoad = makeRoad("road-a", 0, 100);
+    targetRoad.geometry.points = [
+      { x: 0, y: 0 },
+      { x: 30, y: 40 },
+      { x: 100, y: 0 },
+    ];
+    const city = makeCity([targetRoad, makeRoad("road-b", 200, 300)]);
+    const target = buildRoadSegmentSnapTargets(city).find(
+      (candidate) => candidate.segmentIndex === 1,
+    );
+    if (!target) throw new Error("Expected second segment target");
+
+    const result = applyEndpointSnap(city, "road-b", "start", {
+      ...target,
+      point: { x: 65, y: 20 },
+    });
+    expect(result?.roads[0].geometry.points).toEqual([
+      { x: 0, y: 0 },
+      { x: 30, y: 40 },
+      { x: 65, y: 20 },
+    ]);
+    expect(result?.roads[1].geometry.points).toEqual([
+      { x: 65, y: 20 },
+      { x: 100, y: 0 },
+    ]);
+  });
+
   it("creates one shared node identity and canonical endpoint coordinates", () => {
     const city = makeCity();
     const target = buildEndpointSnapTargets(city).find(

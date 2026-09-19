@@ -27,19 +27,21 @@ road classes: exact semantic matches show the preset name and any manual
 override shows Custom. Full persisted turn/intersection/signal editing remains
 outside the current checkpoint.
 
-PL-005.11 adds endpoint-only snapping for road creation and endpoint dragging.
-Candidates are existing road endpoints or their existing City Model
-`Intersection`, selected by nearest distance inside a centralized 18 px
-screen-space tolerance. A small target ring and Snap label are shown only
-while a valid candidate is active. Committing a snap creates or reuses one
-`Intersection`, adds both roads to its `connected_road_ids`, and copies its
-canonical position to both road endpoints. Visual overlap does not equal
-connectivity; shared node identity defines connectivity. Already connected
-endpoints return to their node when released without another snap because the
-editor has no explicit detach command yet. Segment snapping, automatic road
-splitting, and T-junction creation remain later stages. The selected-road
-inspector exposes a collapsed Topology section so this identity can be checked
-during manual acceptance. See the implementation [map
+PL-005.11 adds endpoint/node snapping for road creation and endpoint dragging.
+Candidates include existing road endpoints and explicit City Model
+`Intersection` nodes, selected by nearest distance inside a centralized 18 px
+screen-space tolerance. The incremental PL-005.13/PL-005.14 implementation
+also projects onto semantic centerline segments and splits a target road when
+an interior point is selected; those stages are documented here as implemented
+editor behavior, without claiming PL-005.12 or PL-005.15. A small target ring
+and Snap label are shown only while a valid candidate is active. Committing an
+endpoint snap creates or reuses one `Intersection`; committing an interior
+segment snap creates a node, preserves the target road configuration across
+two ordered Road entities, and adds both split pieces plus the moving road to
+that node's `connected_road_ids`. Visual overlap does not equal connectivity;
+shared node identity defines connectivity. The selected-road inspector exposes
+a collapsed Topology section so this identity can be checked during manual
+acceptance. See the implementation [map
 README](../frontend/src/features/city-viewer/map/README.md).
 
 PL-005.06 adds the first selected-road properties surface: street name and
