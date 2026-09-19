@@ -24,13 +24,11 @@ detail of one of those.
 - `nodeGeometry.ts` -- shared sizing/trim/bearing helpers used by both
   `junctionSolver.ts` and `mergeTaper.ts`: node radius, corner radius,
   endpoint matching, centerline trimming, outward tangent bearing.
-- `roadEnvelope.ts` -- constant-width road footprint (`@turf/buffer`).
-- `junctionSolver.ts` -- the actual junction-quality fix: trims incident
-  roads back from a node, builds a convex-hull "plate" from their
-  edge points, rounds the plate's inter-road corners into curb-return
-  fillets, and unions everything into one seamless junction surface. See
-  its docstring for the full algorithm and why a naive
-  buffer-then-union of full-length roads produces miter spikes.
+- `roadEnvelope.ts` -- standalone constant-width road footprint
+  (`@turf/buffer`) and explicit flat-ended corridor polygons for junctions.
+- `junctionSolver.ts` -- unions explicit road-edge corridors that include
+  the shared endpoint. Junctions are therefore rectangular/boundary-defined;
+  they are not made from a node buffer, capsule, or central plate.
 - `mergeTaper.ts` -- variable-width envelope for a slip-road/merge
   approach, used by `junctionSolver.ts` in place of a constant-width
   envelope when `isMergeCandidate` says a degree-2 node looks like a
@@ -59,12 +57,10 @@ detail of one of those.
   the only source of truth for _which_ roads should be merged into one
   junction surface. Nothing in this module infers connectivity from
   geometry -- see `roadSurfaceGeometry.ts`'s docstring.
-- `PLATE_DILATION_M` in `junctionSolver.ts` (a ~3cm outward nudge before
-  the final union) works around a numerical-robustness limitation of the
-  polygon-clipping library behind `@turf/union` when two input polygons
-  share an exactly-coincident vertex (common here, since the plate's own
-  vertices are derived from the road envelopes it's about to be unioned
-  with) -- not a visual design choice.
+- Junction geometry deliberately does not use a node radius. `cornerRadiusM`
+  remains part of the editor contract, but the rectangular base is rendered
+  sharp until a local fillet can be added without changing the corridor
+  envelope.
 
 ## Where to add new code
 

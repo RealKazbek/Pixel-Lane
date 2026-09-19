@@ -1,6 +1,9 @@
 import { describe, expect, it } from "vitest";
 import { lineString as turfLineString } from "@turf/helpers";
-import { buildRoadEnvelope } from "../geometry/roadEnvelope";
+import {
+  buildFlatRoadCorridor,
+  buildRoadEnvelope,
+} from "../geometry/roadEnvelope";
 
 describe("buildRoadEnvelope", () => {
   it("builds a finite polygon for an ordinary line", () => {
@@ -27,5 +30,18 @@ describe("buildRoadEnvelope", () => {
       [0, 0],
     ]);
     expect(() => buildRoadEnvelope(line, 4)).not.toThrow();
+  });
+
+  it("builds a flat-ended corridor without round-cap vertices", () => {
+    const corridor = buildFlatRoadCorridor(
+      turfLineString([
+        [0, 0],
+        [0, 0.001],
+      ]),
+      4,
+    );
+    expect(corridor).not.toBeNull();
+    expect(corridor!.geometry.type).toBe("Polygon");
+    expect(corridor!.geometry.coordinates[0]).toHaveLength(5);
   });
 });

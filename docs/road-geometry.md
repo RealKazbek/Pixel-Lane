@@ -83,22 +83,17 @@ see `docs/city-model.md` and the regression test of the same name).
 For a node with 2+ incident roads (generic -- not Demo-City-specific,
 works for any count/angle):
 
-1. Trim each incident road's centerline back by a **node radius**
-   (derived from the widest incident road) so independently-buffered
-   envelopes stop short of the node instead of overlapping neighbors.
-2. Take the left/right envelope-edge points at each road's trim cut and sort
-   them by their bearing around the node. This preserves the actual approach
-   boundaries; it deliberately avoids a convex hull, whose long chords can
-   create an oversized central blob at acute angles.
-3. Treat the ordered edge sequence as the junction boundary: road edge →
-   local corner return → next road edge. Only transitions between different
-   approaches receive a quadratic curb-return fillet. The return is capped
-   at 10% of its own boundary edge length (and by the requested radius), so
-   the radius cannot inflate the entire center into a circular plaza. A
-   transition belonging to one road's own left/right pair stays straight --
-   that is the through-road envelope face.
-4. Union the resulting plate with every incident road's trimmed (or, for
-   a detected merge/slip approach, tapered) envelope.
+1. Build each incident road as an explicit left/right offset corridor with
+   flat/butt ends. The corridor includes the shared endpoint; the topology
+   node itself is not buffered and has no physical radius.
+2. Union the corridors. Internal boundaries disappear while the outer
+   boundary remains the boundary of the connected road widths. A straight T
+   therefore stays a rectangular through-road with a rectangular side-road
+   opening, rather than becoming a central capsule or disk.
+3. Keep the configured corner radius in the editor/model contract. The base
+   junction is currently intentionally sharp; a future local fillet may be
+   applied only to individual adjacent road-edge corners after the
+   corridor-defined footprint remains unchanged.
 
 This is the PL-005.15–PL-005.18 geometry milestone. Incident approaches are
 sorted by local outward bearing, never by road creation or database order.
@@ -107,12 +102,9 @@ as skewed and arbitrary-angle layouts. A junction surface is derived from
 the shared topology node, semantic centerlines, and road widths; it is not a
 competing persisted source of truth.
 
-Boundary transitions use a deterministic, local quadratic fillet. The requested
-corner radius is bounded to the safe 1.5–12 m range (default 6 m), and each
-fillet is capped by its boundary edge length. This prevents acute or
-nearly-parallel approaches from producing miter spikes, crossing arcs, or
-invalid coordinates. Lane-to-lane turn connections and intersection
-markings remain later work (PL-005.19+).
+Lane-to-lane turn connections and intersection markings remain later work
+(PL-005.19+). The standalone road renderer still uses Turf buffering; only
+connected junction approaches use the flat-ended corridor builder.
 
 ## 6. Lane connectivity milestone (PL-005.19–PL-005.24)
 
