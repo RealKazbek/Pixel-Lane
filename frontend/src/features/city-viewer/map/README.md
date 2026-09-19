@@ -199,7 +199,7 @@ support this viewport-driven loading. Full Almaty ingestion and measured
 verification status are documented in `docs/osm-import.md` and
 `docs/full-almaty-verification.md`.
 
-The current editor includes the PL-005.13 semantic centerline snap and
-PL-005.14 automatic split increments. PL-005.12 connected-road-chain behavior,
-PL-005.15 T-junction geometry, and lane-to-lane connections remain out of
+The current editor includes the PL-005.12 connected-road-chain,
+PL-005.13 semantic centerline snap, and PL-005.14 automatic split increments.
+PL-005.15 T-junction geometry and lane-to-lane connections remain out of
 scope.

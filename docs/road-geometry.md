@@ -230,6 +230,15 @@ nearest eligible endpoint within 18 screen pixels, independent of zoom. Road
 surfaces, markings, and the temporary snap ring remain derived from semantic
 state and cannot establish connectivity themselves.
 
+PL-005.12 extends that identity across connected road chains: one node may be
+referenced by any number of independent Road entities, and moving a shared
+endpoint updates every incident road endpoint and the canonical node position.
+PL-005.13 adds semantic centerline segment candidates using nearest-point
+projection with the same screen-space tolerance. PL-005.14 splits an interior
+target segment into two ordered Road entities, preserving road properties and
+control-point order; the two pieces and the connecting road share one explicit
+Intersection. Rendered surfaces remain derived and do not define topology.
+
 The Stage 1 editor world is an explicit local-cartesian rectangle from
 `(-400, -300)` to `(600, 300)`. The three review roads live inside that
 stable 1000m × 600m world. Its grid is generated as MapLibre line geometry
