@@ -68,6 +68,7 @@ import type { City } from "../types/city";
 import type { EditorWorldBounds } from "../editor/editorWorld";
 import {
   buildEndpointSnapTargets,
+  buildRoadSegmentSnapTargets,
   findEndpointSnapCandidate,
   findRoadEndpointNode,
   roadEndpointForVertex,
@@ -172,6 +173,7 @@ export function PixelLaneMap({
   );
   const editor = useGeometryEditor();
   const appliedStyleKeyRef = useRef<string | null>(null);
+  const lastFitSignalRef = useRef<number | null>(null);
   const [gridZoom, setGridZoom] = useState(16);
   const [vertexScreenPoints, setVertexScreenPoints] = useState<
     { index: number; x: number; y: number }[]
@@ -184,8 +186,11 @@ export function PixelLaneMap({
     useState<EndpointSnapCandidate | null>(null);
 
   const projectSnapTargets = useCallback(
-    (map: MapLibreMap): ScreenEndpointSnapTarget[] =>
-      buildEndpointSnapTargets(city).map((target) => {
+    (
+      map: MapLibreMap,
+      pointer?: { x: number; y: number },
+    ): ScreenEndpointSnapTarget[] => {
+      const endpointTargets = buildEndpointSnapTargets(city).map((target) => {
         const projected = map.project(
           toLngLat(city.coordinate_system, target.point),
         );
@@ -194,7 +199,54 @@ export function PixelLaneMap({
           screenX: projected.x,
           screenY: projected.y,
         };
-      }),
+      });
+      if (!pointer) return endpointTargets;
+      const pointerLngLat = map.unproject([pointer.x, pointer.y]);
+      const pointerPoint = fromLngLat(city.coordinate_system, [
+        pointerLngLat.lng,
+        pointerLngLat.lat,
+      ]);
+      const segmentTargets = buildRoadSegmentSnapTargets(city).flatMap(
+        (target) => {
+          const road = city.roads.find(
+            (candidate) => candidate.id === target.roadId,
+          );
+          if (!road) return [];
+          const start = road.geometry.points[target.segmentIndex];
+          const end = road.geometry.points[target.segmentIndex + 1];
+          const dx = end.x - start.x;
+          const dy = end.y - start.y;
+          const lengthSquared = dx * dx + dy * dy;
+          if (lengthSquared <= 0) return [];
+          const ratio = Math.max(
+            0,
+            Math.min(
+              1,
+              ((pointerPoint.x - start.x) * dx +
+                (pointerPoint.y - start.y) * dy) /
+                lengthSquared,
+            ),
+          );
+          if (ratio <= 0 || ratio >= 1) return [];
+          const point = {
+            x: start.x + dx * ratio,
+            y: start.y + dy * ratio,
+          };
+          const projected = map.project(
+            toLngLat(city.coordinate_system, point),
+          );
+          return [
+            {
+              ...target,
+              point,
+              screenX: projected.x,
+              screenY: projected.y,
+            },
+          ];
+        },
+      );
+      return [...endpointTargets, ...segmentTargets];
+    },
     [city],
   );
 
@@ -472,10 +524,13 @@ export function PixelLaneMap({
     applyCurrentSelection,
   ]);
 
-  // Fit-to-view: on demand (button) and whenever the city itself changes.
+  // Fit-to-view only on initial load or an explicit fit request. City Model
+  // edits change `bounds`, but must never move the user's working viewport.
   useEffect(() => {
     const map = mapRef.current;
     if (!map || !isLoaded || !bounds) return;
+    if (lastFitSignalRef.current === fitSignal) return;
+    lastFitSignalRef.current = fitSignal;
     map.fitBounds(bounds, { padding: editorWorld ? 16 : 48, duration: 0 });
     // eslint-disable-next-line react-hooks/exhaustive-deps -- fitSignal is a manual trigger
   }, [isLoaded, bounds, editorWorld, fitSignal]);
@@ -505,7 +560,7 @@ export function PixelLaneMap({
     const resolveDrawPoint = (event: MapMouseEvent) => {
       const candidate = findEndpointSnapCandidate(
         event.point,
-        projectSnapTargets(map),
+        projectSnapTargets(map, event.point),
         null,
       );
       const point = candidate
@@ -575,7 +630,11 @@ export function PixelLaneMap({
     const handleDrawMove = (event: MapMouseEvent) => {
       if (activeTool !== "draw-road") return;
       setSnapCandidate(
-        findEndpointSnapCandidate(event.point, projectSnapTargets(map), null),
+        findEndpointSnapCandidate(
+          event.point,
+          projectSnapTargets(map, event.point),
+          null,
+        ),
       );
     };
     const clearDrawSnap = () => {
@@ -885,7 +944,6 @@ export function PixelLaneMap({
                       roadEndpoint,
                     )?.id ?? null)
                   : null;
-              const snapTargets = roadEndpoint ? projectSnapTargets(map) : [];
               let activeSnapTarget: EndpointSnapTarget | null = null;
               const move = (moveEvent: PointerEvent) => {
                 const screenPoint = {
@@ -895,7 +953,7 @@ export function PixelLaneMap({
                 const candidate = roadEndpoint
                   ? findEndpointSnapCandidate(
                       screenPoint,
-                      snapTargets,
+                      projectSnapTargets(map, screenPoint),
                       selectedRoad?.id ?? null,
                     )
                   : null;

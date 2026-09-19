@@ -151,10 +151,11 @@ it does not introduce an `EditorNode` or infer a graph from geometry. A snap
 adds the involved road IDs to `Intersection.connected_road_ids` and sets both
 endpoint coordinates to `Intersection.position`. Consequently, identical
 coordinates without the shared intersection ID remain disconnected, while one
-shared ID requires one canonical rendered position. Only road start/end
-vertices participate. This local transform is the topology foundation for the
-next connected-road-chain stage, but it is not yet auto-persisted and does not
-provide segment snapping, splitting, or explicit detach UX.
+shared ID requires one canonical rendered position. Endpoint snaps and
+interior centerline snaps both create explicit node identity; an interior snap
+splits the target Road into two ordered Road entities that share the new node
+with the moving road. This local transform is not yet auto-persisted and does
+not provide connected-road-chain or explicit detach UX.
 
 Added by migration `f3b7c1d92a58`, on top of Part 1. This is normalized
 lane metadata. The editor's derived lane geometry and basic markings are

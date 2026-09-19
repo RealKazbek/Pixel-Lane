@@ -18,10 +18,12 @@ UI, simulation, and hardware concerns.
   document containing three production-generated Stage 1 road primitives.
   The current PL-005 checkpoint supports road creation, endpoint/vertex
   editing, curved multi-segment geometry, width and lane configuration,
-  derived basic markings, reusable semantic road presets, and endpoint
-  snapping backed by explicit City Model `Intersection` identity; the separate
-  Road Geometry Lab remains the engineering surface for fixtures. No full
-  persisted lane/intersection editor exists.
+  derived basic markings, reusable semantic road presets, endpoint/node
+  snapping, and semantic centerline segment snapping with automatic road
+  splitting backed by explicit City Model `Intersection` identity; the
+  separate Road Geometry Lab remains the engineering surface for fixtures.
+  PL-005.12 connected-road-chain and PL-005.15 T-junction geometry remain
+  unimplemented. No full persisted lane/intersection editor exists.
 - `backend/` — FastAPI + Pydantic + SQLAlchemy + Alembic, PostgreSQL.
   App wiring (settings, DB session/engine, error handling, a body-size
   safeguard) plus two real domain modules: **City Model v1** (`app/city/`)
