@@ -22,8 +22,10 @@ UI, simulation, and hardware concerns.
   snapping, and semantic centerline segment snapping with automatic road
   splitting backed by explicit City Model `Intersection` identity; the
   separate Road Geometry Lab remains the engineering surface for fixtures.
-  PL-005.15 T-junction geometry remains unimplemented. No full persisted
-  lane/intersection editor exists.
+  PL-005.15–PL-005.18 derived junction geometry is implemented for connected
+  T/Y, four-way, and arbitrary-angle nodes with bounded corner radii. No full
+  persisted lane/intersection editor exists; lane-to-lane turn geometry is
+  intentionally a later stage.
 - `backend/` — FastAPI + Pydantic + SQLAlchemy + Alembic, PostgreSQL.
   App wiring (settings, DB session/engine, error handling, a body-size
   safeguard) plus two real domain modules: **City Model v1** (`app/city/`)

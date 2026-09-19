@@ -40,7 +40,10 @@ import buffer from "@turf/buffer";
 import convex from "@turf/convex";
 import destination from "@turf/destination";
 import distance from "@turf/distance";
-import { featureCollection as turfFeatureCollection, point as turfPoint } from "@turf/helpers";
+import {
+  featureCollection as turfFeatureCollection,
+  point as turfPoint,
+} from "@turf/helpers";
 import length from "@turf/length";
 import lineSliceAlong from "@turf/line-slice-along";
 import union from "@turf/union";
@@ -49,8 +52,11 @@ import {
   type IncidentRoad,
   type LngLat,
   computeNodeRadius,
-  cornerRadiusForPair,
+  clamp,
+  DEFAULT_JUNCTION_CORNER_RADIUS_M,
   edgePointsAt,
+  MAX_CORNER_RADIUS_M,
+  MIN_CORNER_RADIUS_M,
   outwardBearing,
   trimLine,
 } from "./nodeGeometry";
@@ -64,6 +70,12 @@ interface TaggedPoint {
 export interface JunctionResult {
   polygon: PolygonFeature;
   memberRoadIds: string[];
+}
+
+export interface JunctionGeometryOptions {
+  /** Requested curb-return radius. It is always clamped to the safe geometry
+   * range and never changes topology or road semantics. */
+  cornerRadiusM?: number;
 }
 
 const BULGE_SAMPLES = 4;
@@ -93,7 +105,12 @@ function unionAll(polygons: PolygonFeature[]): PolygonFeature | null {
   return merged;
 }
 
-function quadraticBezier(p0: LngLat, p1: LngLat, p2: LngLat, t: number): LngLat {
+function quadraticBezier(
+  p0: LngLat,
+  p1: LngLat,
+  p2: LngLat,
+  t: number,
+): LngLat {
   const mt = 1 - t;
   return [
     mt * mt * p0[0] + 2 * mt * t * p1[0] + t * t * p2[0],
@@ -138,20 +155,35 @@ function hasUsableLength(line: GeoJSON.Feature<GeoJSON.LineString>): boolean {
 export function solveJunction(
   nodePosition: LngLat,
   incidentInput: IncidentRoad[],
+  options: JunctionGeometryOptions = {},
 ): JunctionResult | null {
   // A zero/near-zero-length line (two coincident points) has no usable
   // tangent direction -- turf's bearing/lineSliceAlong throw on it rather
   // than returning a sentinel, so it must be filtered out before any
   // geometry runs, the same "skip rather than crash on one bad road"
   // policy every other builder in this module follows.
-  const incident = incidentInput.filter((road) => hasUsableLength(road.line));
+  const incident = incidentInput
+    .filter((road) => hasUsableLength(road.line))
+    .sort((a, b) => a.roadId.localeCompare(b.roadId));
   if (incident.length < 2) return null;
 
   const nodeRadius = computeNodeRadius(incident);
   const bearingByRoadId = new Map<string, number>();
   for (const road of incident) {
-    bearingByRoadId.set(road.roadId, outwardBearing(nodePosition, road.line, road.atEnd));
+    bearingByRoadId.set(
+      road.roadId,
+      outwardBearing(nodePosition, road.line, road.atEnd),
+    );
   }
+
+  // Geometry must not depend on road creation/database order. Bearing is
+  // clockwise from north in Turf's coordinate system; road ID is only a
+  // deterministic tie-break for coincident tangents.
+  incident.sort((a, b) => {
+    const angle =
+      bearingByRoadId.get(a.roadId)! - bearingByRoadId.get(b.roadId)!;
+    return angle || a.roadId.localeCompare(b.roadId);
+  });
 
   // At most one merge/slip approach per node -- see mergeTaper.ts. Not
   // restricted to a degree-2 node: a real merge point is topologically a
@@ -178,13 +210,19 @@ export function solveJunction(
   }
 
   const trimmedEnvelopes: { roadId: string; polygon: PolygonFeature }[] = [];
-  const taggedPoints: TaggedPoint[] = [{ coord: nodePosition, roadId: "__node__" }];
+  const taggedPoints: TaggedPoint[] = [
+    { coord: nodePosition, roadId: "__node__" },
+  ];
 
   for (const road of incident) {
     const roadBearing = bearingByRoadId.get(road.roadId)!;
 
     if (road.roadId === mergeRoadId) {
-      const taper = buildMergeTaperEnvelope(road.line, road.halfWidthM, road.atEnd);
+      const taper = buildMergeTaperEnvelope(
+        road.line,
+        road.halfWidthM,
+        road.atEnd,
+      );
       if (taper) {
         // The taper only covers the last `taperStartDistance..end` stretch
         // near the node -- the rest of this same road (its far portion,
@@ -194,8 +232,12 @@ export function solveJunction(
         // fallback below (see `mergedRoadIds` in roadSurfaceGeometry.ts).
         const total = length(road.line, { units: "meters" });
         const farPortion = road.atEnd
-          ? lineSliceAlong(road.line, 0, taper.taperStartDistance, { units: "meters" })
-          : lineSliceAlong(road.line, taper.taperStartDistance, total, { units: "meters" });
+          ? lineSliceAlong(road.line, 0, taper.taperStartDistance, {
+              units: "meters",
+            })
+          : lineSliceAlong(road.line, taper.taperStartDistance, total, {
+              units: "meters",
+            });
         const farEnvelope =
           length(farPortion, { units: "meters" }) > 0.01
             ? buildRoadEnvelope(farPortion, road.halfWidthM)
@@ -203,7 +245,8 @@ export function solveJunction(
         const combined = farEnvelope
           ? unionAll([taper.polygon, farEnvelope])
           : taper.polygon;
-        if (combined) trimmedEnvelopes.push({ roadId: road.roadId, polygon: combined });
+        if (combined)
+          trimmedEnvelopes.push({ roadId: road.roadId, polygon: combined });
       }
       // The taper's node-side stub already reaches the node coordinate at
       // ~zero width, so it needs no separate hull contribution -- the
@@ -223,7 +266,11 @@ export function solveJunction(
     const cutPoint = road.atEnd
       ? trimmedCoords[trimmedCoords.length - 1]
       : trimmedCoords[0];
-    const { left, right } = edgePointsAt(cutPoint, roadBearing, road.halfWidthM);
+    const { left, right } = edgePointsAt(
+      cutPoint,
+      roadBearing,
+      road.halfWidthM,
+    );
     taggedPoints.push({ coord: left, roadId: road.roadId });
     taggedPoints.push({ coord: right, roadId: road.roadId });
   }
@@ -266,12 +313,17 @@ export function solveJunction(
     smoothedRing.push(p);
     const pRoad = tagByKey.get(keyOf(p));
     const qRoad = tagByKey.get(keyOf(q));
-    const isCorner = pRoad !== undefined && qRoad !== undefined && pRoad !== qRoad;
+    const isCorner =
+      pRoad !== undefined && qRoad !== undefined && pRoad !== qRoad;
     if (!isCorner) continue;
     const roadP = roadById.get(pRoad!);
     const roadQ = roadById.get(qRoad!);
     if (!roadP || !roadQ) continue;
-    const radius = cornerRadiusForPair(roadP, roadQ);
+    const radius = clamp(
+      options.cornerRadiusM ?? DEFAULT_JUNCTION_CORNER_RADIUS_M,
+      MIN_CORNER_RADIUS_M,
+      MAX_CORNER_RADIUS_M,
+    );
     smoothedRing.push(...bulgeArc(p, q, nodePosition, radius));
   }
   smoothedRing.push(smoothedRing[0]);
@@ -287,7 +339,10 @@ export function solveJunction(
   return merged ? { polygon: merged, memberRoadIds } : null;
 }
 
-function safeDilate(polygon: PolygonFeature, distanceM: number): PolygonFeature | null {
+function safeDilate(
+  polygon: PolygonFeature,
+  distanceM: number,
+): PolygonFeature | null {
   try {
     return buffer(polygon, distanceM, { units: "meters", steps: 4 }) ?? null;
   } catch {
