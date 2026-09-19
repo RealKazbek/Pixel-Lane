@@ -143,5 +143,22 @@ export function buildRoadLayers(
     },
   };
 
-  return [surface, laneMarkings, selection];
+  // The close-zoom road surface is a merged junction polygon and therefore
+  // cannot identify one constituent road. Keep hit testing on the semantic
+  // per-road centerlines so shared-node rendering never changes selection
+  // identity. This layer is interaction-only and has no visible paint.
+  const interaction: LayerSpecification = {
+    id: LAYER_IDS.roadInteraction,
+    type: "line",
+    source: SOURCE_IDS.roads,
+    minzoom: SURFACE_DETAIL_MIN_ZOOM,
+    layout: { "line-cap": "round", "line-join": "round" },
+    paint: {
+      "line-color": "#000000",
+      "line-opacity": 0,
+      "line-width": surfaceWidth,
+    },
+  };
+
+  return [surface, laneMarkings, selection, interaction];
 }
