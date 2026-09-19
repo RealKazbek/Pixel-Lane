@@ -148,7 +148,11 @@
     "scale": "Scale 1:{denominator}",
     "scaleBarMeters": "{value} m",
     "scaleBarKm": "{value} km",
-    "laneConnections": "Lane connections"
+    "laneConnections": "Lane connections",
+    "saved": "Saved",
+    "saving": "Saving…",
+    "saveError": "Save failed",
+    "loadError": "Could not load the City Model."
   },
   "editor": {
     "minPointsError": "A road needs at least 2 points.",

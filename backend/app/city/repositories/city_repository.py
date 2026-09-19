@@ -20,6 +20,7 @@ from app.city.models.road import Road
 from app.city.models.traffic_light import TrafficLight
 from app.city.repositories.city_builder import build_city
 from app.city.schemas.city import CityCreate
+from app.city.schemas.intersection import IntersectionUpdate
 from app.city.schemas.road import RoadPropertiesUpdate
 
 # Eager-load every relationship a CityRead needs in a bounded number of
@@ -148,3 +149,33 @@ def update_road_properties(
         db.rollback()
         raise
     return road
+
+
+def update_intersection(
+    db: Session, city_id: UUID, intersection_id: UUID, payload: IntersectionUpdate
+) -> Intersection | None:
+    intersection = db.execute(
+        select(Intersection).where(
+            Intersection.id == intersection_id, Intersection.city_id == city_id
+        )
+    ).scalar_one_or_none()
+    if intersection is None:
+        return None
+    roads = list(
+        db.execute(
+            select(Road).where(Road.city_id == city_id, Road.id.in_(payload.connected_road_ids))
+        ).scalars()
+    )
+    if len(roads) != len(set(payload.connected_road_ids)):
+        raise ValueError("INTERSECTION_ROAD_NOT_FOUND")
+    intersection.position_x = payload.position.x
+    intersection.position_y = payload.position.y
+    intersection.control_type = payload.control_type.value
+    intersection.connected_roads = roads
+    db.execute(update(City).where(City.id == city_id).values(updated_at=func.now()))
+    try:
+        db.commit()
+    except Exception:
+        db.rollback()
+        raise
+    return intersection

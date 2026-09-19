@@ -11,7 +11,7 @@ from app.city.schemas.city import (
     CitySummary,
     CityValidationResult,
 )
-from app.city.schemas.intersection import IntersectionRead
+from app.city.schemas.intersection import IntersectionRead, IntersectionUpdate
 from app.city.schemas.road import RoadGeometryUpdate, RoadPropertiesUpdate, RoadRead
 from app.city.schemas.spatial import BBox, MapRoad
 from app.city.services import city_service
@@ -172,6 +172,22 @@ def get_intersection(
     city_id: UUID, intersection_id: UUID, db: Session = Depends(get_db)
 ) -> IntersectionRead:
     intersection = city_service.get_intersection(db, city_id, intersection_id)
+    if intersection is None:
+        raise HTTPException(status_code=404, detail="Intersection not found")
+    return intersection
+
+
+@router.patch("/{city_id}/intersections/{intersection_id}", response_model=IntersectionRead)
+def update_intersection(
+    city_id: UUID,
+    intersection_id: UUID,
+    payload: IntersectionUpdate,
+    db: Session = Depends(get_db),
+) -> IntersectionRead:
+    try:
+        intersection = city_service.update_intersection(db, city_id, intersection_id, payload)
+    except ValueError as exc:
+        raise HTTPException(status_code=422, detail="INTERSECTION_ROAD_NOT_FOUND") from exc
     if intersection is None:
         raise HTTPException(status_code=404, detail="Intersection not found")
     return intersection

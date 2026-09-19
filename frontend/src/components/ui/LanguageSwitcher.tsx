@@ -1,15 +1,10 @@
 "use client";
 
+import { useEffect, useRef, useState } from "react";
 import { useLocale, useTranslations } from "next-intl";
 import { useParams } from "next/navigation";
 import { routing } from "@/i18n/routing";
 import { usePathname, useRouter } from "@/i18n/navigation";
-
-const LOCALE_LABELS: Record<string, string> = {
-  kk: "Қазақша",
-  ru: "Русский",
-  en: "English",
-};
 
 const LOCALE_SHORT: Record<string, string> = {
   kk: "ҚАЗ",
@@ -34,6 +29,18 @@ export function LanguageSwitcher({
   const params = useParams();
   const router = useRouter();
   const t = useTranslations("common");
+  void variant;
+  const [open, setOpen] = useState(false);
+  const rootRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!open) return;
+    const close = (event: MouseEvent) => {
+      if (!rootRef.current?.contains(event.target as Node)) setOpen(false);
+    };
+    document.addEventListener("mousedown", close);
+    return () => document.removeEventListener("mousedown", close);
+  }, [open]);
 
   function switchTo(nextLocale: string) {
     router.replace(
@@ -45,30 +52,45 @@ export function LanguageSwitcher({
   }
 
   return (
-    <div
-      role="group"
-      aria-label={t("languageSwitcherLabel")}
-      className="inline-flex items-center gap-0.5 rounded-md border border-border-subtle p-0.5 text-xs"
-    >
-      {routing.locales.map((loc) => {
-        const isActive = loc === locale;
-        return (
-          <button
-            key={loc}
-            type="button"
-            onClick={() => switchTo(loc)}
-            aria-current={isActive ? "true" : undefined}
-            aria-label={LOCALE_LABELS[loc]}
-            className={`rounded px-2 py-1 font-medium transition-colors ${
-              isActive
-                ? "bg-primary text-white"
-                : "text-zinc-600 hover:bg-zinc-100 dark:text-zinc-300 dark:hover:bg-zinc-800"
-            }`}
-          >
-            {variant === "full" ? LOCALE_LABELS[loc] : LOCALE_SHORT[loc]}
-          </button>
-        );
-      })}
+    <div ref={rootRef} className="relative">
+      <button
+        type="button"
+        onClick={() => setOpen((value) => !value)}
+        aria-expanded={open}
+        aria-haspopup="menu"
+        aria-label={t("languageSwitcherLabel")}
+        className="inline-flex items-center gap-1 rounded-md border border-border-subtle px-2 py-1.5 text-xs font-medium text-foreground transition-colors hover:bg-surface-raised focus-visible:outline-2 focus-visible:outline-primary"
+      >
+        <span aria-hidden>
+          {locale === "kk" ? "🇰🇿" : locale === "ru" ? "🇷🇺" : "🇬🇧"}
+        </span>
+        {LOCALE_SHORT[locale]}
+        <span aria-hidden>▾</span>
+      </button>
+      {open && (
+        <div
+          role="menu"
+          className="absolute right-0 top-full z-30 mt-1 min-w-32 rounded-md border border-border-subtle bg-surface p-1 shadow-lg"
+        >
+          {routing.locales.map((loc) => (
+            <button
+              key={loc}
+              type="button"
+              role="menuitem"
+              onClick={() => {
+                setOpen(false);
+                switchTo(loc);
+              }}
+              className={`flex w-full items-center gap-2 rounded px-2 py-1.5 text-left text-xs ${loc === locale ? "bg-primary/10 text-primary" : "text-foreground hover:bg-surface-raised"}`}
+            >
+              <span aria-hidden>
+                {loc === "kk" ? "🇰🇿" : loc === "ru" ? "🇷🇺" : "🇬🇧"}
+              </span>
+              {LOCALE_SHORT[loc]}
+            </button>
+          ))}
+        </div>
+      )}
     </div>
   );
 }

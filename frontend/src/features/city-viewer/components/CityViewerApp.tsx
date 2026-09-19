@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useReducer, useState } from "react";
+import { useCallback, useEffect, useReducer, useRef, useState } from "react";
 import { useTranslations } from "next-intl";
 import { mapStyleUrl } from "@/lib/config";
 import {
@@ -41,11 +41,23 @@ import {
   INITIAL_EDITOR_SESSION,
   reduceEditorSession,
 } from "../map/editor/editorState";
+import {
+  getCities,
+  getCityForMap,
+  updateIntersection,
+  updateRoadGeometry,
+  updateRoadProperties,
+} from "../api/cities";
 
 /** City Model is currently an editor document, not a city picker/viewer. */
 export function CityViewerApp() {
   const t = useTranslations("cityModel.fullscreen");
   const [city, setCity] = useState(buildEditorWorkspace);
+  const [cityLoadError, setCityLoadError] = useState(false);
+  const hydratedRef = useRef(false);
+  const [saveState, setSaveState] = useState<"saved" | "saving" | "error">(
+    "saved",
+  );
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [selected, setSelected] = useState<MapSelection | null>(null);
   const [selectedVertexIndex, setSelectedVertexIndex] = useState<number | null>(
@@ -64,13 +76,85 @@ export function CityViewerApp() {
   const [crosshair, setCrosshair] = useState<{ x: number; y: number } | null>(
     null,
   );
+
+  useEffect(() => {
+    let cancelled = false;
+    getCities()
+      .then((cities) => (cities[0] ? getCityForMap(cities[0].id) : null))
+      .then((loaded) => {
+        if (cancelled || !loaded) return;
+        setCity(loaded);
+        hydratedRef.current = true;
+      })
+      .catch(() => {
+        if (!cancelled) setCityLoadError(true);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  useEffect(() => {
+    if (!hydratedRef.current) return;
+    const timer = window.setTimeout(async () => {
+      const persistedRoads = city.roads.filter((road) =>
+        /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(
+          road.id,
+        ),
+      );
+      if (persistedRoads.length === 0) return;
+      setSaveState("saving");
+      try {
+        await Promise.all(
+          persistedRoads.map((road) =>
+            Promise.all([
+              updateRoadGeometry(city.id, road.id, road.geometry),
+              updateRoadProperties(city.id, road.id, {
+                name: road.name,
+                width_m: road.width_m ?? 8,
+                lane_count: Math.max(road.lanes.length, 1),
+                lane_width_m:
+                  (road.width_m ?? 8) / Math.max(road.lanes.length, 1),
+                lane_directions: road.lanes.map((lane) => lane.direction),
+                left_edge_marking: road.left_edge_marking ?? "SOLID_YELLOW",
+                right_edge_marking: road.right_edge_marking ?? "SOLID_YELLOW",
+                lane_boundary_markings: road.lane_boundary_markings ?? [],
+              }),
+            ]),
+          ),
+        );
+        await Promise.all(
+          city.intersections
+            .filter((intersection) =>
+              /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(
+                intersection.id,
+              ),
+            )
+            .map((intersection) =>
+              updateIntersection(city.id, intersection.id, {
+                position: intersection.position,
+                connected_road_ids: intersection.connected_road_ids,
+                connected_lane_ids: intersection.connected_lane_ids,
+                control_type: intersection.control_type,
+              }),
+            ),
+        );
+        setSaveState("saved");
+      } catch {
+        setSaveState("error");
+      }
+    }, 600);
+    return () => window.clearTimeout(timer);
+  }, [city]);
   const selectedRoad =
     selected?.type === "road"
       ? city.roads.find((road) => road.id === selected.id)
       : null;
   const selectedIntersection =
     selected?.type === "intersection"
-      ? city.intersections.find((intersection) => intersection.id === selected.id)
+      ? city.intersections.find(
+          (intersection) => intersection.id === selected.id,
+        )
       : null;
   const selectedRoadNodeIds = selectedRoad
     ? {
@@ -323,6 +407,11 @@ export function CityViewerApp() {
           : ""
       }`}
     >
+      {cityLoadError && (
+        <div className="absolute left-1/2 top-3 z-20 -translate-x-1/2 rounded-md border border-red-500/30 bg-red-500/10 px-3 py-2 text-xs text-red-700 dark:text-red-300">
+          {t("loadError")}
+        </div>
+      )}
       <div
         className="relative flex min-w-0 flex-1 overflow-hidden"
         onPointerMove={(event) => {
@@ -386,6 +475,13 @@ export function CityViewerApp() {
           />
         )}
         <div className="pointer-events-none absolute inset-x-3 top-3 flex justify-end">
+          <span className="mr-2 self-center text-[11px] text-muted-foreground">
+            {saveState === "saving"
+              ? t("saving")
+              : saveState === "error"
+                ? t("saveError")
+                : t("saved")}
+          </span>
           <button
             type="button"
             onClick={() => setLaneConnectivityVisible((value) => !value)}

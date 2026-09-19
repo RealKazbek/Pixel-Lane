@@ -148,7 +148,11 @@
     "scale": "Масштаб 1:{denominator}",
     "scaleBarMeters": "{value} м",
     "scaleBarKm": "{value} км",
-    "laneConnections": "Жолақ байланыстары"
+    "laneConnections": "Жолақ байланыстары",
+    "saved": "Сақталды",
+    "saving": "Сақталуда…",
+    "saveError": "Сақтау қатесі",
+    "loadError": "City Model жүктелмеді."
   },
   "editor": {
     "minPointsError": "Жол үшін кемінде 2 нүкте қажет.",

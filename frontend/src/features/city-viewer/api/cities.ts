@@ -63,6 +63,20 @@ export function getIntersection(
   return apiRequest(`/api/v1/cities/${cityId}/intersections/${id}`, { signal });
 }
 
+export function updateIntersection(
+  cityId: string,
+  intersectionId: string,
+  intersection: Pick<
+    Intersection,
+    "position" | "connected_road_ids" | "connected_lane_ids" | "control_type"
+  >,
+): Promise<Intersection> {
+  return apiRequest<Intersection>(
+    `/api/v1/cities/${cityId}/intersections/${intersectionId}`,
+    { method: "PATCH", body: JSON.stringify(intersection) },
+  );
+}
+
 function bboxQueryParam(bbox: BBox): string {
   return `${bbox.minLon},${bbox.minLat},${bbox.maxLon},${bbox.maxLat}`;
 }

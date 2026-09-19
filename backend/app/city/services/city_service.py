@@ -22,7 +22,7 @@ from app.city.schemas.city import (
     CityValidationResult,
 )
 from app.city.schemas.import_city import CityImport
-from app.city.schemas.intersection import IntersectionRead
+from app.city.schemas.intersection import IntersectionRead, IntersectionUpdate
 from app.city.schemas.road import RoadPropertiesUpdate, RoadRead
 from app.city.schemas.spatial import BBox, MapLaneSummary, MapRoad
 from app.city.services.city_mapper import to_city_read, to_intersection_read, to_road_read
@@ -202,3 +202,10 @@ def get_intersection(db: Session, city_id: UUID, intersection_id: UUID) -> Inter
         return None
     lights = spatial_repository.find_traffic_lights_by_intersection_ids(db, [intersection_id])
     return to_intersection_read(intersection, lights)
+
+
+def update_intersection(
+    db: Session, city_id: UUID, intersection_id: UUID, payload: IntersectionUpdate
+) -> IntersectionRead | None:
+    intersection = city_repository.update_intersection(db, city_id, intersection_id, payload)
+    return to_intersection_read(intersection, {}) if intersection is not None else None

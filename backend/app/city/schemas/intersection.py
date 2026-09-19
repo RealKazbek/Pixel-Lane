@@ -28,3 +28,12 @@ class IntersectionRead(BaseModel):
     traffic_light_id: UUID | None
 
     model_config = {"from_attributes": True}
+
+
+class IntersectionUpdate(BaseModel):
+    position: Point
+    connected_road_ids: list[UUID] = Field(min_length=1, max_length=MAX_ROADS_PER_INTERSECTION)
+    connected_lane_ids: list[UUID] = Field(
+        default_factory=list, max_length=MAX_LANES_PER_INTERSECTION
+    )
+    control_type: IntersectionControlType
