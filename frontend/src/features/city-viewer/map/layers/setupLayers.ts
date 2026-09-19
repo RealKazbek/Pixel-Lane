@@ -380,6 +380,7 @@ export function setEditedRoadHidden(
   for (const layerId of [
     "pixel-lane-road-casing",
     "pixel-lane-road-surface",
+    "pixel-lane-road-interaction",
     "pixel-lane-lane-markings",
   ]) {
     if (map.getLayer(layerId)) {

@@ -552,6 +552,7 @@ export function PixelLaneMap({
         const layers = [
           LAYER_IDS.roadSurface,
           LAYER_IDS.roadSurfaceFill,
+          LAYER_IDS.roadInteraction,
           LAYER_IDS.intersections,
           LAYER_IDS.intersectionDetails,
           LAYER_IDS.trafficLights,
@@ -563,6 +564,7 @@ export function PixelLaneMap({
       const layers = [
         LAYER_IDS.roadSurface,
         LAYER_IDS.roadSurfaceFill,
+        LAYER_IDS.roadInteraction,
         LAYER_IDS.intersections,
         LAYER_IDS.intersectionDetails,
         LAYER_IDS.trafficLights,
@@ -617,10 +619,13 @@ export function PixelLaneMap({
     // clicking it is a no-op here rather than misattributing the click to
     // one arbitrary constituent road (see roadSurfaceGeometry.ts).
     map.on("click", LAYER_IDS.roadSurfaceFill, handleRoadClick);
+    map.on("click", LAYER_IDS.roadInteraction, handleRoadClick);
     map.on("mousemove", LAYER_IDS.roadSurface, handleRoadHover);
     map.on("mousemove", LAYER_IDS.roadSurfaceFill, handleRoadHover);
+    map.on("mousemove", LAYER_IDS.roadInteraction, handleRoadHover);
     map.on("mouseout", LAYER_IDS.roadSurface, clearRoadHover);
     map.on("mouseout", LAYER_IDS.roadSurfaceFill, clearRoadHover);
+    map.on("mouseout", LAYER_IDS.roadInteraction, clearRoadHover);
     map.on("click", LAYER_IDS.trafficLights, handleTrafficLightClick);
     map.on("click", handleBackgroundClick);
     map.on("mousemove", handleDrawMove);
@@ -631,10 +636,13 @@ export function PixelLaneMap({
       map.off("click", LAYER_IDS.intersectionDetails, handleIntersectionClick);
       map.off("click", LAYER_IDS.roadSurface, handleRoadClick);
       map.off("click", LAYER_IDS.roadSurfaceFill, handleRoadClick);
+      map.off("click", LAYER_IDS.roadInteraction, handleRoadClick);
       map.off("mousemove", LAYER_IDS.roadSurface, handleRoadHover);
       map.off("mousemove", LAYER_IDS.roadSurfaceFill, handleRoadHover);
+      map.off("mousemove", LAYER_IDS.roadInteraction, handleRoadHover);
       map.off("mouseout", LAYER_IDS.roadSurface, clearRoadHover);
       map.off("mouseout", LAYER_IDS.roadSurfaceFill, clearRoadHover);
+      map.off("mouseout", LAYER_IDS.roadInteraction, clearRoadHover);
       map.off("click", LAYER_IDS.trafficLights, handleTrafficLightClick);
       map.off("click", handleBackgroundClick);
       map.off("mousemove", handleDrawMove);
