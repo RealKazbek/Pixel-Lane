@@ -42,7 +42,9 @@ function circleRadiusExpression(
   ] as ExpressionSpecification;
 }
 
-export function buildIntersectionLayers(theme: MapThemeColors): LayerSpecification[] {
+export function buildIntersectionLayers(
+  theme: MapThemeColors,
+): LayerSpecification[] {
   const radius = circleRadiusExpression(8, [
     [13, 1.2],
     [16, 2.6],
@@ -90,7 +92,9 @@ export function buildIntersectionLayers(theme: MapThemeColors): LayerSpecificati
  * it read as an unrelated stray dot). Not a live phase indicator --
  * Traffic Engine v1 has no signal-timing simulation (see
  * docs/architecture.md). */
-export function buildTrafficLightLayer(theme: MapThemeColors): LayerSpecification {
+export function buildTrafficLightLayer(
+  theme: MapThemeColors,
+): LayerSpecification {
   return {
     id: LAYER_IDS.trafficLights,
     type: "circle",
@@ -123,20 +127,18 @@ export function buildRoadLabelLayer(theme: MapThemeColors): LayerSpecification {
     filter: ["any", [">=", ["zoom"], 16], ["<=", ["get", "label_rank"], 2]],
     layout: {
       "text-field": ["get", "name"],
-      "text-size": [
-        "interpolate",
-        ["linear"],
-        ["zoom"],
-        13,
-        10,
-        18,
-        13,
-      ] as ExpressionSpecification,
+      "text-size": ["interpolate", ["linear"], ["zoom"], 13, 13, 24, 14],
       "text-font": ["Noto Sans Regular"],
       "symbol-placement": "point",
-      "text-max-width": 8,
-      "text-allow-overlap": false,
-      "text-optional": true,
+      "text-rotate": ["get", "rotation"],
+      "text-rotation-alignment": "map",
+      "text-max-width": 100,
+      // These isolated editor labels are part of the primitive's inspection
+      // surface. Their size expression guarantees they stay inside the road;
+      // collision avoidance must not make the validation labels disappear.
+      "text-allow-overlap": true,
+      "text-ignore-placement": true,
+      "text-optional": false,
       // Higher-hierarchy roads (lower rank number) win collision priority
       // and get placed first -- a highway's name should never lose to a
       // service road's when there isn't room for both.
@@ -145,7 +147,8 @@ export function buildRoadLabelLayer(theme: MapThemeColors): LayerSpecification {
     paint: {
       "text-color": theme.roadLabel,
       "text-halo-color": theme.roadLabelHalo,
-      "text-halo-width": 1.6,
+      "text-halo-width": 2.2,
+      "text-opacity": 1,
     },
   };
 }

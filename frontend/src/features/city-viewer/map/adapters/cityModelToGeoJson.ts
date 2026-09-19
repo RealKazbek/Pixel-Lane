@@ -4,8 +4,10 @@
  * Model itself (see map/README.md).
  */
 
+import bearing from "@turf/bearing";
 import { toLngLat } from "./coordinates";
 import { roadLengthMeters } from "./geometryLength";
+import { smoothCenterline } from "../geometry/curveSmoothing";
 import {
   HIERARCHY_LABEL_RANK,
   roadCasingWidthMeters,
@@ -70,6 +72,9 @@ export interface LabelFeatureProperties {
   name: string;
   hierarchy: string;
   label_rank: number;
+  rotation: number;
+  length_m: number;
+  character_count: number;
 }
 
 export type RoadFeatureCollection = GeoJSON.FeatureCollection<
@@ -106,9 +111,10 @@ function roadToLineString(
   };
 }
 
-export function buildRoadFeatureCollection(
-  city: { roads: (Road | MapRoad)[]; coordinate_system: CoordinateSystem },
-): RoadFeatureCollection {
+export function buildRoadFeatureCollection(city: {
+  roads: (Road | MapRoad)[];
+  coordinate_system: CoordinateSystem;
+}): RoadFeatureCollection {
   return {
     type: "FeatureCollection",
     features: city.roads.map((road) => {
@@ -202,13 +208,73 @@ export function buildTrafficLightFeatureCollection(city: {
   return { type: "FeatureCollection", features };
 }
 
-function roadMidpoint(
+function roadLabelPlacement(
   coordinateSystem: CoordinateSystem,
   road: Road | MapRoad,
-): GeoJSON.Position {
+): { position: GeoJSON.Position; rotation: number } {
   const points = road.geometry.points;
-  const mid = points[Math.floor(points.length / 2)];
-  return toLngLat(coordinateSystem, mid);
+  const raw = points.map((point) => toLngLat(coordinateSystem, point));
+  const line =
+    coordinateSystem === "LOCAL_CARTESIAN"
+      ? smoothCenterline(
+          raw,
+          undefined,
+          road.smoothing ?? 1,
+          road.corner_smoothing,
+        )
+      : raw;
+  const lengths = line
+    .slice(1)
+    .map((point, index) =>
+      Math.hypot(point[0] - line[index][0], point[1] - line[index][1]),
+    );
+  const total = lengths.reduce((sum, value) => sum + value, 0);
+  const cumulative = [0];
+  for (const length of lengths)
+    cumulative.push(cumulative[cumulative.length - 1] + length);
+  const candidates = Array.from(
+    { length: 9 },
+    (_, index) => 0.3 + index * 0.05,
+  );
+  const candidate = candidates
+    .map((fraction) => {
+      const target = total * fraction;
+      const segment = Math.max(
+        0,
+        cumulative.findIndex((value) => value >= target) - 1,
+      );
+      const window = Math.max(1, Math.floor(line.length * 0.08));
+      const before = line[Math.max(0, segment - window)];
+      const after = line[Math.min(line.length - 1, segment + window + 1)];
+      const curvature = Math.abs(
+        bearing(before, line[segment + 1] ?? before) -
+          bearing(line[segment], after),
+      );
+      return {
+        fraction,
+        segment,
+        score: curvature + Math.abs(fraction - 0.5) * 20,
+      };
+    })
+    .sort((a, b) => a.score - b.score)[0];
+  const target = total * candidate.fraction;
+  const segment = Math.max(
+    0,
+    cumulative.findIndex((value) => value >= target) - 1,
+  );
+  const ratio = lengths[segment]
+    ? (target - cumulative[segment]) / lengths[segment]
+    : 0;
+  const start = line[segment];
+  const end = line[segment + 1] ?? start;
+  const position: GeoJSON.Position = [
+    start[0] + (end[0] - start[0]) * ratio,
+    start[1] + (end[1] - start[1]) * ratio,
+  ];
+  let rotation = bearing(start, end) - 90;
+  if (rotation < -90) rotation += 180;
+  if (rotation > 90) rotation -= 180;
+  return { position, rotation };
 }
 
 /** One label per street name, not one per road segment. OSM/City Model
@@ -217,9 +283,10 @@ function roadMidpoint(
  * duplicate text so densely that MapLibre's overlap suppression hides
  * almost all of it. Picking the single longest segment per name keeps
  * exactly one legible label per street. */
-export function buildRoadLabelFeatureCollection(
-  city: { roads: (Road | MapRoad)[]; coordinate_system: CoordinateSystem },
-): LabelFeatureCollection {
+export function buildRoadLabelFeatureCollection(city: {
+  roads: (Road | MapRoad)[];
+  coordinate_system: CoordinateSystem;
+}): LabelFeatureCollection {
   const longestByName = new Map<string, Road | MapRoad>();
   for (const road of city.roads) {
     if (!road.name || road.name.startsWith(FALLBACK_NAME_PREFIX)) continue;
@@ -236,18 +303,22 @@ export function buildRoadLabelFeatureCollection(
   const features: LabelFeatureCollection["features"] = [];
   for (const road of longestByName.values()) {
     const hierarchy = roadHierarchy(road.road_type);
+    const placement = roadLabelPlacement(city.coordinate_system, road);
     features.push({
       type: "Feature",
       id: road.id,
       geometry: {
         type: "Point",
-        coordinates: roadMidpoint(city.coordinate_system, road),
+        coordinates: placement.position,
       },
       properties: {
         id: road.id,
         name: road.name,
         hierarchy,
         label_rank: HIERARCHY_LABEL_RANK[hierarchy],
+        rotation: placement.rotation,
+        length_m: roadLengthMeters(road, city.coordinate_system),
+        character_count: road.name.length,
       },
     });
   }

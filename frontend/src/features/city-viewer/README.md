@@ -1,51 +1,52 @@
-# City Viewer (`frontend/src/features/city-viewer`)
+# City Model viewer/editor (`frontend/src/features/city-viewer`)
 
 ## Purpose
 
-A read-only 2D Canvas visualization of a persisted City Model and its
-Traffic Analysis results. See `docs/architecture.md` § "Frontend 2D Viewer
-v1" for the full design and its limitations (read-only, no GIS basemap,
-WGS84 rendering is an approximate projection).
+A MapLibre-based rendering and editor surface for the City Model. The current
+product page uses a local editor workspace for road geometry MVP flows; the
+backend City Model and generic geometry API remain the authoritative
+persistence boundary.
 
 ## Public API
 
-`components/CityViewerApp.tsx` — the feature's entry component, rendered
-by `src/app/page.tsx`. Nothing else in this feature is meant to be
-imported from outside it.
+`components/CityViewerApp.tsx` is the feature entry component. Internal map,
+geometry, adapter, and editor modules are feature-scoped.
 
 ## Main modules
 
-`types/` (mirrors the backend's City/TrafficAnalysis API contracts) →
-`api/` (the only `fetch()` calls: `getCities`/`getCity`/
-`runTrafficAnalysis`) → `lib/` (pure functions: geometry/viewport
-transform, WGS84 projection, lane-offset approximation, congestion colors,
-analysis lookup, hit-testing — no React, no Canvas) → `state/` (layer
-visibility, selection types) → `hooks/` (data fetching, pan/zoom viewport,
-resize, dark-mode) → `components/canvas` (pure `draw-*.ts` functions plus
-a thin React wrapper), `components/sidebar`, `components/details`.
+`types/` mirrors City Model contracts; `api/` owns fetch calls; `map/` contains
+MapLibre setup, GeoJSON adapters, pure geometry, layers, styles, and editor
+interaction; `components/` contains the page shell and toolbar.
 
 ## Dependency direction
 
-`components` → `hooks` → `lib`/`api`/`state` → `types`. Drawing logic
-(`components/canvas/draw-*.ts`, `renderer.ts`) takes a plain scene object
-and a `CanvasRenderingContext2D` — no React state inside it.
+Components use editor state and map adapters; geometry remains framework-free;
+MapLibre consumes derived GeoJSON and never owns City Model data. Domain logic
+does not depend on React or Next.js.
 
 ## Important invariants
 
-- No animation loop: the canvas redraws only when city/analysis/viewport/
-  layers/selection/size actually change.
-- No Canvas/mapping library dependency (Three.js, Konva, PixiJS, Leaflet,
-  Mapbox, deck.gl) — plain Canvas 2D is enough for v1 and keeps runtime
-  cost low (see AGENTS.md's resource-efficiency rules).
+- City Model/editor state is the source for rendered data; MapLibre sources and
+  Terra Draw state are transient rendering/editing infrastructure.
+- Source road vertices remain authoritative. Smoothed centerlines, labels,
+  insertion controls, and interaction state are derived or editor-only.
+- Current road creation and vertex/smoothing changes are local MVP behavior
+  unless an explicit persistence flow is invoked.
+- Road presets are declarative templates over existing road/lane/marking
+  fields. They are applied once, remain manually editable, and never become a
+  second road classification or rendering source.
+- Endpoint connectivity is explicit: snapped roads share one existing City
+  Model `Intersection` identity and its canonical position. Coincident endpoint
+  coordinates without that shared node remain disconnected. Screen-space
+  candidate detection and snap feedback are derived UI behavior only.
 
 ## Where to add new code
 
-A new entity type to visualize gets its own `draw-*.ts` in
-`components/canvas/`, wired into `renderer.ts`'s draw order, plus a details
-component under `components/details/` if it's selectable.
+A new rendering concern belongs in the appropriate `map/adapters/`,
+`map/geometry/`, `map/layers/`, or `map/styles/` module. Keep editor state in
+editor components/state modules and keep domain logic outside React.
 
 ## What must not depend on this module
 
-Nothing outside `frontend/src/app/page.tsx` should import from this
-feature. This feature must not contain City Model or Traffic Engine domain
-logic — it only calls the REST API and renders what comes back.
+Traffic Engine and City Model domain logic must not import this frontend
+feature. The feature consumes API/domain contracts and renders them.

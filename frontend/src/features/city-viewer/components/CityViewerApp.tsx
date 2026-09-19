@@ -1,292 +1,490 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useReducer, useState } from "react";
 import { useTranslations } from "next-intl";
-import { EmptyState } from "@/components/ui/EmptyState";
-import { PixelLaneMap, type EditorAction } from "../map/PixelLaneMap";
-import type { ViewportDataStatus } from "../map/hooks/useViewportCityData";
-import { MapToolbar } from "../map/MapToolbar";
-import { BottleneckList } from "./sidebar/BottleneckList";
-import { CityList } from "./sidebar/CityList";
-import { DetailsPanel } from "./details/DetailsPanel";
-import { useCities } from "../hooks/useCities";
-import { useCity } from "../hooks/useCity";
-import { useSelectedCityEntity } from "../hooks/useSelectedCityEntity";
-import { useTrafficAnalysis } from "../hooks/useTrafficAnalysis";
-import { buildAnalysisLookup } from "../lib/analysis-lookup";
-import { mapBasemapEnabledByDefault, mapStyleUrl } from "@/lib/config";
-import type { EditorStatus } from "../map/editor/useGeometryEditor";
-import type { ApplyRoadEditError } from "../map/editor/applyRoadEdit";
+import { mapStyleUrl } from "@/lib/config";
 import {
-  DEFAULT_LAYER_VISIBILITY,
-  type LayerVisibility,
-  type MapMode,
-  type MapSelection,
-} from "../map/types";
-import type { Bottleneck } from "../types/traffic-analysis";
+  buildEditorWorkspace,
+  createEditorRoad,
+} from "../editor/editorWorkspace";
+import type {
+  LaneBoundaryMarking,
+  LaneDirection,
+  Point,
+  RoadEdgeMarking,
+} from "../types/city";
+import {
+  insertPolylinePoint,
+  updatePolylineVertex,
+} from "../map/editor/polylineEditing";
+import { EDITOR_WORLD_BOUNDS } from "../editor/editorWorld";
+import { PixelLaneMap } from "../map/PixelLaneMap";
+import { DEFAULT_LAYER_VISIBILITY, type MapSelection } from "../map/types";
+import { EditorToolbar } from "../map/EditorToolbar";
+import { RoadPropertiesPanel } from "../map/RoadPropertiesPanel";
+import { IntersectionPropertiesPanel } from "../map/IntersectionPropertiesPanel";
+import { buildLaneConfiguration } from "../editor/laneConfiguration";
+import {
+  applyRoadPreset,
+  getRoadPreset,
+  type RoadPresetId,
+} from "../editor/roadPresets";
+import {
+  addRoadWithEndpointSnaps,
+  finalizeEndpointDrag,
+  findRoadEndpointNode,
+  moveConnectedRoadNode,
+  roadEndpointForVertex,
+  type EndpointSnapTarget,
+} from "../editor/endpointSnapping";
+import {
+  INITIAL_EDITOR_SESSION,
+  reduceEditorSession,
+} from "../map/editor/editorState";
 
+/** City Model is currently an editor document, not a city picker/viewer. */
 export function CityViewerApp() {
-  const t = useTranslations("cityModel.sidebar");
-  const tMap = useTranslations("cityModel.map");
-  const tEditor = useTranslations("cityModel.editor");
-  const { cities, status: citiesStatus } = useCities();
-  const [explicitCityId, setExplicitCityId] = useState<string | null>(null);
-  // Auto-select when there's exactly one city; with several, leave the
-  // choice to the user. Derived, not effect+setState, so there's no extra
-  // render cycle.
-  const selectedCityId =
-    explicitCityId ?? (cities.length === 1 ? cities[0].id : null);
-  const {
-    city,
-    status: cityStatus,
-    refresh: refreshCity,
-  } = useCity(selectedCityId);
-  const analysis = useTrafficAnalysis(selectedCityId);
-
+  const t = useTranslations("cityModel.fullscreen");
+  const [city, setCity] = useState(buildEditorWorkspace);
+  const [isFullscreen, setIsFullscreen] = useState(false);
   const [selected, setSelected] = useState<MapSelection | null>(null);
-  const detailCity = useSelectedCityEntity(city, selected);
-  const [fitSignal, setFitSignal] = useState(0);
-  const [basemapEnabled, setBasemapEnabled] = useState(
-    mapBasemapEnabledByDefault,
-  );
-  const [overlayVisible, setOverlayVisible] = useState(true);
-  const [layerVisibility, setLayerVisibility] = useState<LayerVisibility>(
-    DEFAULT_LAYER_VISIBILITY,
-  );
-  const [mode, setMode] = useState<MapMode>("view");
-  const [editorAction, setEditorAction] = useState<EditorAction | null>(null);
-  const [viewportStatus, setViewportStatus] =
-    useState<ViewportDataStatus>("idle");
-  const [editorStatus, setEditorStatus] = useState<EditorStatus>("idle");
-  const [editorError, setEditorError] = useState<ApplyRoadEditError | null>(
+  const [selectedVertexIndex, setSelectedVertexIndex] = useState<number | null>(
     null,
   );
-
-  const analysisLookup = useMemo(
-    () => buildAnalysisLookup(analysis.result),
-    [analysis.result],
+  const [session, dispatch] = useReducer(
+    reduceEditorSession,
+    INITIAL_EDITOR_SESSION,
+  );
+  const [scale, setScale] = useState({ denominator: 2000, barMeters: 100 });
+  const [drawStartPoint, setDrawStartPoint] = useState<{
+    point: Point;
+    snapTarget: EndpointSnapTarget | null;
+  } | null>(null);
+  const [crosshair, setCrosshair] = useState<{ x: number; y: number } | null>(
+    null,
+  );
+  const selectedRoad =
+    selected?.type === "road"
+      ? city.roads.find((road) => road.id === selected.id)
+      : null;
+  const selectedIntersection =
+    selected?.type === "intersection"
+      ? city.intersections.find((intersection) => intersection.id === selected.id)
+      : null;
+  const selectedRoadNodeIds = selectedRoad
+    ? {
+        start:
+          findRoadEndpointNode(city.intersections, selectedRoad, "start")?.id ??
+          null,
+        end:
+          findRoadEndpointNode(city.intersections, selectedRoad, "end")?.id ??
+          null,
+      }
+    : null;
+  const handleRoadGeometryChange = useCallback(
+    (roadId: string, points: { x: number; y: number }[]) => {
+      setCity((current) => ({
+        ...current,
+        roads: current.roads.map((road) =>
+          road.id === roadId
+            ? { ...road, geometry: { ...road.geometry, points } }
+            : road,
+        ),
+      }));
+    },
+    [],
+  );
+  const handleRoadPropertiesChange = useCallback(
+    (changes: {
+      name?: string;
+      width_m?: number;
+      lane_count?: number;
+      lane_width_m?: number;
+      lane_directions?: LaneDirection[];
+      left_edge_marking?: RoadEdgeMarking;
+      right_edge_marking?: RoadEdgeMarking;
+      lane_boundary_markings?: LaneBoundaryMarking[];
+    }) => {
+      if (selected?.type !== "road") return;
+      setCity((current) => ({
+        ...current,
+        roads: current.roads.map((road) => {
+          if (road.id !== selected.id) return road;
+          const {
+            lane_count,
+            lane_width_m,
+            lane_directions,
+            lane_boundary_markings,
+            ...simple
+          } = changes;
+          if (!lane_count || !lane_width_m || !lane_directions) {
+            return {
+              ...road,
+              ...simple,
+              ...(lane_boundary_markings ? { lane_boundary_markings } : {}),
+            };
+          }
+          const laneConfiguration = buildLaneConfiguration(
+            road,
+            lane_count,
+            lane_width_m,
+            lane_directions,
+          );
+          if (!laneConfiguration) return road;
+          return {
+            ...road,
+            ...simple,
+            ...laneConfiguration,
+            lane_boundary_markings:
+              lane_boundary_markings ?? road.lane_boundary_markings,
+          };
+        }),
+      }));
+    },
+    [selected],
+  );
+  const handleApplyRoadPreset = useCallback(
+    (presetId: RoadPresetId) => {
+      if (selected?.type !== "road") return;
+      const preset = getRoadPreset(presetId);
+      setCity((current) => ({
+        ...current,
+        roads: current.roads.map((road) => {
+          if (road.id !== selected.id) return road;
+          return applyRoadPreset(road, preset) ?? road;
+        }),
+      }));
+    },
+    [selected],
+  );
+  const handleIntersectionRadiusChange = useCallback(
+    (radius: number) => {
+      if (selected?.type !== "intersection") return;
+      setCity((current) => ({
+        ...current,
+        intersections: current.intersections.map((intersection) =>
+          intersection.id === selected.id
+            ? { ...intersection, junction_corner_radius_m: radius }
+            : intersection,
+        ),
+      }));
+    },
+    [selected],
+  );
+  const handleSelect = useCallback((selection: MapSelection | null) => {
+    setSelected(selection);
+    setSelectedVertexIndex(null);
+  }, []);
+  const handleEndpointDrag = useCallback(
+    (vertexIndex: number, point: Point) => {
+      if (selected?.type !== "road") return;
+      setCity((current) => {
+        const road = current.roads.find(
+          (candidate) => candidate.id === selected.id,
+        );
+        if (!road || road.geometry.points.length < 2) return current;
+        const endpoint = roadEndpointForVertex(road, vertexIndex);
+        if (endpoint) {
+          return moveConnectedRoadNode(current, road.id, endpoint, point);
+        }
+        const next = updatePolylineVertex(
+          road.geometry.points,
+          vertexIndex,
+          point,
+        );
+        return next
+          ? {
+              ...current,
+              roads: current.roads.map((candidate) =>
+                candidate.id === road.id
+                  ? {
+                      ...candidate,
+                      geometry: { ...candidate.geometry, points: next },
+                    }
+                  : candidate,
+              ),
+            }
+          : current;
+      });
+    },
+    [selected],
+  );
+  const handleEndpointDragEnd = useCallback(
+    (
+      vertexIndex: number,
+      snapTarget: EndpointSnapTarget | null,
+      previousNodeId: string | null,
+    ) => {
+      if (selected?.type !== "road") return;
+      setCity((current) => {
+        const road = current.roads.find(
+          (candidate) => candidate.id === selected.id,
+        );
+        if (!road) return current;
+        const endpoint = roadEndpointForVertex(road, vertexIndex);
+        if (!endpoint) return current;
+        return finalizeEndpointDrag(
+          current,
+          road.id,
+          endpoint,
+          snapTarget,
+          previousNodeId,
+        );
+      });
+    },
+    [selected],
+  );
+  const handleInsertPoint = useCallback(
+    (segmentIndex: number, point: Point) => {
+      if (selected?.type !== "road") return;
+      setCity((current) => ({
+        ...current,
+        roads: current.roads.map((road) => {
+          if (road.id !== selected.id) return road;
+          const next = insertPolylinePoint(
+            road.geometry.points,
+            segmentIndex,
+            point,
+          );
+          return next
+            ? {
+                ...road,
+                geometry: { ...road.geometry, points: next },
+                corner_smoothing: next.map((_, index) =>
+                  index === segmentIndex + 1
+                    ? 0
+                    : (road.corner_smoothing?.[
+                        index > segmentIndex + 1 ? index - 1 : index
+                      ] ?? 0),
+                ),
+              }
+            : road;
+        }),
+      }));
+      setSelectedVertexIndex(segmentIndex + 1);
+    },
+    [selected],
+  );
+  const handleDrawPoint = useCallback(
+    (point: Point, snapTarget: EndpointSnapTarget | null) => {
+      if (!drawStartPoint) {
+        setDrawStartPoint({ point, snapTarget });
+        return;
+      }
+      const dx = point.x - drawStartPoint.point.x;
+      const dy = point.y - drawStartPoint.point.y;
+      if (Math.hypot(dx, dy) < 1) return;
+      const id = `editor-road-${Date.now()}`;
+      const road = createEditorRoad(
+        id,
+        `Road ${String.fromCharCode(65 + city.roads.length)}`,
+        [drawStartPoint.point, point],
+      );
+      setCity((current) => {
+        return (
+          addRoadWithEndpointSnaps(
+            current,
+            road,
+            drawStartPoint.snapTarget,
+            snapTarget,
+          ) ?? current
+        );
+      });
+      setSelected({ type: "road", id });
+      setDrawStartPoint(null);
+      dispatch({ type: "set-tool", tool: "select" });
+    },
+    [city.roads.length, drawStartPoint],
   );
 
-  function handleSelectCity(cityId: string) {
-    setExplicitCityId(cityId);
-    setSelected(null);
-    setMode("view");
-    analysis.reset();
-  }
-
-  function handleSelectBottleneck(bottleneck: Bottleneck) {
-    if (bottleneck.entity_type === "lane") return; // not separately selectable on the map yet
-    setSelected({ type: bottleneck.entity_type, id: bottleneck.entity_id });
-  }
-
-  function handleEditorStatusChange(
-    status: EditorStatus,
-    error: ApplyRoadEditError | null,
-  ) {
-    setEditorStatus(status);
-    setEditorError(error);
-    if (status === "idle") setMode("view");
-  }
-
-  // Escape backs out of an in-progress edit -- the same effect as the
-  // toolbar's Cancel button -- so the keyboard-only path matches the
-  // mouse-only path instead of leaving Escape a dead key while editing.
   useEffect(() => {
-    if (mode !== "edit-geometry") return;
-    function handleKeyDown(event: KeyboardEvent) {
-      if (event.key === "Escape") {
-        setEditorAction({ type: "cancel", token: Date.now() });
+    if (!isFullscreen) return;
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") setIsFullscreen(false);
+      if (event.key === "Escape" && drawStartPoint) {
+        setDrawStartPoint(null);
+        dispatch({ type: "set-tool", tool: "select" });
+        return;
       }
-    }
+      if (event.key === "Escape" && session.mode === "edit") {
+        dispatch({ type: "exit-edit" });
+      }
+    };
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [mode]);
+  }, [isFullscreen, session.mode, drawStartPoint]);
 
   return (
-    <div className="flex flex-1 overflow-hidden">
-      <aside className="flex w-64 shrink-0 flex-col gap-5 overflow-y-auto border-r border-border-subtle bg-surface p-4">
-        <section>
-          <h2 className="mb-2 text-xs font-semibold uppercase tracking-wide text-zinc-400">
-            {t("citiesHeading")}
-          </h2>
-          {citiesStatus === "loading" && (
-            <p className="text-xs text-zinc-500">{t("loadingCities")}</p>
-          )}
-          {citiesStatus === "error" && (
-            <p className="text-xs text-red-600 dark:text-red-400">
-              {t("backendUnavailable")}
-            </p>
-          )}
-          {citiesStatus === "ready" && (
-            <CityList
-              cities={cities}
-              selectedCityId={selectedCityId}
-              onSelectCity={handleSelectCity}
-            />
-          )}
-        </section>
-
-        {city && (
-          <section>
-            <h2 className="mb-2 text-xs font-semibold uppercase tracking-wide text-zinc-400">
-              {t("analysisHeading")}
-            </h2>
-            <button
-              type="button"
-              onClick={() => analysis.run()}
-              disabled={analysis.status === "loading"}
-              className="w-full rounded-md bg-blue-600 px-3 py-1.5 text-sm font-medium text-white transition-colors hover:bg-blue-500 disabled:opacity-50"
+    <main
+      className={`relative flex min-h-0 flex-1 overflow-hidden ${
+        isFullscreen
+          ? "!fixed !inset-0 !z-[1000] h-dvh w-screen bg-background"
+          : ""
+      }`}
+    >
+      <div
+        className="relative flex min-w-0 flex-1 overflow-hidden"
+        onPointerMove={(event) => {
+          if (session.activeTool !== "draw-road") return;
+          const rect = event.currentTarget.getBoundingClientRect();
+          setCrosshair({
+            x: event.clientX - rect.left,
+            y: event.clientY - rect.top,
+          });
+        }}
+        onPointerLeave={() => setCrosshair(null)}
+      >
+        <PixelLaneMap
+          city={city}
+          selected={selected}
+          onSelect={handleSelect}
+          selectedVertexIndex={selectedVertexIndex}
+          onVertexSelect={setSelectedVertexIndex}
+          onVertexDrag={handleEndpointDrag}
+          onVertexDragEnd={handleEndpointDragEnd}
+          onInsertPoint={handleInsertPoint}
+          basemapEnabled={false}
+          mapStyleUrl={mapStyleUrl}
+          overlayVisible
+          layerVisibility={DEFAULT_LAYER_VISIBILITY}
+          fitSignal={0}
+          editorWorld={EDITOR_WORLD_BOUNDS}
+          mode={
+            session.mode === "edit" && session.activeTool === "select"
+              ? "edit-geometry"
+              : "view"
+          }
+          activeTool={
+            session.activeTool === "draw-road" ? "draw-road" : "select"
+          }
+          snapLabel={t("snap")}
+          onDrawPoint={handleDrawPoint}
+          editorAction={null}
+          onEditorStatusChange={() => undefined}
+          onRoadSaved={() => undefined}
+          onScaleChange={setScale}
+          onRoadGeometryChange={handleRoadGeometryChange}
+        />
+        {selectedRoad && (
+          <RoadPropertiesPanel
+            key={selectedRoad.id}
+            road={selectedRoad}
+            endpointNodeIds={selectedRoadNodeIds ?? { start: null, end: null }}
+            onApplyPreset={handleApplyRoadPreset}
+            onChange={handleRoadPropertiesChange}
+          />
+        )}
+        {selectedIntersection && (
+          <IntersectionPropertiesPanel
+            intersection={selectedIntersection}
+            roads={city.roads}
+            onCornerRadiusChange={handleIntersectionRadiusChange}
+          />
+        )}
+        <div className="pointer-events-none absolute inset-x-3 top-3 flex justify-end">
+          <button
+            type="button"
+            onClick={() => setIsFullscreen((value) => !value)}
+            aria-label={isFullscreen ? t("exit") : t("enter")}
+            title={isFullscreen ? t("exit") : t("enter")}
+            className="pointer-events-auto rounded-md border border-border-subtle bg-surface/90 p-2 text-foreground shadow-sm backdrop-blur transition-colors hover:bg-surface-elevated focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
+          >
+            <svg
+              aria-hidden="true"
+              viewBox="0 0 20 20"
+              className="h-4 w-4"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="1.8"
             >
-              {analysis.status === "loading"
-                ? t("runningAnalysis")
-                : t("runAnalysis")}
-            </button>
-            {analysis.status === "error" && (
-              <p className="mt-2 text-xs text-red-600 dark:text-red-400">
-                {t("analysisFailed")}
-              </p>
-            )}
-            {analysis.result && (
-              <div className="mt-3 space-y-2">
-                <p className="text-xs text-zinc-500 dark:text-zinc-400">
-                  {t("demandSummary", {
-                    routed: analysis.result.network_summary.routed_demand_count,
-                    unrouted:
-                      analysis.result.network_summary.unrouted_demand_count,
-                  })}
-                </p>
-                <h3 className="text-xs font-semibold uppercase tracking-wide text-zinc-400">
-                  {t("bottlenecksHeading")}
-                </h3>
-                <BottleneckList
-                  bottlenecks={analysis.result.bottlenecks}
-                  onSelect={handleSelectBottleneck}
-                />
-                {analysis.result.warnings.length > 0 && (
-                  <details className="text-xs text-zinc-500 dark:text-zinc-400">
-                    <summary className="cursor-pointer">
-                      {t("warningsCount", {
-                        count: analysis.result.warnings.length,
-                      })}
-                    </summary>
-                    <ul className="mt-1 list-disc space-y-1 pl-4">
-                      {analysis.result.warnings.map((warning, i) => (
-                        <li key={i}>{warning}</li>
-                      ))}
-                    </ul>
-                  </details>
-                )}
-              </div>
-            )}
-          </section>
-        )}
-      </aside>
-
-      <div className="relative flex-1 overflow-hidden">
-        {cityStatus === "loading" && <EmptyState title={tMap("loadingCity")} />}
-        {cityStatus === "error" && (
-          <EmptyState title={tMap("cityFailedToLoad")} tone="error" />
-        )}
-        {!selectedCityId && cityStatus !== "loading" && (
-          <EmptyState title={tMap("selectCityPrompt")} />
-        )}
-
-        {city && (city.road_count ?? city.roads.length) === 0 && (
-          <div className="pointer-events-none absolute inset-0 z-10 flex items-center justify-center bg-background/80">
-            <EmptyState title={tMap("cityHasNoRoadData")} />
+              {isFullscreen ? (
+                <path d="M7 3H3v4M13 17h4v-4M3 3l5 5M17 17l-5-5" />
+              ) : (
+                <path d="M3 8V3h5M17 12v5h-5M3 3l5 5M17 17l-5-5" />
+              )}
+            </svg>
+          </button>
+        </div>
+        <div className="pointer-events-none absolute left-3 top-3">
+          <EditorToolbar
+            session={session}
+            onEnterEdit={() => dispatch({ type: "enter-edit" })}
+            onExitEdit={() => dispatch({ type: "exit-edit" })}
+            onSetTool={(tool) => dispatch({ type: "set-tool", tool })}
+          />
+        </div>
+        {session.activeTool === "draw-road" && crosshair && (
+          <div
+            className="pointer-events-none absolute inset-0"
+            aria-hidden="true"
+          >
+            <div
+              className="absolute inset-y-0 w-px bg-foreground/25"
+              style={{ left: crosshair.x }}
+            />
+            <div
+              className="absolute inset-x-0 h-px bg-foreground/25"
+              style={{ top: crosshair.y }}
+            />
           </div>
         )}
-
-        {city && (
-          <>
-            <PixelLaneMap
-              city={detailCity ?? city}
-              selected={selected}
-              onSelect={setSelected}
-              basemapEnabled={basemapEnabled}
-              mapStyleUrl={mapStyleUrl}
-              overlayVisible={overlayVisible}
-              layerVisibility={layerVisibility}
-              fitSignal={fitSignal}
-              mode={mode}
-              editorAction={editorAction}
-              onEditorStatusChange={handleEditorStatusChange}
-              onRoadSaved={refreshCity}
-              onViewportStatusChange={setViewportStatus}
-            />
-
-            {(viewportStatus === "loading" || viewportStatus === "error") && (
-              <div className="pointer-events-none absolute bottom-3 left-3 z-10">
-                <span
-                  className={`rounded-md border px-2.5 py-1 text-xs shadow-sm backdrop-blur ${
-                    viewportStatus === "error"
-                      ? "border-danger/40 bg-danger/10 text-danger"
-                      : "border-border-subtle bg-surface-elevated/90 text-text-muted"
-                  }`}
-                >
-                  {viewportStatus === "error"
-                    ? tMap("viewportDataFailed")
-                    : tMap("loadingViewportData")}
-                </span>
-              </div>
-            )}
-
-            <div className="pointer-events-none absolute inset-x-3 top-3 flex justify-center">
-              <MapToolbar
-                basemapEnabled={basemapEnabled}
-                onToggleBasemap={() => setBasemapEnabled((v) => !v)}
-                basemapConfigured={mapStyleUrl !== null}
-                overlayVisible={overlayVisible}
-                onToggleOverlay={() => setOverlayVisible((v) => !v)}
-                layerVisibility={layerVisibility}
-                onToggleLayer={(layer) =>
-                  setLayerVisibility((prev) => ({
-                    ...prev,
-                    [layer]: !prev[layer],
-                  }))
-                }
-                mode={mode}
-                onSetMode={setMode}
-                canEditSelection={selected?.type === "road" && !!detailCity?.roads.some(r => r.id === selected.id)}
-                editorStatus={editorStatus}
-                onApply={() =>
-                  setEditorAction({ type: "apply", token: Date.now() })
-                }
-                onCancel={() =>
-                  setEditorAction({ type: "cancel", token: Date.now() })
-                }
-                onFitToView={() => setFitSignal((n) => n + 1)}
-              />
-            </div>
-
-            {/* Contextual inspector: reserves no screen space at all when
-                nothing is selected, so the map stays the dominant working
-                area instead of a permanently-docked (mostly empty) panel. */}
-            {(selected || editorError) && (
-              <div className="pointer-events-none absolute inset-x-3 bottom-3 flex flex-col items-center gap-2 sm:inset-x-auto sm:right-3 sm:items-end">
-                {editorError && (
-                  <p className="pointer-events-auto rounded-md bg-red-600 px-3 py-1.5 text-xs text-white shadow-sm">
-                    {tEditor(
-                      editorError === "min-points"
-                        ? "minPointsError"
-                        : "saveFailed",
-                    )}
-                  </p>
-                )}
-                {selected && (
-                  <div className="pointer-events-auto max-h-64 w-full max-w-xs overflow-y-auto rounded-md border border-border-subtle bg-surface/95 px-3 py-2 shadow-md backdrop-blur">
-                    <DetailsPanel
-                      city={detailCity ?? city}
-                      analysis={analysisLookup}
-                      selected={selected}
-                    />
-                  </div>
-                )}
-              </div>
-            )}
-          </>
+        {session.activeTool === "draw-road" && (
+          <div className="pointer-events-none absolute left-1/2 top-3 -translate-x-1/2 rounded-md border border-border-subtle bg-surface/90 px-3 py-1.5 text-xs text-foreground shadow-sm backdrop-blur">
+            {drawStartPoint ? t("drawFinish") : t("drawStart")}
+          </div>
         )}
+        {session.mode === "edit" &&
+          selected?.type === "road" &&
+          selectedRoad &&
+          selectedVertexIndex !== null &&
+          selectedVertexIndex > 0 &&
+          selectedVertexIndex < selectedRoad.geometry.points.length - 1 && (
+            <label className="pointer-events-auto absolute bottom-3 left-3 rounded-lg border border-border-subtle bg-surface/90 px-3 py-2 text-[11px] text-foreground shadow-md backdrop-blur">
+              <span className="mr-2">{t("smoothing")}</span>
+              <input
+                type="range"
+                min="0"
+                max="1"
+                step="0.05"
+                value={
+                  selectedRoad.corner_smoothing?.[selectedVertexIndex] ?? 0
+                }
+                onChange={(event) => {
+                  const smoothing = Number(event.target.value);
+                  setCity((current) => ({
+                    ...current,
+                    roads: current.roads.map((road) => {
+                      if (road.id !== selectedRoad.id) return road;
+                      const cornerSmoothing = Array.from(
+                        { length: road.geometry.points.length },
+                        (_, index) => road.corner_smoothing?.[index] ?? 0,
+                      );
+                      cornerSmoothing[selectedVertexIndex] = smoothing;
+                      return { ...road, corner_smoothing: cornerSmoothing };
+                    }),
+                  }));
+                }}
+                aria-label={t("smoothing")}
+              />
+            </label>
+          )}
+        <div className="pointer-events-none absolute bottom-3 right-3 rounded-lg border border-border-subtle bg-surface/90 px-3 py-2 text-[11px] font-medium text-foreground shadow-md backdrop-blur">
+          <div className="tracking-wide">
+            {t("scale", { denominator: scale.denominator })}
+          </div>
+          <div className="mt-1.5 flex items-end gap-2 text-[10px] font-normal text-muted-foreground">
+            <span className="h-2 w-20 border-x-2 border-b-2 border-foreground/70" />
+            <span>
+              {t(scale.barMeters >= 1000 ? "scaleBarKm" : "scaleBarMeters", {
+                value:
+                  scale.barMeters >= 1000
+                    ? scale.barMeters / 1000
+                    : scale.barMeters,
+              })}
+            </span>
+          </div>
+        </div>
       </div>
-    </div>
+    </main>
   );
 }

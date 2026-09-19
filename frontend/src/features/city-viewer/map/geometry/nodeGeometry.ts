@@ -23,6 +23,11 @@ export const MIN_NODE_RADIUS_M = 3;
 export const MAX_NODE_RADIUS_M = 22;
 export const MIN_CORNER_RADIUS_M = 1.5;
 export const MAX_CORNER_RADIUS_M = 12;
+/** Default derived junction curb-return radius.  This is intentionally a
+ * geometry option rather than a persisted topology property: junction
+ * surfaces remain derived from the City Model graph and can later be wired
+ * to a renderer/editor setting without changing road identity. */
+export const DEFAULT_JUNCTION_CORNER_RADIUS_M = 6;
 const ENDPOINT_MATCH_TOLERANCE_M = 0.5;
 
 /** One road's data as seen from a single node it's incident to. */
@@ -79,7 +84,11 @@ export function cornerRadiusForPair(
     HIERARCHY_CORNER_BONUS_M[a.hierarchy],
     HIERARCHY_CORNER_BONUS_M[b.hierarchy],
   );
-  return clamp(narrower * 0.9 + bonus, MIN_CORNER_RADIUS_M, MAX_CORNER_RADIUS_M);
+  return clamp(
+    narrower * 0.9 + bonus,
+    MIN_CORNER_RADIUS_M,
+    MAX_CORNER_RADIUS_M,
+  );
 }
 
 /** Never trims more than 45% of a road's own length from one end, so two
@@ -104,9 +113,14 @@ export function trimLine(
   const to = total - safeTrimDistance(total, endTrim);
   if (to <= from) {
     const mid = total / 2;
-    return lineSliceAlong(line, Math.max(0, mid - 0.01), Math.min(total, mid + 0.01), {
-      units: "meters",
-    });
+    return lineSliceAlong(
+      line,
+      Math.max(0, mid - 0.01),
+      Math.min(total, mid + 0.01),
+      {
+        units: "meters",
+      },
+    );
   }
   return lineSliceAlong(line, from, to, { units: "meters" });
 }
@@ -140,11 +154,21 @@ export function edgePointsAt(
   outwardBearingDeg: number,
   halfWidthM: number,
 ): { left: LngLat; right: LngLat } {
-  const left = destination(turfPoint(centerPoint), halfWidthM, outwardBearingDeg - 90, {
-    units: "meters",
-  }).geometry.coordinates as LngLat;
-  const right = destination(turfPoint(centerPoint), halfWidthM, outwardBearingDeg + 90, {
-    units: "meters",
-  }).geometry.coordinates as LngLat;
+  const left = destination(
+    turfPoint(centerPoint),
+    halfWidthM,
+    outwardBearingDeg - 90,
+    {
+      units: "meters",
+    },
+  ).geometry.coordinates as LngLat;
+  const right = destination(
+    turfPoint(centerPoint),
+    halfWidthM,
+    outwardBearingDeg + 90,
+    {
+      units: "meters",
+    },
+  ).geometry.coordinates as LngLat;
   return { left, right };
 }

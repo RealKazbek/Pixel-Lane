@@ -16,12 +16,12 @@ interaction engine here — it does not own any Pixel Lane data.
 
 ## City Model is the only source of truth
 
-MapLibre's internal GeoJSON sources, and Terra Draw's internal feature
-store used during geometry editing, are **transient UI state only**. Both
-are rebuilt from City Model data on every relevant change and are never
-read back except at the single, explicit moment a user clicks "Apply"
-during editing (see "Editing data flow" below). Nothing in this directory
-persists state independently of the backend.
+MapLibre's internal GeoJSON sources, and any Terra Draw feature store used by
+the generic persistence adapter, are **transient UI state only**. The current
+City Model editor MVP keeps local vertex edits and smoothing values in editor
+state and rebuilds rendering from that state; it does not persist those local
+changes automatically. Nothing in this directory is an alternate
+authoritative domain store.
 
 ## Viewport-driven loading
 
@@ -154,23 +154,40 @@ traffic-light details view yet).
 
 ## Editing data flow
 
-Geometry editing follows one direction only:
+The current local editor follows one direction only:
 
 ```
-user drags a vertex (Terra Draw, in-memory only)
-  -> "Apply" clicked
-  -> geometryEditor.apply() reads Terra Draw's current feature
-  -> fromLngLat() converts each vertex back to a City Model Point
-  -> applyRoadEdit() does a cheap client-side sanity check (>= 2 points)
-  -> PATCH /api/v1/cities/{city_id}/roads/{road_id}/geometry
-  -> backend validates via the Polyline schema and persists
-  -> on success, the city is refetched and the map re-renders from
-     the City Model again (Terra Draw's transient state is discarded)
+editor state changes (geometry, manual road properties, or a road preset)
+  -> derived centerline and GeoJSON are rebuilt
+  -> MapLibre renders the local City Model view
 ```
 
-If the PATCH fails (network error, backend validation rejection), the
-error is surfaced in the toolbar and the City Model is left untouched —
-there is no optimistic local mutation of the road's geometry.
+Road presets live in `editor/roadPresets.ts`. They apply the existing width,
+ordered lane directions, lane-boundary markings, and edge-marking fields to a
+Road, then leave it unlocked for normal manual editing. Exact matching is
+deterministic; changing any preset-owned field makes the inspector show
+Custom. No preset ID is stored on the Road and no rendered GeoJSON is patched
+directly.
+
+Snapping lives in `editor/endpointSnapping.ts`, outside React and MapLibre.
+`PixelLaneMap` projects semantic endpoint and centerline-segment targets into
+screen space,
+selects the nearest valid target inside `ENDPOINT_SNAP_TOLERANCE_PX` (18 px),
+and renders a temporary ring/label. On commit, the pure editor transform
+creates or reuses the target's City Model `Intersection`, updates
+`connected_road_ids`, and canonicalizes both endpoint coordinates to the node
+position. Interior snaps split the target Road into two ordered Road entities,
+preserving road configuration and curve/control-point order. The selected-road inspector's collapsed Topology section displays
+the start/end node IDs for manual verification. Geometry equality alone never
+creates a connection, and rendered GeoJSON is never consulted for topology.
+An endpoint already on a shared node returns to that
+node if released without a replacement snap because explicit detach is not yet
+part of the editor UX.
+
+The reusable `geometryEditor`/`applyRoadEdit` adapter still supports explicit
+PATCH persistence of source polyline vertices for backend-backed flows. The
+current editor page does not invoke that apply step, so local roads and local
+smoothing metadata do not survive refresh.
 
 ## Explicit non-goals for this iteration
 
@@ -181,3 +198,8 @@ implemented on the backend (see docs/city-model.md) specifically to
 support this viewport-driven loading. Full Almaty ingestion and measured
 verification status are documented in `docs/osm-import.md` and
 `docs/full-almaty-verification.md`.
+
+The current editor includes PL-005.12 connected-road-chain, PL-005.13
+semantic centerline snap, PL-005.14 automatic split, and the derived
+PL-005.15–PL-005.18 junction surface pipeline. It does not implement
+lane-to-lane connections or PL-005.19+ intersection behavior.

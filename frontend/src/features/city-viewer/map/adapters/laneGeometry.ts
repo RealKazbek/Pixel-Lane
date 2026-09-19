@@ -29,7 +29,7 @@
  * "controlled/synthetic fixture" vs. "real import", not a demo-specific
  * special case -- see docs/city-model.md's Demo City section.
  *
- * Centerlines are Catmull-Rom smoothed (`geometry/curveSmoothing.ts`,
+ * Centerlines use shared per-corner derived smoothing (`geometry/curveSmoothing.ts`,
  * same `LOCAL_CARTESIAN`-only gate) before any offsetting, and trimmed
  * back at every real junction end by that junction's node radius
  * (`geometry/nodeGeometry.ts`'s `computeNodeRadius`/`trimLine`, the same
@@ -60,6 +60,8 @@ import type {
   Intersection,
   ParkingLaneOrientation,
   TurnLaneType,
+  LaneBoundaryMarking,
+  RoadEdgeMarking,
 } from "../../types/city";
 
 /** Roads' Intersections, restricted to the fields this module needs --
@@ -80,13 +82,10 @@ export interface LaneSurfaceProperties {
 
 export interface LaneBoundaryProperties {
   road_id: string;
-  /** "edge" = outer road boundary (solid); "separator" = between two
-   * lanes. Pixel Lane has no OSM-backed evidence of individual lane-line
-   * style (solid/double-solid/dashed) -- see docs/city-model.md's
-   * Road+Lane V1 audit -- so every internal separator renders the same
-   * (dashed) rather than fabricating a distinction the source data
-   * doesn't support. */
-  kind: "edge" | "separator";
+  /** "edge" = outer road boundary; "separator" = adjacent lanes share a
+   * direction; "center" = adjacent lanes change direction. */
+  kind: "edge" | "separator" | "center";
+  marking: LaneBoundaryMarking | RoadEdgeMarking;
 }
 
 export interface TurnArrowProperties {
@@ -205,7 +204,7 @@ function supportsLaneDetailRendering(
   return coordinateSystem === "LOCAL_CARTESIAN";
 }
 
-/** Builds each road's rendering centerline: Catmull-Rom smoothed, then
+/** Builds each road's rendering centerline: per-corner smoothed, then
  * trimmed back at any end that's a real (2+ road) junction by that
  * junction's node radius -- the same radius
  * `geometry/junctionSolver.ts` trims road envelopes by, so lane markings
@@ -235,7 +234,10 @@ function buildLaneRenderingLines(
     const nodeRadius = computeNodeRadius(
       memberIds.map((id) => ({ halfWidthM: widthByRoadId.get(id)! / 2 })),
     );
-    const nodePosition = toLngLat(coordinateSystem, intersection.position) as LngLat;
+    const nodePosition = toLngLat(
+      coordinateSystem,
+      intersection.position,
+    ) as LngLat;
 
     const memberInfo = memberIds
       .map((id) => {
@@ -265,7 +267,14 @@ function buildLaneRenderingLines(
     outer: for (const narrow of memberInfo) {
       for (const wide of memberInfo) {
         if (narrow === wide || narrow.halfWidthM >= wide.halfWidthM) continue;
-        if (isMergeCandidate(narrow, wide, narrow.outwardBearingDeg, wide.outwardBearingDeg)) {
+        if (
+          isMergeCandidate(
+            narrow,
+            wide,
+            narrow.outwardBearingDeg,
+            wide.outwardBearingDeg,
+          )
+        ) {
           mergeRoadId = narrow.id;
           break outer;
         }
@@ -273,11 +282,18 @@ function buildLaneRenderingLines(
     }
 
     for (const member of memberInfo) {
-      const trim = member.id === mergeRoadId ? MERGE_TAPER_LENGTH_M : nodeRadius;
+      const trim =
+        member.id === mergeRoadId ? MERGE_TAPER_LENGTH_M : nodeRadius;
       if (member.atEnd) {
-        trimEndByRoadId.set(member.id, Math.max(trimEndByRoadId.get(member.id) ?? 0, trim));
+        trimEndByRoadId.set(
+          member.id,
+          Math.max(trimEndByRoadId.get(member.id) ?? 0, trim),
+        );
       } else {
-        trimStartByRoadId.set(member.id, Math.max(trimStartByRoadId.get(member.id) ?? 0, trim));
+        trimStartByRoadId.set(
+          member.id,
+          Math.max(trimStartByRoadId.get(member.id) ?? 0, trim),
+        );
       }
     }
   }
@@ -287,6 +303,9 @@ function buildLaneRenderingLines(
     if (!rawLine) continue;
     const smoothedCoords = smoothCenterline(
       rawLine.geometry.coordinates as LngLat[],
+      undefined,
+      road.smoothing ?? 1,
+      road.corner_smoothing,
     );
     const smoothedLine: GeoJSON.Feature<GeoJSON.LineString> = {
       type: "Feature",
@@ -310,7 +329,11 @@ export function buildLaneSurfaceFeatureCollection(
   if (!supportsLaneDetailRendering(coordinateSystem)) {
     return { type: "FeatureCollection", features: [] };
   }
-  const renderingLines = buildLaneRenderingLines(roads, intersections, coordinateSystem);
+  const renderingLines = buildLaneRenderingLines(
+    roads,
+    intersections,
+    coordinateSystem,
+  );
   const features: LaneSurfaceFeatureCollection["features"] = [];
   for (const road of roads) {
     const laneCount = roadLaneCount(road);
@@ -351,10 +374,15 @@ export function buildLaneBoundaryFeatureCollection(
   if (!supportsLaneDetailRendering(coordinateSystem)) {
     return { type: "FeatureCollection", features: [] };
   }
-  const renderingLines = buildLaneRenderingLines(roads, intersections, coordinateSystem);
+  const renderingLines = buildLaneRenderingLines(
+    roads,
+    intersections,
+    coordinateSystem,
+  );
   const features: LaneBoundaryFeatureCollection["features"] = [];
   for (const road of roads) {
     const laneCount = roadLaneCount(road);
+    const lanes = "lanes" in road ? road.lanes : undefined;
     if (laneCount < 1) continue;
     const line = renderingLines.get(road.id);
     if (!line) continue;
@@ -368,14 +396,51 @@ export function buildLaneBoundaryFeatureCollection(
     )) {
       const offset = safeOffset(line, offsetM);
       if (!offset) continue;
-      features.push({
-        type: "Feature",
-        geometry: offset.geometry,
-        properties: {
-          road_id: road.id,
-          kind: edgeOffsets.has(offsetM) ? "edge" : "separator",
-        },
-      });
+      const boundaryIndex = Math.round((roadWidthM / 2 - offsetM) / laneWidthM);
+      const leftLane = lanes?.find((lane) => lane.index === boundaryIndex - 1);
+      const rightLane = lanes?.find((lane) => lane.index === boundaryIndex);
+      const leftDirection =
+        leftLane && "direction" in leftLane ? leftLane.direction : null;
+      const rightDirection =
+        rightLane && "direction" in rightLane ? rightLane.direction : null;
+      const isOppositeDirection =
+        leftDirection !== null &&
+        rightDirection !== null &&
+        leftDirection !== rightDirection;
+      const isEdge = edgeOffsets.has(offsetM);
+      const marking = isEdge
+        ? offsetM > 0
+          ? (("left_edge_marking" in road
+              ? road.left_edge_marking
+              : undefined) ?? "SOLID_YELLOW")
+          : (("right_edge_marking" in road
+              ? road.right_edge_marking
+              : undefined) ?? "SOLID_YELLOW")
+        : (("lane_boundary_markings" in road
+            ? road.lane_boundary_markings?.[boundaryIndex - 1]
+            : undefined) ??
+          (isOppositeDirection ? "DOUBLE_SOLID_WHITE" : "DASHED_WHITE"));
+      if (marking === "NONE") continue;
+      const lineFeatures =
+        marking === "DOUBLE_SOLID_WHITE"
+          ? [safeOffset(line, offsetM - 0.28), safeOffset(line, offsetM + 0.28)]
+          : [offset];
+      for (const lineFeature of lineFeatures) {
+        if (!lineFeature) continue;
+        features.push({
+          type: "Feature",
+          geometry: lineFeature.geometry,
+          properties: {
+            road_id: road.id,
+            kind: isEdge
+              ? "edge"
+              : marking === "DOUBLE_SOLID_WHITE"
+                ? "center"
+                : "separator",
+            marking,
+          },
+        });
+      }
     }
   }
   return { type: "FeatureCollection", features };
@@ -389,7 +454,11 @@ export function buildTurnArrowFeatureCollection(
   if (!supportsLaneDetailRendering(coordinateSystem)) {
     return { type: "FeatureCollection", features: [] };
   }
-  const renderingLines = buildLaneRenderingLines(roads, intersections, coordinateSystem);
+  const renderingLines = buildLaneRenderingLines(
+    roads,
+    intersections,
+    coordinateSystem,
+  );
   const features: TurnArrowFeatureCollection["features"] = [];
   for (const road of roads) {
     const lanes = "lanes" in road ? road.lanes : undefined;
@@ -450,7 +519,11 @@ export function buildLaneUseMarkingFeatureCollection(
   if (!supportsLaneDetailRendering(coordinateSystem)) {
     return { type: "FeatureCollection", features: [] };
   }
-  const renderingLines = buildLaneRenderingLines(roads, intersections, coordinateSystem);
+  const renderingLines = buildLaneRenderingLines(
+    roads,
+    intersections,
+    coordinateSystem,
+  );
   const features: LaneUseMarkingFeatureCollection["features"] = [];
   for (const road of roads) {
     const laneCount = roadLaneCount(road);

@@ -1,6 +1,25 @@
 import { toLngLat } from "./coordinates";
 import type { City } from "../../types/city";
 import type { LngLatBoundsLike } from "maplibre-gl";
+import type { EditorWorldBounds } from "../../editor/editorWorld";
+
+export function computeEditorWorldBounds(
+  world: EditorWorldBounds,
+  coordinateSystem: City["coordinate_system"],
+): LngLatBoundsLike {
+  const [minLng, minLat] = toLngLat(coordinateSystem, {
+    x: world.minX,
+    y: world.minY,
+  });
+  const [maxLng, maxLat] = toLngLat(coordinateSystem, {
+    x: world.maxX,
+    y: world.maxY,
+  });
+  return [
+    [Math.min(minLng, maxLng), Math.min(minLat, maxLat)],
+    [Math.max(minLng, maxLng), Math.max(minLat, maxLat)],
+  ];
+}
 
 /** Bounding box covering every road/intersection in the city, in
  * [lng, lat] order -- for `map.fitBounds()` (MapLibre's own "fit to

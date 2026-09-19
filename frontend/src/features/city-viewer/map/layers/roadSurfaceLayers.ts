@@ -4,13 +4,9 @@
  * -- see that file's docstring for why this replaces per-road
  * `line-width` strokes at close zoom (SURFACE_DETAIL_MIN_ZOOM+).
  *
- * A `fill` layer draws the true-to-scale polygon (no pixel-width
- * expression needed -- the geometry already encodes the real width in
- * meters, at the map's real projected scale). A `line` layer on the same
- * polygon source renders its boundary as a thin edge stroke -- MapLibre
- * happily draws a `line` layer from Polygon/MultiPolygon geometry as the
- * ring outline, so junction-merged polygons get one continuous edge with
- * no internal seams, instead of each road's separate casing.
+ * A `fill` layer draws the true-to-scale polygon. The polygon boundary is
+ * intentionally not stroked: optional semantic edge markings are rendered
+ * separately by the lane-boundary source.
  */
 
 import type { ExpressionSpecification, LayerSpecification } from "maplibre-gl";
@@ -34,7 +30,9 @@ function matchOnHierarchy<T extends string | number>(
   ] as unknown as ExpressionSpecification;
 }
 
-export function buildRoadSurfaceLayers(theme: MapThemeColors): LayerSpecification[] {
+export function buildRoadSurfaceLayers(
+  theme: MapThemeColors,
+): LayerSpecification[] {
   const isSelected: ExpressionSpecification = [
     "boolean",
     ["feature-state", "selected"],
@@ -56,22 +54,5 @@ export function buildRoadSurfaceLayers(theme: MapThemeColors): LayerSpecificatio
     },
   };
 
-  const edge: LayerSpecification = {
-    id: LAYER_IDS.roadSurfaceEdge,
-    type: "line",
-    source: SOURCE_IDS.roadSurfaces,
-    minzoom: SURFACE_DETAIL_MIN_ZOOM,
-    layout: { "line-cap": "round", "line-join": "round" },
-    paint: {
-      "line-color": [
-        "case",
-        isSelected,
-        theme.selected,
-        matchOnHierarchy(theme.roadCasing, theme.roadCasing.OTHER),
-      ] as ExpressionSpecification,
-      "line-width": 1.5,
-    },
-  };
-
-  return [fill, edge];
+  return [fill];
 }

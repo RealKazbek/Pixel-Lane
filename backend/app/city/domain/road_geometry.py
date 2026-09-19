@@ -88,6 +88,10 @@ CLASS_WIDTH_BONUS_M: dict[str, float] = {
 }
 
 MIN_ROAD_WIDTH_M = 2.5
+MAX_ROAD_WIDTH_M = 60.0
+MIN_LANE_WIDTH_M = 2.5
+MAX_LANE_WIDTH_M = 6.0
+MAX_ROAD_WIDTH_M = 60.0
 
 
 def resolve_road_class(source_road_type: str | None) -> str:

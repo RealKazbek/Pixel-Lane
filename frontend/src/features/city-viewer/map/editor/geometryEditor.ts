@@ -22,7 +22,12 @@ export interface GeometryEditor {
    * linestring (vertices draggable, midpoints add new vertices, keyboard
    * delete removes them -- all Terra Draw's built-in select-mode
    * behavior, not custom vertex-manipulation code). */
-  beginEditingRoad(road: Road, coordinateSystem: CoordinateSystem): void;
+  beginEditingRoad(
+    road: Road,
+    coordinateSystem: CoordinateSystem,
+    onChange: (points: Point[]) => void,
+  ): void;
+  setActiveEndpoint(endpoint: 0 | 1 | null): void;
   /** Discards the in-progress edit without touching the City Model. */
   cancel(): void;
   /** Reads the current edited geometry back out as City Model points, and
@@ -35,28 +40,42 @@ export interface GeometryEditor {
 }
 
 export function createGeometryEditor(map: MapLibreMap): GeometryEditor {
+  const selectMode = new TerraDrawSelectMode({
+    pointerDistance: 28,
+    cursors: {
+      pointerOverCoordinate: "grab",
+      pointerOverResizeHandle: "grab",
+      dragStart: "grabbing",
+      dragEnd: "grab",
+    },
+    styles: {
+      selectedPointColor: "#ffffff",
+      selectedPointWidth: 16,
+      selectedPointOpacity: 1,
+      selectedPointOutlineColor: "#2563eb",
+      selectedPointOutlineWidth: 3,
+      selectedPointOutlineOpacity: 1,
+      selectedLineStringColor: "#2563eb",
+      selectedLineStringWidth: 2,
+      selectedLineStringOpacity: 0,
+    },
+    flags: {
+      linestring: {
+        feature: {
+          draggable: false,
+          coordinates: { midpoints: false, draggable: false, deletable: false },
+        },
+      },
+    },
+  });
   const draw = new TerraDraw({
     adapter: new TerraDrawMapLibreGLAdapter({ map }),
-    modes: [
-      new TerraDrawSelectMode({
-        flags: {
-          linestring: {
-            feature: {
-              draggable: false,
-              coordinates: {
-                midpoints: true,
-                draggable: true,
-                deletable: true,
-              },
-            },
-          },
-        },
-      }),
-    ],
+    modes: [selectMode],
   });
 
   let started = false;
   let editingFeatureId: string | number | null = null;
+  let changeHandler: ((ids: (string | number)[]) => void) | null = null;
 
   function ensureStarted(): void {
     if (!started) {
@@ -66,7 +85,7 @@ export function createGeometryEditor(map: MapLibreMap): GeometryEditor {
   }
 
   return {
-    beginEditingRoad(road, coordinateSystem) {
+    beginEditingRoad(road, coordinateSystem, onChange) {
       ensureStarted();
       draw.clear();
       draw.setMode("select");
@@ -86,10 +105,40 @@ export function createGeometryEditor(map: MapLibreMap): GeometryEditor {
         result?.valid && result.id !== undefined ? result.id : null;
       if (editingFeatureId !== null) {
         draw.selectFeature(editingFeatureId);
+        changeHandler = (ids) => {
+          if (!ids.includes(editingFeatureId as string | number)) return;
+          const feature = draw.getSnapshotFeature(
+            editingFeatureId as string | number,
+          );
+          if (!feature || feature.geometry.type !== "LineString") return;
+          const points = feature.geometry.coordinates.map((coordinate) =>
+            fromLngLat(coordinateSystem, coordinate as LngLat),
+          );
+          if (points.length === 2) onChange(points);
+        };
+        draw.on("change", changeHandler);
       }
     },
 
+    setActiveEndpoint(endpoint) {
+      void endpoint;
+      selectMode.updateOptions({
+        flags: {
+          linestring: {
+            feature: {
+              // Endpoint dragging is owned by Pixel Lane's visible endpoint
+              // control; Terra Draw remains the geometry adapter but does
+              // not compete for the pointer gesture.
+              coordinates: { draggable: false },
+            },
+          },
+        },
+      });
+    },
+
     cancel() {
+      if (changeHandler) draw.off("change", changeHandler);
+      changeHandler = null;
       draw.clear();
       editingFeatureId = null;
     },
@@ -97,6 +146,8 @@ export function createGeometryEditor(map: MapLibreMap): GeometryEditor {
     apply(coordinateSystem) {
       if (editingFeatureId === null) return null;
       const feature = draw.getSnapshotFeature(editingFeatureId);
+      if (changeHandler) draw.off("change", changeHandler);
+      changeHandler = null;
       draw.clear();
       editingFeatureId = null;
 
@@ -107,6 +158,7 @@ export function createGeometryEditor(map: MapLibreMap): GeometryEditor {
     },
 
     destroy() {
+      if (changeHandler) draw.off("change", changeHandler);
       if (started) {
         draw.clear();
         draw.stop();

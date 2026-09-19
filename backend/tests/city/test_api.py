@@ -136,6 +136,53 @@ def test_update_road_geometry_success(client) -> None:
 
 
 @requires_postgres
+def test_update_road_properties_persists_name_and_width(client) -> None:
+    data = _payload()
+    client.post("/api/v1/cities", json=data)
+    road_id = data["roads"][0]["id"]
+
+    response = client.patch(
+        f"/api/v1/cities/{data['id']}/roads/{road_id}/properties",
+        json={
+            "name": "Updated Avenue",
+            "width_m": 14.0,
+            "lane_count": 4,
+            "lane_width_m": 3.5,
+            "lane_directions": ["FORWARD", "FORWARD", "BACKWARD", "BACKWARD"],
+        },
+    )
+
+    assert response.status_code == 200
+    assert response.json()["name"] == "Updated Avenue"
+    assert response.json()["width_m"] == 14.0
+
+    refreshed = client.get(f"/api/v1/cities/{data['id']}").json()
+    road = next(item for item in refreshed["roads"] if item["id"] == road_id)
+    assert road["name"] == "Updated Avenue"
+    assert road["width_m"] == 14.0
+
+
+@requires_postgres
+def test_update_road_properties_rejects_invalid_width(client) -> None:
+    data = _payload()
+    client.post("/api/v1/cities", json=data)
+    road_id = data["roads"][0]["id"]
+
+    response = client.patch(
+        f"/api/v1/cities/{data['id']}/roads/{road_id}/properties",
+        json={
+            "name": "Updated Avenue",
+            "width_m": 0,
+            "lane_count": 4,
+            "lane_width_m": 3.5,
+            "lane_directions": ["FORWARD", "FORWARD", "BACKWARD", "BACKWARD"],
+        },
+    )
+
+    assert response.status_code == 422
+
+
+@requires_postgres
 def test_update_road_geometry_unknown_road_returns_404(client) -> None:
     data = _payload()
     client.post("/api/v1/cities", json=data)

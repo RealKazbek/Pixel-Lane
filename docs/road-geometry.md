@@ -10,7 +10,7 @@ theming/label history).
 ## 1. Root cause this replaced
 
 Every `Road` used to be buffered independently into a full-length
-rounded "capsule" (`centerline -> @turf/buffer`), and only *then* unioned
+rounded "capsule" (`centerline -> @turf/buffer`), and only _then_ unioned
 with neighbors sharing an `Intersection`. That works for a clean 2-road
 straight continuation, but at any junction where roads meet at an angle,
 two independently-buffered capsules crossing at that angle produce a
@@ -24,14 +24,14 @@ geometric crossing) was never the problem.
 
 ## 2. Prior art investigated
 
-| Project | License | Model | Relevant to Pixel Lane |
-| --- | --- | --- | --- |
-| [osm2streets](https://github.com/a-b-street/osm2streets) | Apache-2.0 | Roads as thickened line-strings between two intersections, each carrying an ordered left-to-right lane list (type/direction/width). Intersections are polygon areas built from where incident road polygons meet. Ships `osm2streets-js` (WASM) + GeoJSON output for web maps. | Closest conceptual match to Pixel Lane's own model (Road=edge with ordered lanes, Intersection=node, junction=derived polygon from incident road geometry). Validates the "trim + build a junction surface from incident road boundaries" direction already taken here. |
-| [drawtonomy](https://github.com/kosuke55/drawtonomy) | Apache-2.0 | Browser-only (no backend) scene editor; "topology-aware lanes" where lane connections update automatically as the centerline is edited; a lane tool derives both boundaries from one centerline; prebuilt intersection/roundabout templates; exports OpenDRIVE/Lanelet2. | UX inspiration for a future interactive road-drawing tool (out of scope for this task, see docs/theming.md-style scoping notes below) and confirms the pattern of keeping lane *connections* as a first-class concept distinct from decorative lane markings. |
-| [SUMO](https://github.com/eclipse-sumo/sumo) / NetEdit | EPL-2.0 | Explicit graph: `Node` (junction) / `Edge` (directed road) / `Lane` (ordered, per-edge) / `Connection` (lane-to-lane, per-junction). `netconvert` auto-generates junction shapes and right-of-way logic from this graph; shapes can also be hand-authored via a `shape` attribute. | Validates the `RoadNode`/`RoadEdge`/`Lane`/`LaneConnection`/`Junction` vocabulary this document and the Lab use. Not source-reused (EPL-2.0 is share-alike for modifications to SUMO's own code; Pixel Lane never vendors or links SUMO code, only reuses the *unencumbered, standard graph vocabulary*, which is not itself copyrightable). |
+| Project                                                  | License    | Model                                                                                                                                                                                                                                                                              | Relevant to Pixel Lane                                                                                                                                                                                                                                                                                                                       |
+| -------------------------------------------------------- | ---------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| [osm2streets](https://github.com/a-b-street/osm2streets) | Apache-2.0 | Roads as thickened line-strings between two intersections, each carrying an ordered left-to-right lane list (type/direction/width). Intersections are polygon areas built from where incident road polygons meet. Ships `osm2streets-js` (WASM) + GeoJSON output for web maps.     | Closest conceptual match to Pixel Lane's own model (Road=edge with ordered lanes, Intersection=node, junction=derived polygon from incident road geometry). Validates the "trim + build a junction surface from incident road boundaries" direction already taken here.                                                                      |
+| [drawtonomy](https://github.com/kosuke55/drawtonomy)     | Apache-2.0 | Browser-only (no backend) scene editor; "topology-aware lanes" where lane connections update automatically as the centerline is edited; a lane tool derives both boundaries from one centerline; prebuilt intersection/roundabout templates; exports OpenDRIVE/Lanelet2.           | UX inspiration for a future interactive road-drawing tool (out of scope for this task, see docs/theming.md-style scoping notes below) and confirms the pattern of keeping lane _connections_ as a first-class concept distinct from decorative lane markings.                                                                                |
+| [SUMO](https://github.com/eclipse-sumo/sumo) / NetEdit   | EPL-2.0    | Explicit graph: `Node` (junction) / `Edge` (directed road) / `Lane` (ordered, per-edge) / `Connection` (lane-to-lane, per-junction). `netconvert` auto-generates junction shapes and right-of-way logic from this graph; shapes can also be hand-authored via a `shape` attribute. | Validates the `RoadNode`/`RoadEdge`/`Lane`/`LaneConnection`/`Junction` vocabulary this document and the Lab use. Not source-reused (EPL-2.0 is share-alike for modifications to SUMO's own code; Pixel Lane never vendors or links SUMO code, only reuses the _unencumbered, standard graph vocabulary_, which is not itself copyrightable). |
 
 None of these are vendored or code-copied into Pixel Lane. What was
-adopted is the *vocabulary and general strategy* (thickened edges + a
+adopted is the _vocabulary and general strategy_ (thickened edges + a
 node graph + junction shapes derived from where incident edges meet),
 which is standard, published computational-cartography practice, not
 one project's proprietary implementation. Pixel Lane's own junction
@@ -63,7 +63,7 @@ GEOMETRY (frontend/.../map/geometry/, pure TS, no MapLibre/React)
   roadEnvelope.ts    centerline -> buffered polygon
   junctionSolver.ts  incident roads at a Node -> one unified Junction polygon
   mergeTaper.ts       variable-width envelope for a slip/merge/split approach
-  curveSmoothing.ts   Catmull-Rom centerline resampling
+  curveSmoothing.ts   per-corner quadratic centerline resampling
   laneConnection.ts   lane-to-lane connector curve through a Junction
 
 RENDERING (frontend/.../map/layers/ + styles/)
@@ -83,23 +83,28 @@ see `docs/city-model.md` and the regression test of the same name).
 For a node with 2+ incident roads (generic -- not Demo-City-specific,
 works for any count/angle):
 
-1. Trim each incident road's centerline back by a **node radius**
-   (derived from the widest incident road) so independently-buffered
-   envelopes stop short of the node instead of overlapping neighbors.
-2. Take the left/right envelope-edge points at each road's trim cut, plus
-   the node position, and compute their **convex hull** -- always a
-   simple (non-self-intersecting) polygon regardless of how many roads
-   meet or at what angle, which is what makes one algorithm cover
-   2-road/T/X/Y/acute/asymmetric junctions without special-casing any of
-   them.
-3. Round every hull edge that connects two *different* roads' edge
-   points into a smooth outward-bulging curb-return fillet (a quadratic
-   Bezier through an outward control point, capped at 40% of the edge's
-   own length so it can never self-intersect regardless of junction
-   angle). A hull edge belonging to one road's own left/right pair stays
-   straight -- that's the road's own envelope face.
-4. Union the resulting plate with every incident road's trimmed (or, for
-   a detected merge/slip approach, tapered) envelope.
+1. Build each incident road as an explicit left/right offset corridor with
+   flat/butt ends. The corridor includes the shared endpoint; the topology
+   node itself is not buffered and has no physical radius.
+2. Union the corridors. Internal boundaries disappear while the outer
+   boundary remains the boundary of the connected road widths. A straight T
+   therefore stays a rectangular through-road with a rectangular side-road
+   opening, rather than becoming a central capsule or disk.
+3. Keep the configured corner radius in the editor/model contract. The base
+   junction is currently intentionally sharp; a future local fillet may be
+   applied only to individual adjacent road-edge corners after the
+   corridor-defined footprint remains unchanged.
+
+This is the PL-005.15–PL-005.18 geometry milestone. Incident approaches are
+sorted by local outward bearing, never by road creation or database order.
+The same degree-independent pipeline handles T/Y and four-way nodes as well
+as skewed and arbitrary-angle layouts. A junction surface is derived from
+the shared topology node, semantic centerlines, and road widths; it is not a
+competing persisted source of truth.
+
+Lane-to-lane turn connections and intersection markings remain later work
+(PL-005.19+). The standalone road renderer still uses Turf buffering; only
+connected junction approaches use the flat-ended corridor builder.
 
 A ~3cm plate dilation before the final union works around a numerical-
 robustness limitation of the polygon-clipping library behind
@@ -109,12 +114,14 @@ it's unioned with) -- see `junctionSolver.ts`'s `PLATE_DILATION_M`.
 
 ## 5. Curve smoothing
 
-Catmull-Rom resampling (`curveSmoothing.ts`), a no-op for a 2-point
-(straight) centerline by construction -- a straight road is never
-force-curved. Deviation from the original chord is capped
-(`maxTangentInfluence`) so a single noisy source vertex softens a bend
-rather than distorting the route. `LOCAL_CARTESIAN`-only for now (see
-6.).
+The editor keeps the ordered source polyline and derives a render-only
+centerline in `curveSmoothing.ts`. Each internal vertex has an independent
+`corner_smoothing` value in local editor state: zero preserves the raw corner,
+while larger values replace the corner with a safely clamped sampled quadratic
+arc. Endpoints remain exact, and two-point roads remain straight. The derived
+centerline is used by surface, lane, and label adapters for LOCAL_CARTESIAN
+editor/demo geometry only. The backend persists source polyline vertices, but
+does not currently persist this editor-only smoothing metadata.
 
 ## 6. Lane-to-lane connectors
 
@@ -133,8 +140,8 @@ plain per-lane turn arrows that already exist) is a reasonable following
 task, both because it needs its own layer/adapter plumbing and because
 the domain model doesn't yet record explicit per-lane allowed target
 lanes at a junction (today `Intersection.connected_lane_ids` records
-*which* lanes participate, not
-*which lane connects to which*).
+_which_ lanes participate, not
+_which lane connects to which_).
 
 ## 7. `LOCAL_CARTESIAN`-only gates, and why
 
@@ -145,7 +152,7 @@ Real OSM polylines are not curated for either -- sharp angles at
 simplification points, very short segments, near-duplicate points --
 applying schematic offsetting to them previously produced long spiky
 self-intersecting artifacts (see `docs/city-model.md`'s "Two-mode City
-Model" section). The junction solver and road-envelope buffering *do*
+Model" section). The junction solver and road-envelope buffering _do_
 run on both coordinate systems: buffering/trimming/filleting a single
 centerline by a single width has no compounding/self-intersection
 failure mode the way stacked per-lane offsets do, so it is safe on real,
@@ -180,23 +187,82 @@ intersections array size a client ever holds.
 ## 10. Road Geometry Lab
 
 `/dev/road-lab` (`frontend/src/app/dev/road-lab/`,
-`frontend/src/features/city-viewer/dev/roadLab/`) renders ten
-deterministic, isolated primitives through the *exact same* pipeline
+`frontend/src/features/city-viewer/dev/roadLab/`) renders eleven
+deterministic, isolated primitives through the _exact same_ pipeline
 Demo City and Real Almaty use -- `fixtures.ts` builds a small in-memory
 `City` (never touching the backend/database) and `RoadLabApp.tsx` passes
 it straight into the production `PixelLaneMap` component. It is not a
 static SVG mockup and not a second rendering engine.
 
+The product City Model page is a separate editor-first surface. It starts
+with an in-memory `EditorWorkspace` containing three isolated two-point,
+zero-lane roads and no city/imported infrastructure. That initial document is
+rendered by the same `PixelLaneMap` and road-surface pipeline as the Lab;
+Demo City and Real Almaty remain backend/import fixtures, but are not loaded
+by the City Model editor page.
+
+PL-005.05 established the multi-vertex editor foundation. PL-005.06 adds a
+selected-road properties panel for street name and physical width. Width uses
+the existing `width_m` City Model field and the width-aware geometry pipeline;
+lane, speed, parking, bus, and road-type properties remain deferred. The
+current local workspace previews property changes locally, while the backend
+also exposes a validated properties update path for persisted City Model
+flows.
+
+PL-005.07–.09 add the first explicit lane model to the editor contract:
+ordered lanes with `FORWARD`/`BACKWARD` direction, a uniform lane-width
+invariant (`road width = lane count × lane width`), and derived lane boundary
+markings. Lane offsets and markings consume the shared smoothed centerline;
+same-direction boundaries are dashed and direction changes use a stronger
+solid center separator. Lane-level turn, transit, parking, speed, and
+intersection-connection editing remain deferred.
+
+PL-005.10 adds declarative road presets on top of that same contract. The
+initial two-way two/four-lane and one-way two/three-lane templates apply lane
+width, ordered directions, internal separators, and edge lines to the semantic
+Road. They do not create a renderer-only profile or a new road type. Geometry,
+identity, name, and smoothing stay unchanged, while the existing centerline,
+lane, marking, and surface adapters derive the updated rendered result.
+
+PL-005.11 connects road endpoints through the existing semantic
+`Intersection` entity. A snapped pair therefore has both geometrically equal
+endpoint coordinates and one shared topological node ID. The node position is
+canonical: snapping to an existing node uses that position for every involved
+endpoint. Coincident coordinates on roads without a shared `Intersection`
+remain disconnected. Only first/last polyline vertices are topology endpoints;
+intermediate curve vertices are never promoted to nodes. Detection uses the
+nearest eligible endpoint within 18 screen pixels, independent of zoom. Road
+surfaces, markings, and the temporary snap ring remain derived from semantic
+state and cannot establish connectivity themselves.
+
+PL-005.12 extends that identity across connected road chains: one node may be
+referenced by any number of independent Road entities, and moving a shared
+endpoint updates every incident road endpoint and the canonical node position.
+PL-005.13 adds semantic centerline segment candidates using nearest-point
+projection with the same screen-space tolerance. PL-005.14 splits an interior
+target segment into two ordered Road entities, preserving road properties and
+control-point order; the two pieces and the connecting road share one explicit
+Intersection. Rendered surfaces remain derived and do not define topology.
+
+The Stage 1 editor world is an explicit local-cartesian rectangle from
+`(-400, -300)` to `(600, 300)`. The three review roads live inside that
+stable 1000m × 600m world. Its grid is generated as MapLibre line geometry
+from those coordinates, with world-unit intervals adapting at camera zoom
+thresholds; it is not a CSS viewport background.
+
 Fixtures (each in its own grid cell, generously spaced):
 `01 Straight`, `02 Curve`, `03 T Junction`, `04 Four-Way`,
 `05 Y Junction`, `06 Merge`, `07 Split`, `08 Lane Transition`
 (4 -> 3 -> 2 lanes across two chained taper nodes), `09 Median` (two
-physically-separated one-way carriageways), `10 Turn Pocket`.
+physically-separated one-way carriageways), `10 Turn Pocket`, `11 Minimal
+Primitive` (PL-005.01: two points, one straight centerline, one
+fixed-width surface, zero lanes -- the smallest road primitive the
+pipeline supports).
 
 **Adding a new primitive:** add a `buildTestNN...` function in
 `fixtures.ts` following the existing ones' shape (it receives a
 `LabCityBuilder` and a grid-cell `Point` origin, and calls
-`b.addRoad`/`b.addIntersection` with *local* coordinates -- the builder
+`b.addRoad`/`b.addIntersection` with _local_ coordinates -- the builder
 translates them into the cell automatically), then add one entry to
 `FIXTURE_BUILDERS`. `dev/roadLab/__tests__/fixtures.test.ts` already
 asserts every fixture's geometry stays finite/valid through the real
@@ -219,7 +285,7 @@ using real domain entities (`Road`/`Lane`/`Intersection`/`TrafficLight`/
 `ParkingZone`/`BusStop`/`Crosswalk`) rather than the Lab's synthetic
 grid -- see `docs/city-model.md`'s Demo City section for the full
 fixture-by-fixture mapping. The Lab and Demo City intentionally consume
-the *same* frontend geometry/rendering pipeline; nothing in
+the _same_ frontend geometry/rendering pipeline; nothing in
 `map/geometry/` or `map/layers/` branches on which city is being
 rendered.
 

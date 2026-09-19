@@ -9,10 +9,25 @@ import { buildRoadLayers } from "../layers/roadLayers";
 import { buildRoadSurfaceLayers } from "../layers/roadSurfaceLayers";
 import { buildLaneDetailLayers } from "../layers/laneDetailLayers";
 import { buildAmenityLayers } from "../layers/amenityLayers";
-import { SOURCE_IDS } from "../layers/layerIds";
+import { LAYER_IDS, SOURCE_IDS } from "../layers/layerIds";
 import { DARK_MAP_THEME, LIGHT_MAP_THEME } from "../styles/mapTheme";
 
 describe("Pixel Lane layer expressions", () => {
+  it("keeps close-zoom road hit testing on per-road features", () => {
+    const interaction = buildRoadLayers(43.24, LIGHT_MAP_THEME).find(
+      (layer) => layer.id === LAYER_IDS.roadInteraction,
+    );
+
+    expect(interaction).toMatchObject({
+      type: "line",
+      source: SOURCE_IDS.roads,
+      minzoom: 15,
+      paint: {
+        "line-opacity": 0,
+      },
+    });
+  });
+
   it.each([
     ["light", LIGHT_MAP_THEME],
     ["dark", DARK_MAP_THEME],

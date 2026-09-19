@@ -134,6 +134,13 @@ class Road(Base):
     # SOURCE / INFERRED / FALLBACK / UNKNOWN -- confidence of this Road's
     # own generated lane count (`len(lanes)`). See LaneCountQuality.
     lane_count_quality: Mapped[str] = mapped_column(String(20), nullable=False, default="FALLBACK")
+    left_edge_marking: Mapped[str] = mapped_column(
+        String(30), nullable=False, default="SOLID_YELLOW"
+    )
+    right_edge_marking: Mapped[str] = mapped_column(
+        String(30), nullable=False, default="SOLID_YELLOW"
+    )
+    lane_boundary_markings: Mapped[list[str] | None] = mapped_column(JSONB, nullable=True)
 
     # --- Road + Lane Representation V1: road-level lane-use fields -------
     # `ParkingLaneOrientation` / `CyclewayType` for the road's left/right

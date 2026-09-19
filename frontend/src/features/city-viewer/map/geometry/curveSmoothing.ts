@@ -1,9 +1,8 @@
 /**
- * Catmull-Rom centerline smoothing -- resamples an already-curved
- * centerline into a smooth curve without introducing curvature that
- * wasn't already there.
+ * Render-only polyline corner smoothing using independently sampled
+ * quadratic arcs.
  *
- * A straight 2-point road is a no-op by construction (Catmull-Rom needs
+ * A straight 2-point road is a no-op by construction (corner smoothing needs
  * a bend to have anything to smooth), so this never curves a road that
  * was straight in the source data -- matches the task's "do not
  * arbitrarily curve every real road" requirement without a separate
@@ -24,10 +23,7 @@ export interface SmoothingOptions {
   /** How many interpolated points to insert per original segment. */
   samplesPerSegment: number;
   /** Maximum lateral distance (degrees, same units as the input
-   * coordinates) a smoothed point may deviate from the straight chord
-   * between its two nearest original vertices -- bounds how much a
-   * single sharp source vertex can bow the curve, so smoothing softens a
-   * bend instead of distorting the route. */
+   * coordinates) a smoothed point may deviate from the straight chord. */
   maxTangentInfluence: number;
 }
 
@@ -35,47 +31,6 @@ export const DEFAULT_SMOOTHING_OPTIONS: SmoothingOptions = {
   samplesPerSegment: 6,
   maxTangentInfluence: 0.35,
 };
-
-function catmullRomPoint(
-  p0: LngLat,
-  p1: LngLat,
-  p2: LngLat,
-  p3: LngLat,
-  t: number,
-): LngLat {
-  const t2 = t * t;
-  const t3 = t2 * t;
-  const c = (a: number, b: number, cc: number, d: number) =>
-    0.5 *
-    (2 * b +
-      (-a + cc) * t +
-      (2 * a - 5 * b + 4 * cc - d) * t2 +
-      (-a + 3 * b - 3 * cc + d) * t3);
-  return [c(p0[0], p1[0], p2[0], p3[0]), c(p0[1], p1[1], p2[1], p3[1])];
-}
-
-function clampToChord(
-  point: LngLat,
-  chordStart: LngLat,
-  chordEnd: LngLat,
-  maxDeviation: number,
-): LngLat {
-  // Perpendicular distance from `point` to the chord line; if within
-  // bounds, keep it as-is, otherwise pull it back toward the chord.
-  const dx = chordEnd[0] - chordStart[0];
-  const dy = chordEnd[1] - chordStart[1];
-  const lenSq = dx * dx + dy * dy;
-  if (lenSq === 0) return point;
-  const t = ((point[0] - chordStart[0]) * dx + (point[1] - chordStart[1]) * dy) / lenSq;
-  const projX = chordStart[0] + t * dx;
-  const projY = chordStart[1] + t * dy;
-  const devX = point[0] - projX;
-  const devY = point[1] - projY;
-  const dev = Math.hypot(devX, devY);
-  if (dev <= maxDeviation || dev === 0) return point;
-  const scale = maxDeviation / dev;
-  return [projX + devX * scale, projY + devY * scale];
-}
 
 /** Skips near-duplicate consecutive points (a degenerate segment would
  * otherwise produce a NaN/undefined tangent). */
@@ -96,21 +51,55 @@ function dedupe(points: LngLat[]): LngLat[] {
 export function smoothCenterline(
   points: LngLat[],
   options: SmoothingOptions = DEFAULT_SMOOTHING_OPTIONS,
+  smoothing = 1,
+  cornerSmoothing?: number[] | null,
 ): LngLat[] {
   const pts = dedupe(points);
+  if (smoothing <= 0 && !cornerSmoothing) return pts;
   if (pts.length < 3) return pts;
-
+  const values = cornerSmoothing ?? pts.map(() => smoothing);
   const result: LngLat[] = [pts[0]];
-  for (let i = 0; i < pts.length - 1; i++) {
-    const p0 = pts[Math.max(0, i - 1)];
-    const p1 = pts[i];
-    const p2 = pts[i + 1];
-    const p3 = pts[Math.min(pts.length - 1, i + 2)];
-    for (let s = 1; s <= options.samplesPerSegment; s++) {
-      const t = s / options.samplesPerSegment;
-      const raw = catmullRomPoint(p0, p1, p2, p3, t);
-      result.push(clampToChord(raw, p1, p2, options.maxTangentInfluence));
+  for (let i = 1; i < pts.length - 1; i++) {
+    const current = pts[i];
+    const previous = pts[i - 1];
+    const next = pts[i + 1];
+    const strength = Math.max(0, Math.min(1, values[i] ?? smoothing));
+    const radius =
+      Math.min(
+        Math.hypot(current[0] - previous[0], current[1] - previous[1]),
+        Math.hypot(next[0] - current[0], next[1] - current[1]),
+      ) *
+      0.45 *
+      strength;
+    const pointAlong = (target: LngLat): LngLat => {
+      const length = Math.hypot(target[0] - current[0], target[1] - current[1]);
+      return length === 0
+        ? current
+        : [
+            current[0] + ((target[0] - current[0]) * radius) / length,
+            current[1] + ((target[1] - current[1]) * radius) / length,
+          ];
+    };
+    const entry = pointAlong(previous);
+    const exit = pointAlong(next);
+    result.push(entry);
+    const samples = Math.min(
+      24,
+      Math.max(3, Math.ceil(options.samplesPerSegment * (0.5 + strength))),
+    );
+    for (let sample = 1; sample <= samples; sample++) {
+      const t = sample / samples;
+      const inverse = 1 - t;
+      result.push([
+        inverse * inverse * entry[0] +
+          2 * inverse * t * current[0] +
+          t * t * exit[0],
+        inverse * inverse * entry[1] +
+          2 * inverse * t * current[1] +
+          t * t * exit[1],
+      ]);
     }
   }
+  result.push(pts[pts.length - 1]);
   return result;
 }

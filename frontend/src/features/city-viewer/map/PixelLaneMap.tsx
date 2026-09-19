@@ -10,11 +10,13 @@
  */
 
 import { useCallback, useEffect, useMemo, useRef } from "react";
+import { useState } from "react";
 import { useTheme } from "next-themes";
 import type {
   LngLatBoundsLike,
   Map as MapLibreMap,
   MapLayerMouseEvent,
+  MapMouseEvent,
 } from "maplibre-gl";
 import { useMapLibreMap } from "./hooks/useMapLibreMap";
 import {
@@ -26,9 +28,13 @@ import {
   type EditorStatus,
 } from "./editor/useGeometryEditor";
 import type { ApplyRoadEditError } from "./editor/applyRoadEdit";
+import { fromLngLat, toLngLat } from "./adapters/coordinates";
+import type { Point } from "../types/city";
+import { midpoint } from "./editor/polylineEditing";
 import {
   computeCityBounds,
   computeReferenceLatitude,
+  computeEditorWorldBounds,
 } from "./adapters/cityBounds";
 import {
   buildIntersectionFeatureCollection,
@@ -59,6 +65,18 @@ import { SOURCE_IDS, LAYER_IDS } from "./layers/layerIds";
 import { resolveMapStyle } from "./styles/mapStyle";
 import { resolveMapTheme } from "./styles/mapTheme";
 import type { City } from "../types/city";
+import type { EditorWorldBounds } from "../editor/editorWorld";
+import {
+  buildEndpointSnapTargets,
+  buildRoadSegmentSnapTargets,
+  findEndpointSnapCandidate,
+  findRoadEndpointNode,
+  roadEndpointForVertex,
+  type EndpointSnapCandidate,
+  type EndpointSnapTarget,
+  type ScreenEndpointSnapTarget,
+} from "../editor/endpointSnapping";
+import { buildEditorGrid } from "./grid";
 import type { LayerVisibility, MapMode, MapSelection } from "./types";
 
 export interface EditorAction {
@@ -69,6 +87,15 @@ export interface EditorAction {
 interface PixelLaneMapProps {
   city: City;
   selected: MapSelection | null;
+  selectedVertexIndex?: number | null;
+  onVertexSelect?: (index: number) => void;
+  onVertexDrag?: (index: number, point: Point) => void;
+  onVertexDragEnd?: (
+    index: number,
+    snapTarget: EndpointSnapTarget | null,
+    previousNodeId: string | null,
+  ) => void;
+  onInsertPoint?: (segmentIndex: number, point: Point) => void;
   onSelect: (selection: MapSelection | null) => void;
   basemapEnabled: boolean;
   mapStyleUrl: string | null;
@@ -83,6 +110,9 @@ interface PixelLaneMapProps {
    * doesn't re-trigger the fly. */
   focusBounds?: { bounds: LngLatBoundsLike; token: number } | null;
   mode: MapMode;
+  activeTool?: "select" | "draw-road";
+  snapLabel?: string;
+  onDrawPoint?: (point: Point, snapTarget: EndpointSnapTarget | null) => void;
   editorAction: EditorAction | null;
   onEditorStatusChange: (
     status: EditorStatus,
@@ -93,11 +123,22 @@ interface PixelLaneMapProps {
    * show a subtle loading/error indicator (see CityViewerApp.tsx) --
    * this component itself never renders any chrome. */
   onViewportStatusChange?: (status: ViewportDataStatus) => void;
+  editorWorld?: EditorWorldBounds;
+  onScaleChange?: (scale: { denominator: number; barMeters: number }) => void;
+  onRoadGeometryChange?: (
+    roadId: string,
+    points: { x: number; y: number }[],
+  ) => void;
 }
 
 export function PixelLaneMap({
   city,
   selected,
+  selectedVertexIndex = null,
+  onVertexSelect,
+  onVertexDrag,
+  onVertexDragEnd,
+  onInsertPoint,
   onSelect,
   basemapEnabled,
   mapStyleUrl,
@@ -106,21 +147,108 @@ export function PixelLaneMap({
   fitSignal,
   focusBounds,
   mode,
+  activeTool = "select",
+  snapLabel = "Snap",
+  onDrawPoint,
   editorAction,
   onEditorStatusChange,
   onRoadSaved,
   onViewportStatusChange,
+  editorWorld,
+  onScaleChange,
+  onRoadGeometryChange,
 }: PixelLaneMapProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   // Entity detail responses must not recenter the map.
-  const boundsKey = JSON.stringify(city.bounds ?? null);
-  const bounds = useMemo(() => computeCityBounds(city), [city.id, boundsKey]); // eslint-disable-line react-hooks/exhaustive-deps
+  const bounds = useMemo(
+    () =>
+      editorWorld
+        ? computeEditorWorldBounds(editorWorld, city.coordinate_system)
+        : computeCityBounds(city),
+    [city, editorWorld],
+  );
   const referenceLatitude = useMemo(
     () => computeReferenceLatitude(city),
     [city],
   );
   const editor = useGeometryEditor();
   const appliedStyleKeyRef = useRef<string | null>(null);
+  const lastFitSignalRef = useRef<number | null>(null);
+  const [gridZoom, setGridZoom] = useState(16);
+  const [vertexScreenPoints, setVertexScreenPoints] = useState<
+    { index: number; x: number; y: number }[]
+  >([]);
+  const [insertScreenPoints, setInsertScreenPoints] = useState<
+    { segmentIndex: number; point: Point; x: number; y: number }[]
+  >([]);
+  const [draggingEndpoint, setDraggingEndpoint] = useState<string | null>(null);
+  const [snapCandidate, setSnapCandidate] =
+    useState<EndpointSnapCandidate | null>(null);
+
+  const projectSnapTargets = useCallback(
+    (
+      map: MapLibreMap,
+      pointer?: { x: number; y: number },
+    ): ScreenEndpointSnapTarget[] => {
+      const endpointTargets = buildEndpointSnapTargets(city).map((target) => {
+        const projected = map.project(
+          toLngLat(city.coordinate_system, target.point),
+        );
+        return {
+          ...target,
+          screenX: projected.x,
+          screenY: projected.y,
+        };
+      });
+      if (!pointer) return endpointTargets;
+      const pointerLngLat = map.unproject([pointer.x, pointer.y]);
+      const pointerPoint = fromLngLat(city.coordinate_system, [
+        pointerLngLat.lng,
+        pointerLngLat.lat,
+      ]);
+      const segmentTargets = buildRoadSegmentSnapTargets(city).flatMap(
+        (target) => {
+          const road = city.roads.find(
+            (candidate) => candidate.id === target.roadId,
+          );
+          if (!road) return [];
+          const start = road.geometry.points[target.segmentIndex];
+          const end = road.geometry.points[target.segmentIndex + 1];
+          const dx = end.x - start.x;
+          const dy = end.y - start.y;
+          const lengthSquared = dx * dx + dy * dy;
+          if (lengthSquared <= 0) return [];
+          const ratio = Math.max(
+            0,
+            Math.min(
+              1,
+              ((pointerPoint.x - start.x) * dx +
+                (pointerPoint.y - start.y) * dy) /
+                lengthSquared,
+            ),
+          );
+          if (ratio <= 0 || ratio >= 1) return [];
+          const point = {
+            x: start.x + dx * ratio,
+            y: start.y + dy * ratio,
+          };
+          const projected = map.project(
+            toLngLat(city.coordinate_system, point),
+          );
+          return [
+            {
+              ...target,
+              point,
+              screenX: projected.x,
+              screenY: projected.y,
+            },
+          ];
+        },
+      );
+      return [...endpointTargets, ...segmentTargets];
+    },
+    [city],
+  );
 
   // `next-themes`'s resolved appearance ("system" already resolved to
   // "light"/"dark") -- the one sanctioned exception to "consume the
@@ -134,7 +262,9 @@ export function PixelLaneMap({
   );
 
   const { mapRef, isLoaded } = useMapLibreMap(containerRef, {
-    style: resolveMapStyle(basemapEnabled, mapStyleUrl, mapTheme.background),
+    style: resolveMapStyle(basemapEnabled, mapStyleUrl, "transparent"),
+    navigationControlPosition: "top-right",
+    onScaleChange,
     // A reasonable initial guess only -- the fit-to-view effect below runs
     // right after load and corrects this to the city's actual bounds. Still
     // worth getting right: it's what's briefly visible before that fit runs.
@@ -165,6 +295,11 @@ export function PixelLaneMap({
       ? viewport.intersections
       : city.intersections;
 
+  const selectedRoad =
+    selected?.type === "road"
+      ? city.roads.find((candidate) => candidate.id === selected.id)
+      : null;
+
   useEffect(() => {
     onViewportStatusChange?.(viewport.status);
   }, [viewport.status, onViewportStatusChange]);
@@ -184,6 +319,9 @@ export function PixelLaneMap({
       }));
 
     return {
+      grid: editorWorld
+        ? buildEditorGrid(editorWorld, city.coordinate_system, gridZoom)
+        : { type: "FeatureCollection", features: [] },
       roads: buildRoadFeatureCollection({
         roads: visibleRoads,
         coordinate_system: city.coordinate_system,
@@ -230,7 +368,10 @@ export function PixelLaneMap({
       // itself, not `visibleRoads`/`visibleIntersections`, since a WGS84
       // city's own bus_stops/crosswalks are always [] until that follow-up
       // exists, and a LOCAL_CARTESIAN city's full list is already `city`.
-      busStops: buildBusStopFeatureCollection(city.bus_stops, city.coordinate_system),
+      busStops: buildBusStopFeatureCollection(
+        city.bus_stops,
+        city.coordinate_system,
+      ),
       crosswalks: buildCrosswalkFeatureCollection(
         city.crosswalks,
         city.roads,
@@ -244,7 +385,23 @@ export function PixelLaneMap({
     city.bus_stops,
     city.crosswalks,
     city.roads,
+    editorWorld,
+    gridZoom,
   ]);
+
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map || !isLoaded || !editorWorld) return;
+    const updateGridZoom = () => {
+      const zoom = map.getZoom();
+      setGridZoom(zoom);
+    };
+    updateGridZoom();
+    map.on("zoomend", updateGridZoom);
+    return () => {
+      map.off("zoomend", updateGridZoom);
+    };
+  }, [editorWorld, isLoaded, mapRef]);
   const styleKey =
     basemapEnabled && mapStyleUrl ? mapStyleUrl : "pixel-lane-empty";
 
@@ -323,7 +480,7 @@ export function PixelLaneMap({
     // quickly, and the overlay must be restored after—not before—the new
     // style is ready.
     map.once("style.load", () => ensurePixelLaneLayers(map));
-    map.setStyle(resolveMapStyle(basemapEnabled, mapStyleUrl, mapTheme.background));
+    map.setStyle(resolveMapStyle(basemapEnabled, mapStyleUrl, "transparent"));
     appliedStyleKeyRef.current = styleKey;
   }, [
     basemapEnabled,
@@ -354,7 +511,7 @@ export function PixelLaneMap({
       map.setPaintProperty(
         "pixel-lane-empty-background",
         "background-color",
-        mapTheme.background,
+        "transparent",
       );
     }
   }, [
@@ -367,13 +524,16 @@ export function PixelLaneMap({
     applyCurrentSelection,
   ]);
 
-  // Fit-to-view: on demand (button) and whenever the city itself changes.
+  // Fit-to-view only on initial load or an explicit fit request. City Model
+  // edits change `bounds`, but must never move the user's working viewport.
   useEffect(() => {
     const map = mapRef.current;
     if (!map || !isLoaded || !bounds) return;
-    map.fitBounds(bounds, { padding: 48, duration: 0 });
+    if (lastFitSignalRef.current === fitSignal) return;
+    lastFitSignalRef.current = fitSignal;
+    map.fitBounds(bounds, { padding: editorWorld ? 16 : 48, duration: 0 });
     // eslint-disable-next-line react-hooks/exhaustive-deps -- fitSignal is a manual trigger
-  }, [isLoaded, bounds, fitSignal]);
+  }, [isLoaded, bounds, editorWorld, fitSignal]);
 
   // Independent "jump to a specific area" camera request -- e.g. the
   // Road Geometry Lab's fixture list. Only reacts to `token` changing,
@@ -381,7 +541,11 @@ export function PixelLaneMap({
   useEffect(() => {
     const map = mapRef.current;
     if (!map || !isLoaded || !focusBounds) return;
-    map.fitBounds(focusBounds.bounds, { padding: 80, maxZoom: 19, duration: 0 });
+    map.fitBounds(focusBounds.bounds, {
+      padding: 80,
+      maxZoom: 19,
+      duration: 0,
+    });
     // eslint-disable-next-line react-hooks/exhaustive-deps -- token is the manual trigger
   }, [isLoaded, focusBounds?.token]);
 
@@ -393,34 +557,153 @@ export function PixelLaneMap({
     const map = mapRef.current;
     if (!map || !isLoaded) return;
 
+    const resolveDrawPoint = (event: MapMouseEvent) => {
+      const candidate = findEndpointSnapCandidate(
+        event.point,
+        projectSnapTargets(map, event.point),
+        null,
+      );
+      const point = candidate
+        ? candidate.point
+        : fromLngLat(city.coordinate_system, [
+            event.lngLat.lng,
+            event.lngLat.lat,
+          ]);
+      onDrawPoint?.(point, candidate);
+      setSnapCandidate(null);
+    };
+    const intersectionAtCore = (event: MapMouseEvent): string | null => {
+      const hit = city.intersections
+        .filter((intersection) => intersection.connected_road_ids.length >= 2)
+        .map((intersection) => {
+          const screen = map.project(
+            toLngLat(city.coordinate_system, intersection.position),
+          );
+          return {
+            id: intersection.id,
+            distance: Math.hypot(
+              screen.x - event.point.x,
+              screen.y - event.point.y,
+            ),
+          };
+        })
+        .filter((candidate) => candidate.distance <= 14)
+        .sort(
+          (left, right) =>
+            left.distance - right.distance || left.id.localeCompare(right.id),
+        )[0];
+      return hit?.id ?? null;
+    };
     const handleIntersectionClick = (event: MapLayerMouseEvent) => {
+      if (activeTool === "draw-road") {
+        resolveDrawPoint(event);
+        return;
+      }
+      const coreId = intersectionAtCore(event);
+      if (!coreId) return;
       const feature = event.features?.[0];
+      if (feature?.properties?.intersection_id) {
+        onSelect({
+          type: "intersection",
+          id: String(feature.properties.intersection_id),
+        });
+        return;
+      }
       if (feature?.properties?.id) {
         onSelect({ type: "intersection", id: String(feature.properties.id) });
       }
     };
     const handleRoadClick = (event: MapLayerMouseEvent) => {
+      if (activeTool === "draw-road") {
+        resolveDrawPoint(event);
+        return;
+      }
+      const coreId = intersectionAtCore(event);
+      if (coreId) {
+        onSelect({ type: "intersection", id: coreId });
+        return;
+      }
       const feature = event.features?.[0];
       if (feature?.properties?.id) {
         onSelect({ type: "road", id: String(feature.properties.id) });
       }
     };
     const handleTrafficLightClick = (event: MapLayerMouseEvent) => {
+      if (activeTool === "draw-road") {
+        resolveDrawPoint(event);
+        return;
+      }
       const intersectionId = event.features?.[0]?.properties?.intersection_id;
       if (intersectionId) {
         onSelect({ type: "intersection", id: String(intersectionId) });
       }
     };
     const handleBackgroundClick = (event: MapLayerMouseEvent) => {
+      if (activeTool === "draw-road") {
+        const layers = [
+          LAYER_IDS.roadSurface,
+          LAYER_IDS.roadSurfaceFill,
+          LAYER_IDS.roadInteraction,
+          LAYER_IDS.intersections,
+          LAYER_IDS.intersectionDetails,
+          LAYER_IDS.trafficLights,
+        ].filter((id) => map.getLayer(id));
+        if (!map.queryRenderedFeatures(event.point, { layers }).length)
+          resolveDrawPoint(event);
+        return;
+      }
       const layers = [
         LAYER_IDS.roadSurface,
         LAYER_IDS.roadSurfaceFill,
+        LAYER_IDS.roadInteraction,
         LAYER_IDS.intersections,
         LAYER_IDS.intersectionDetails,
         LAYER_IDS.trafficLights,
       ].filter((id) => map.getLayer(id));
       if (!map.queryRenderedFeatures(event.point, { layers }).length)
         onSelect(null);
+    };
+    const handleDrawMove = (event: MapMouseEvent) => {
+      if (activeTool !== "draw-road") return;
+      setSnapCandidate(
+        findEndpointSnapCandidate(
+          event.point,
+          projectSnapTargets(map, event.point),
+          null,
+        ),
+      );
+    };
+    const clearDrawSnap = () => {
+      if (activeTool === "draw-road") setSnapCandidate(null);
+    };
+    let hoveredRoadId: string | null = null;
+    const handleRoadHover = (event: MapLayerMouseEvent) => {
+      const id = event.features?.[0]?.properties?.id;
+      if (!id) return;
+      const nextId = String(id);
+      if (hoveredRoadId && hoveredRoadId !== nextId) {
+        map.setFeatureState(
+          { source: SOURCE_IDS.roads, id: hoveredRoadId },
+          { hovered: false },
+        );
+      }
+      hoveredRoadId = nextId;
+      map.setFeatureState(
+        { source: SOURCE_IDS.roads, id: nextId },
+        { hovered: true },
+      );
+      map.getCanvasContainer().style.cursor = "pointer";
+    };
+    const clearRoadHover = () => {
+      if (hoveredRoadId) {
+        map.setFeatureState(
+          { source: SOURCE_IDS.roads, id: hoveredRoadId },
+          { hovered: false },
+        );
+        hoveredRoadId = null;
+      }
+      if (mode !== "edit-geometry" && activeTool !== "draw-road")
+        map.getCanvasContainer().style.cursor = "";
     };
 
     map.on("click", LAYER_IDS.intersections, handleIntersectionClick);
@@ -431,18 +714,46 @@ export function PixelLaneMap({
     // clicking it is a no-op here rather than misattributing the click to
     // one arbitrary constituent road (see roadSurfaceGeometry.ts).
     map.on("click", LAYER_IDS.roadSurfaceFill, handleRoadClick);
+    map.on("click", LAYER_IDS.roadInteraction, handleRoadClick);
+    map.on("mousemove", LAYER_IDS.roadSurface, handleRoadHover);
+    map.on("mousemove", LAYER_IDS.roadSurfaceFill, handleRoadHover);
+    map.on("mousemove", LAYER_IDS.roadInteraction, handleRoadHover);
+    map.on("mouseout", LAYER_IDS.roadSurface, clearRoadHover);
+    map.on("mouseout", LAYER_IDS.roadSurfaceFill, clearRoadHover);
+    map.on("mouseout", LAYER_IDS.roadInteraction, clearRoadHover);
     map.on("click", LAYER_IDS.trafficLights, handleTrafficLightClick);
     map.on("click", handleBackgroundClick);
+    map.on("mousemove", handleDrawMove);
+    map.on("mouseout", clearDrawSnap);
 
     return () => {
       map.off("click", LAYER_IDS.intersections, handleIntersectionClick);
       map.off("click", LAYER_IDS.intersectionDetails, handleIntersectionClick);
       map.off("click", LAYER_IDS.roadSurface, handleRoadClick);
       map.off("click", LAYER_IDS.roadSurfaceFill, handleRoadClick);
+      map.off("click", LAYER_IDS.roadInteraction, handleRoadClick);
+      map.off("mousemove", LAYER_IDS.roadSurface, handleRoadHover);
+      map.off("mousemove", LAYER_IDS.roadSurfaceFill, handleRoadHover);
+      map.off("mousemove", LAYER_IDS.roadInteraction, handleRoadHover);
+      map.off("mouseout", LAYER_IDS.roadSurface, clearRoadHover);
+      map.off("mouseout", LAYER_IDS.roadSurfaceFill, clearRoadHover);
+      map.off("mouseout", LAYER_IDS.roadInteraction, clearRoadHover);
       map.off("click", LAYER_IDS.trafficLights, handleTrafficLightClick);
       map.off("click", handleBackgroundClick);
+      map.off("mousemove", handleDrawMove);
+      map.off("mouseout", clearDrawSnap);
     };
-  }, [isLoaded, onSelect, mapRef]);
+  }, [
+    isLoaded,
+    onSelect,
+    mapRef,
+    activeTool,
+    onDrawPoint,
+    city.coordinate_system,
+    city.intersections,
+    projectSnapTargets,
+    mode,
+  ]);
 
   // Reflect `selected` as MapLibre feature-state rather than rebuilding
   // any GeoJSON source -- selection changes are cheap regardless of city
@@ -474,6 +785,12 @@ export function PixelLaneMap({
       previousIntersectionId,
       nextIntersectionId,
     );
+    setSelectedFeature(
+      map,
+      SOURCE_IDS.roadSurfaces,
+      previousIntersectionId,
+      nextIntersectionId,
+    );
 
     const previousLightId = previousIntersectionId
       ? (city.intersections.find((i) => i.id === previousIntersectionId)
@@ -502,18 +819,27 @@ export function PixelLaneMap({
     if (editor.editingRoadId === selected.id) return;
 
     const road = city.roads.find((r) => r.id === selected.id);
-    if (road) editor.start(map, road, city.coordinate_system);
+    if (road) {
+      editor.start(map, road, city.coordinate_system, (points) => {
+        if (points.length >= 2) onRoadGeometryChange?.(road.id, points);
+      });
+    }
     // eslint-disable-next-line react-hooks/exhaustive-deps -- editor is a stable ref-backed API
-  }, [mode, selected, isLoaded, city]);
+  }, [mode, selected, isLoaded, city, onRoadGeometryChange]);
 
   // Leaving edit mode without an explicit apply/cancel action (e.g.
   // selecting a different entity) discards the in-progress edit.
   useEffect(() => {
     const map = mapRef.current;
-    if (!map || mode === "edit-geometry" || !editor.editingRoadId) return;
+    if (
+      !map ||
+      (mode === "edit-geometry" && selected?.type === "road") ||
+      !editor.editingRoadId
+    )
+      return;
     editor.cancel(map);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [mode]);
+  }, [mode, selected]);
 
   // The toolbar's Apply/Cancel buttons drive the editor via this token.
   useEffect(() => {
@@ -546,5 +872,181 @@ export function PixelLaneMap({
       mode === "edit-geometry" ? "crosshair" : "";
   }, [mode, isLoaded, mapRef]);
 
-  return <div ref={containerRef} className="h-full w-full" />;
+  useEffect(() => {
+    const map = mapRef.current;
+    const road =
+      selected?.type === "road"
+        ? city.roads.find((candidate) => candidate.id === selected.id)
+        : null;
+    if (!map || !isLoaded || mode !== "edit-geometry" || !road) {
+      setVertexScreenPoints([]);
+      setInsertScreenPoints([]);
+      return;
+    }
+    const update = () => {
+      setVertexScreenPoints(
+        road.geometry.points.map((point, index) => {
+          const projected = map.project(
+            toLngLat(city.coordinate_system, point),
+          );
+          return {
+            index,
+            x: projected.x,
+            y: projected.y,
+          };
+        }),
+      );
+      const points = road.geometry.points;
+      const firstVector = {
+        x: points[1].x - points[0].x,
+        y: points[1].y - points[0].y,
+      };
+      const lastVector = {
+        x: points[points.length - 1].x - points[points.length - 2].x,
+        y: points[points.length - 1].y - points[points.length - 2].y,
+      };
+      const insertionPositions = [
+        {
+          segmentIndex: -1,
+          point: {
+            x: points[0].x - firstVector.x * 0.2,
+            y: points[0].y - firstVector.y * 0.2,
+          },
+        },
+        ...points.slice(0, -1).map((point, index) => ({
+          segmentIndex: index,
+          point: midpoint(point, points[index + 1]),
+        })),
+        {
+          segmentIndex: points.length - 1,
+          point: {
+            x: points[points.length - 1].x + lastVector.x * 0.2,
+            y: points[points.length - 1].y + lastVector.y * 0.2,
+          },
+        },
+      ];
+      const insertionPoints = insertionPositions.map(
+        ({ segmentIndex, point }) => {
+          const projected = map.project(
+            toLngLat(city.coordinate_system, point),
+          );
+          return { segmentIndex, point, x: projected.x, y: projected.y };
+        },
+      );
+      setInsertScreenPoints(insertionPoints);
+    };
+    update();
+    map.on("move", update);
+    map.on("resize", update);
+    return () => {
+      map.off("move", update);
+      map.off("resize", update);
+    };
+  }, [city, isLoaded, mapRef, mode, selected]);
+
+  return (
+    <div className="city-model-map relative h-full w-full">
+      <div ref={containerRef} className="h-full w-full" />
+      <div className="pointer-events-none absolute inset-0" aria-hidden="true">
+        {snapCandidate && (activeTool === "draw-road" || draggingEndpoint) && (
+          <span
+            className="absolute h-5 w-5 -translate-x-1/2 -translate-y-1/2 rounded-full border-2 border-primary bg-primary/20 shadow-sm ring-4 ring-primary/20"
+            style={{
+              left: snapCandidate.screenX,
+              top: snapCandidate.screenY,
+            }}
+          >
+            <span className="absolute left-1/2 top-full mt-1 -translate-x-1/2 whitespace-nowrap rounded bg-surface px-1.5 py-0.5 text-[10px] font-semibold text-primary shadow-sm">
+              {snapLabel}
+            </span>
+          </span>
+        )}
+        {vertexScreenPoints.map((vertex) => (
+          <span
+            key={vertex.index}
+            className={`absolute -translate-x-1/2 -translate-y-1/2 rounded-full border border-white bg-primary px-1.5 py-0.5 text-[11px] font-bold leading-none text-white shadow-sm transition-transform ${selectedVertexIndex !== null && selectedVertexIndex !== vertex.index ? "hidden" : `pointer-events-auto ${draggingEndpoint === String(vertex.index) ? "cursor-grabbing scale-125" : "cursor-grab hover:scale-125"}`} ${selectedVertexIndex === vertex.index ? "ring-2 ring-primary/50" : ""}`}
+            onClick={() => onVertexSelect?.(vertex.index)}
+            onPointerDown={(event) => {
+              const index = vertex.index;
+              if (selectedVertexIndex !== index || !mapRef.current) return;
+              event.preventDefault();
+              event.stopPropagation();
+              const map = mapRef.current;
+              const rect = containerRef.current?.getBoundingClientRect();
+              if (!rect) return;
+              map.dragPan.disable();
+              setDraggingEndpoint(String(index));
+              const roadEndpoint = selectedRoad
+                ? roadEndpointForVertex(selectedRoad, index)
+                : null;
+              const previousNodeId =
+                selectedRoad && roadEndpoint
+                  ? (findRoadEndpointNode(
+                      city.intersections,
+                      selectedRoad,
+                      roadEndpoint,
+                    )?.id ?? null)
+                  : null;
+              let activeSnapTarget: EndpointSnapTarget | null = null;
+              const move = (moveEvent: PointerEvent) => {
+                const screenPoint = {
+                  x: moveEvent.clientX - rect.left,
+                  y: moveEvent.clientY - rect.top,
+                };
+                const candidate = roadEndpoint
+                  ? findEndpointSnapCandidate(
+                      screenPoint,
+                      projectSnapTargets(map, screenPoint),
+                      selectedRoad?.id ?? null,
+                    )
+                  : null;
+                activeSnapTarget = candidate;
+                setSnapCandidate(candidate);
+                if (candidate) {
+                  onVertexDrag?.(index, candidate.point);
+                } else {
+                  const point = map.unproject([screenPoint.x, screenPoint.y]);
+                  onVertexDrag?.(
+                    index,
+                    fromLngLat(city.coordinate_system, [point.lng, point.lat]),
+                  );
+                }
+              };
+              const finish = () => {
+                map.dragPan.enable();
+                setDraggingEndpoint(null);
+                setSnapCandidate(null);
+                onVertexDragEnd?.(index, activeSnapTarget, previousNodeId);
+                window.removeEventListener("pointermove", move);
+                window.removeEventListener("pointerup", finish);
+              };
+              window.addEventListener("pointermove", move);
+              window.addEventListener("pointerup", finish);
+            }}
+            style={{ left: vertex.x, top: vertex.y }}
+          >
+            {vertex.index === 0
+              ? "A"
+              : vertex.index === (selectedRoad?.geometry.points.length ?? 1) - 1
+                ? "B"
+                : ""}
+          </span>
+        ))}
+        {insertScreenPoints.map((insertion) => (
+          <button
+            key={`insert-${insertion.segmentIndex}`}
+            type="button"
+            aria-label="Insert road point"
+            className="pointer-events-auto absolute -translate-x-1/2 -translate-y-1/2 rounded-full border border-primary bg-surface px-1 text-xs font-bold text-primary shadow-sm hover:scale-125"
+            style={{ left: insertion.x, top: insertion.y }}
+            onClick={() =>
+              onInsertPoint?.(insertion.segmentIndex, insertion.point)
+            }
+          >
+            +
+          </button>
+        ))}
+      </div>
+    </div>
+  );
 }

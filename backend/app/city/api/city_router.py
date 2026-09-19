@@ -12,7 +12,7 @@ from app.city.schemas.city import (
     CityValidationResult,
 )
 from app.city.schemas.intersection import IntersectionRead
-from app.city.schemas.road import RoadGeometryUpdate, RoadRead
+from app.city.schemas.road import RoadGeometryUpdate, RoadPropertiesUpdate, RoadRead
 from app.city.schemas.spatial import BBox, MapRoad
 from app.city.services import city_service
 from app.db.session import get_db
@@ -116,6 +116,22 @@ def update_road_geometry(
     road = city_service.update_road_geometry(db, city_id, road_id, payload.geometry)
     if road is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Road not found")
+    return road
+
+
+@router.patch("/{city_id}/roads/{road_id}/properties", response_model=RoadRead)
+def update_road_properties(
+    city_id: UUID,
+    road_id: UUID,
+    payload: RoadPropertiesUpdate,
+    db: Session = Depends(get_db),
+) -> RoadRead:
+    try:
+        road = city_service.update_road_properties(db, city_id, road_id, payload)
+    except ValueError as exc:
+        raise HTTPException(status_code=422, detail="ROAD_NAME_EMPTY") from exc
+    if road is None:
+        raise HTTPException(status_code=404, detail="Road not found")
     return road
 
 

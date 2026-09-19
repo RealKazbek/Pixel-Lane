@@ -117,9 +117,51 @@ the existing backend adapter.
 
 ## Lane data parsing (City Model Part 2A)
 
+### PL-005.07–.09 editor lane model
+
+The editor's lane configuration is an ordered `Road.lanes` list. `Lane.index`
+is stable physical order (0 is leftmost in the road's own direction of
+travel), and each lane has an explicit `FORWARD` or `BACKWARD` direction. The
+editor uses one uniform lane width, with the invariant
+`Road.width_m = lane_count × lane_width_m`; lane width is represented by this
+road-level invariant rather than duplicated on every normalized `Lane` row.
+Changing lane count preserves rows by index, appends deterministic general
+lanes, and removes rows from the end. Imported metadata is preserved for
+retained indices.
+
+Lane detail geometry is derived from the same smoothed centerline as the road
+surface. Same-direction internal boundaries are dashed; a direction change
+gets a stronger solid center separator. These are render products, not
+persisted geometry. The backend properties endpoint validates and persists
+the contract for persisted City Model roads; the current clean editor
+workspace remains local-preview data.
+
+PL-005.09 extends this with explicit persisted marking configuration. Internal
+boundaries support `NONE`, `DASHED_WHITE`, `SOLID_WHITE`, and
+`DOUBLE_SOLID_WHITE`; road edges independently support `NONE`, `SOLID_WHITE`,
+and `SOLID_YELLOW`. Double-solid is internal-only. Missing legacy values use
+direction-based defaults (dashed for same-direction lanes, double-solid for
+opposing lanes) and yellow outer edges. Boundary arrays remain ordered by
+adjacent lane index and are preserved when lane count changes where possible.
+
+### PL-005.11 endpoint topology
+
+The local editor reuses `Intersection` as the one canonical road-endpoint node;
+it does not introduce an `EditorNode` or infer a graph from geometry. A snap
+adds the involved road IDs to `Intersection.connected_road_ids` and sets both
+endpoint coordinates to `Intersection.position`. Consequently, identical
+coordinates without the shared intersection ID remain disconnected, while one
+shared ID requires one canonical rendered position. Endpoint snaps and
+interior centerline snaps both create explicit node identity; an interior snap
+splits the target Road into two ordered Road entities that share the new node
+with the moving road. This local transform is not yet auto-persisted and does
+not provide connected-road-chain or explicit detach UX.
+
 Added by migration `f3b7c1d92a58`, on top of Part 1. This is normalized
-lane *metadata* only -- no lane geometry, no lane rendering, no
-intersection lane connectivity (later roadmap parts).
+lane metadata. The editor's derived lane geometry and basic markings are
+documented in the PL-005.07–.09 section above; backend lane rows remain
+domain metadata and do not store sampled render geometry or intersection
+lane connectivity.
 
 - `Road.forward_lane_count` / `backward_lane_count` / `both_ways_lane_count`
   -- raw OSM `lanes:forward` / `lanes:backward` / `lanes:both_ways` tag
@@ -183,13 +225,12 @@ real evidence (e.g. OSM relation tags), not a heuristic.
 
 ## Road + Lane Representation V1
 
-Added by migration `7a1e4c9f0b3d`, on top of Part 2A. This is the first
-pass that actually *renders* lane-level detail on the map, derived
-client-side from Part 1/2A's already-normalized data -- no new backend
-geometry is stored. Still explicitly not implemented: individual lane
-entities in the domain model beyond what Part 2A already added, full
-lane-to-lane intersection topology, lane editing, signal phases,
-simulation, 2.5D/3D.
+Added by migration `7a1e4c9f0b3d`, on top of Part 2A. This renders lane-level
+detail on the map, derived client-side from normalized data -- no sampled
+backend geometry is stored. Lane entities, direction, and basic boundary
+markings are implemented for PL-005.07–.09; full lane-to-lane intersection
+topology, lane editing beyond the current inspector, signal phases,
+simulation, and 2.5D/3D remain deferred.
 
 **New source fields.**
 

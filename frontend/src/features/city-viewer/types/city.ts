@@ -13,6 +13,9 @@ export type RoadType =
   "RESIDENTIAL" | "COLLECTOR" | "ARTERIAL" | "HIGHWAY" | "SERVICE";
 
 export type LaneDirection = "FORWARD" | "BACKWARD";
+export type LaneBoundaryMarking =
+  "NONE" | "DASHED_WHITE" | "SOLID_WHITE" | "DOUBLE_SOLID_WHITE";
+export type RoadEdgeMarking = "NONE" | "SOLID_WHITE" | "SOLID_YELLOW";
 
 export type LaneType =
   "GENERAL" | "BUS" | "BICYCLE" | "EMERGENCY" | "PARKING" | "TURN_ONLY";
@@ -88,6 +91,9 @@ export interface Road {
   name: string;
   road_type: RoadType;
   geometry: Polyline;
+  /** Derived rendering smoothness; source geometry remains the polyline. */
+  smoothing?: number | null;
+  corner_smoothing?: number[] | null;
   default_speed_limit_kmh: number | null;
   source_id?: string | null;
   source_road_type?: string | null;
@@ -131,6 +137,9 @@ export interface Road {
   cycleway_left?: CyclewayType;
   cycleway_right?: CyclewayType;
   lanes: Lane[];
+  left_edge_marking?: RoadEdgeMarking;
+  right_edge_marking?: RoadEdgeMarking;
+  lane_boundary_markings?: LaneBoundaryMarking[] | null;
 }
 
 export interface Intersection {
@@ -141,6 +150,8 @@ export interface Intersection {
   connected_lane_ids: string[];
   control_type: IntersectionControlType;
   traffic_light_id: string | null;
+  /** Derived-junction presentation setting; topology remains authoritative. */
+  junction_corner_radius_m?: number;
 }
 
 export interface SignalGroup {
@@ -232,6 +243,8 @@ export type MapRoad = Pick<
   | "name"
   | "road_type"
   | "geometry"
+  | "smoothing"
+  | "corner_smoothing"
   | "width_m"
   | "is_width_estimated"
   | "carriageway_count"

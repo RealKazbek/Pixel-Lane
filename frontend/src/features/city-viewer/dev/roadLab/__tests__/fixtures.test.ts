@@ -11,6 +11,7 @@ import { toLngLat } from "../../../map/adapters/coordinates";
 import { toRoadLineString } from "../../../map/adapters/roadLineString";
 import { buildLaneConnectorCurve } from "../../../map/geometry/laneConnection";
 import { outwardBearing, pointsMatch, type LngLat } from "../../../map/geometry/nodeGeometry";
+import { smoothCenterline } from "../../../map/geometry/curveSmoothing";
 
 /** Real lane-connector endpoints sit at the junction's edge (roughly
  * where a lane crosses into the junction plate), not at the shared node
@@ -49,11 +50,11 @@ describe("buildRoadLabCity", () => {
     expect(first.city.intersections).toEqual(second.city.intersections);
   });
 
-  it("covers all ten named fixtures with unique, non-overlapping grid cells", () => {
+  it("covers all eleven named fixtures with unique, non-overlapping grid cells", () => {
     const { cells } = buildRoadLabCity();
-    expect(cells).toHaveLength(10);
+    expect(cells).toHaveLength(11);
     const originKeys = new Set(cells.map((c) => `${c.origin.x},${c.origin.y}`));
-    expect(originKeys.size).toBe(10);
+    expect(originKeys.size).toBe(11);
   });
 
   it("every road/intersection has finite coordinates", () => {
@@ -152,5 +153,60 @@ describe("buildRoadLabCity", () => {
       }
     }
     expect(builtAtLeastOne).toBe(true);
+  });
+});
+
+describe("PL-005.01: minimal straight road primitive (t11-road)", () => {
+  it("is a plain two-point Road with zero lanes, no intersection membership", () => {
+    const { city } = buildRoadLabCity();
+    const road = city.roads.find((r) => r.id === "t11-road");
+    expect(road).toBeDefined();
+    expect(road!.geometry.points).toHaveLength(2);
+    expect(road!.lanes).toHaveLength(0);
+    expect(
+      city.intersections.some((i) => i.connected_road_ids.includes("t11-road")),
+    ).toBe(false);
+  });
+
+  it("produces exactly one finite, non-junction road-surface polygon", () => {
+    const { city } = buildRoadLabCity();
+    const fc = buildRoadSurfaceFeatureCollection(
+      city.roads,
+      city.intersections,
+      city.coordinate_system,
+    );
+    const feature = fc.features.find((f) => f.properties.id === "t11-road");
+    expect(feature).toBeDefined();
+    expect(feature!.properties.is_junction).toBe(false);
+
+    const rings =
+      feature!.geometry.type === "Polygon"
+        ? feature!.geometry.coordinates
+        : feature!.geometry.coordinates.flat();
+    for (const ring of rings) {
+      for (const [x, y] of ring) {
+        expect(Number.isFinite(x)).toBe(true);
+        expect(Number.isFinite(y)).toBe(true);
+      }
+    }
+
+    // Shoelace formula on the outer ring -- proves non-zero surface area
+    // without pulling in a new @turf/area dependency for one test.
+    const outerRing = rings[0];
+    let area = 0;
+    for (let i = 0; i < outerRing.length - 1; i++) {
+      const [x1, y1] = outerRing[i];
+      const [x2, y2] = outerRing[i + 1];
+      area += x1 * y2 - x2 * y1;
+    }
+    expect(Math.abs(area) / 2).toBeGreaterThan(0);
+  });
+
+  it("keeps a two-point centerline straight (no Catmull-Rom smoothing applied)", () => {
+    const { city } = buildRoadLabCity();
+    const road = city.roads.find((r) => r.id === "t11-road")!;
+    const line = toRoadLineString(city.coordinate_system, road)!;
+    const coords = line.geometry.coordinates as LngLat[];
+    expect(smoothCenterline(coords)).toEqual(coords);
   });
 });

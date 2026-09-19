@@ -6,6 +6,8 @@ import type {
   Polyline,
   Road,
   MapRoad,
+  LaneBoundaryMarking,
+  RoadEdgeMarking,
 } from "../types/city";
 import type { TrafficAnalysisResult } from "../types/traffic-analysis";
 import type { BBox } from "../map/adapters/viewport";
@@ -114,4 +116,22 @@ export function updateRoadGeometry(
     method: "PATCH",
     body: JSON.stringify({ geometry }),
   });
+}
+
+export function updateRoadProperties(
+  cityId: string,
+  roadId: string,
+  properties: Pick<Road, "name" | "width_m"> & {
+    lane_count: number;
+    lane_width_m: number;
+    lane_directions: Road["lanes"][number]["direction"][];
+    left_edge_marking: RoadEdgeMarking;
+    right_edge_marking: RoadEdgeMarking;
+    lane_boundary_markings: LaneBoundaryMarking[];
+  },
+): Promise<Road> {
+  return apiRequest<Road>(
+    `/api/v1/cities/${cityId}/roads/${roadId}/properties`,
+    { method: "PATCH", body: JSON.stringify(properties) },
+  );
 }

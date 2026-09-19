@@ -15,25 +15,50 @@ function node(x: number, y: number): LngLat {
 }
 
 function incidentRoad(
-  overrides: Partial<IncidentRoad> & Pick<IncidentRoad, "roadId" | "line" | "atEnd">,
+  overrides: Partial<IncidentRoad> &
+    Pick<IncidentRoad, "roadId" | "line" | "atEnd">,
 ): IncidentRoad {
   return { halfWidthM: 4, hierarchy: "ARTERIAL", ...overrides };
 }
 
-function collectCoordinates(geometry: GeoJSON.Polygon | GeoJSON.MultiPolygon): number[][] {
-  const rings = geometry.type === "Polygon" ? geometry.coordinates : geometry.coordinates.flat();
+function collectCoordinates(
+  geometry: GeoJSON.Polygon | GeoJSON.MultiPolygon,
+): number[][] {
+  const rings =
+    geometry.type === "Polygon"
+      ? geometry.coordinates
+      : geometry.coordinates.flat();
   return rings.flat();
 }
 
-function isFinitePolygon(geometry: GeoJSON.Polygon | GeoJSON.MultiPolygon): boolean {
+function isFinitePolygon(
+  geometry: GeoJSON.Polygon | GeoJSON.MultiPolygon,
+): boolean {
   return collectCoordinates(geometry).every(
-    (c) => Number.isFinite(c[0]) && Number.isFinite(c[1]) && Math.abs(c[0]) < 180 && Math.abs(c[1]) < 90,
+    (c) =>
+      Number.isFinite(c[0]) &&
+      Number.isFinite(c[1]) &&
+      Math.abs(c[0]) < 180 &&
+      Math.abs(c[1]) < 90,
   );
+}
+
+function extent(geometry: GeoJSON.Polygon | GeoJSON.MultiPolygon) {
+  const coordinates = collectCoordinates(geometry);
+  return {
+    minX: Math.min(...coordinates.map((c) => c[0])),
+    maxX: Math.max(...coordinates.map((c) => c[0])),
+    minY: Math.min(...coordinates.map((c) => c[1])),
+    maxY: Math.max(...coordinates.map((c) => c[1])),
+  };
 }
 
 describe("solveJunction", () => {
   it("returns null for fewer than 2 incident roads", () => {
-    const line = road([[0, 0], [0, 40]]);
+    const line = road([
+      [0, 0],
+      [0, 40],
+    ]);
     const incident = [incidentRoad({ roadId: "a", line, atEnd: true })];
     expect(solveJunction(node(0, 40), incident)).toBeNull();
   });
@@ -41,8 +66,22 @@ describe("solveJunction", () => {
   it("degenerates a straight 2-road continuation to a valid, finite plate", () => {
     const n = node(0, 40);
     const incident = [
-      incidentRoad({ roadId: "south", line: road([[0, 0], [0, 40]]), atEnd: true }),
-      incidentRoad({ roadId: "north", line: road([[0, 40], [0, 80]]), atEnd: false }),
+      incidentRoad({
+        roadId: "south",
+        line: road([
+          [0, 0],
+          [0, 40],
+        ]),
+        atEnd: true,
+      }),
+      incidentRoad({
+        roadId: "north",
+        line: road([
+          [0, 40],
+          [0, 80],
+        ]),
+        atEnd: false,
+      }),
     ];
     const result = solveJunction(n, incident);
     expect(result).not.toBeNull();
@@ -53,23 +92,74 @@ describe("solveJunction", () => {
   it("handles a 90-degree T-junction with a compact, finite plate", () => {
     const n = node(0, 40);
     const incident = [
-      incidentRoad({ roadId: "south", line: road([[0, 0], [0, 40]]), atEnd: true }),
-      incidentRoad({ roadId: "east", line: road([[0, 40], [40, 40]]), atEnd: false }),
-      incidentRoad({ roadId: "west", line: road([[-40, 40], [0, 40]]), atEnd: true }),
+      incidentRoad({
+        roadId: "south",
+        line: road([
+          [0, 0],
+          [0, 40],
+        ]),
+        atEnd: true,
+      }),
+      incidentRoad({
+        roadId: "east",
+        line: road([
+          [0, 40],
+          [40, 40],
+        ]),
+        atEnd: false,
+      }),
+      incidentRoad({
+        roadId: "west",
+        line: road([
+          [-40, 40],
+          [0, 40],
+        ]),
+        atEnd: true,
+      }),
     ];
     const result = solveJunction(n, incident);
     expect(result).not.toBeNull();
     expect(result!.memberRoadIds).toHaveLength(3);
     expect(isFinitePolygon(result!.polygon.geometry)).toBe(true);
+    expect(result!.polygon.geometry.type).toBe("Polygon");
+    expect(result!.polygon.geometry.coordinates[0]).toHaveLength(9);
   });
 
   it("handles a 4-way X-junction, unioning all four approaches", () => {
     const n = node(0, 40);
     const incident = [
-      incidentRoad({ roadId: "south", line: road([[0, 0], [0, 40]]), atEnd: true }),
-      incidentRoad({ roadId: "north", line: road([[0, 40], [0, 80]]), atEnd: false }),
-      incidentRoad({ roadId: "east", line: road([[0, 40], [40, 40]]), atEnd: false }),
-      incidentRoad({ roadId: "west", line: road([[-40, 40], [0, 40]]), atEnd: true }),
+      incidentRoad({
+        roadId: "south",
+        line: road([
+          [0, 0],
+          [0, 40],
+        ]),
+        atEnd: true,
+      }),
+      incidentRoad({
+        roadId: "north",
+        line: road([
+          [0, 40],
+          [0, 80],
+        ]),
+        atEnd: false,
+      }),
+      incidentRoad({
+        roadId: "east",
+        line: road([
+          [0, 40],
+          [40, 40],
+        ]),
+        atEnd: false,
+      }),
+      incidentRoad({
+        roadId: "west",
+        line: road([
+          [-40, 40],
+          [0, 40],
+        ]),
+        atEnd: true,
+      }),
     ];
     const result = solveJunction(n, incident);
     expect(result).not.toBeNull();
@@ -81,15 +171,28 @@ describe("solveJunction", () => {
     const n = node(0, 40);
     // Two roads leaving the node at a shallow ~20-degree spread.
     const incident = [
-      incidentRoad({ roadId: "stem", line: road([[0, 0], [0, 40]]), atEnd: true }),
+      incidentRoad({
+        roadId: "stem",
+        line: road([
+          [0, 0],
+          [0, 40],
+        ]),
+        atEnd: true,
+      }),
       incidentRoad({
         roadId: "branchA",
-        line: road([[0, 40], [14, 78]]),
+        line: road([
+          [0, 40],
+          [14, 78],
+        ]),
         atEnd: false,
       }),
       incidentRoad({
         roadId: "branchB",
-        line: road([[0, 40], [-3, 79]]),
+        line: road([
+          [0, 40],
+          [-3, 79],
+        ]),
         atEnd: false,
       }),
     ];
@@ -103,14 +206,20 @@ describe("solveJunction", () => {
     const incident = [
       incidentRoad({
         roadId: "highway",
-        line: road([[0, 0], [0, 40]]),
+        line: road([
+          [0, 0],
+          [0, 40],
+        ]),
         atEnd: true,
         halfWidthM: 10,
         hierarchy: "HIGHWAY",
       }),
       incidentRoad({
         roadId: "sidestreet",
-        line: road([[0, 40], [40, 40]]),
+        line: road([
+          [0, 40],
+          [40, 40],
+        ]),
         atEnd: false,
         halfWidthM: 2,
         hierarchy: "RESIDENTIAL",
@@ -126,7 +235,10 @@ describe("solveJunction", () => {
     const incident = [
       incidentRoad({
         roadId: "avenue",
-        line: road([[-80, 40], [0, 40]]),
+        line: road([
+          [-80, 40],
+          [0, 40],
+        ]),
         atEnd: true,
         halfWidthM: 8,
         hierarchy: "ARTERIAL",
@@ -135,7 +247,10 @@ describe("solveJunction", () => {
         roadId: "slip",
         // Joins the avenue from a shallow angle (nearly opposite outward
         // bearing to the avenue's own, i.e. running roughly parallel).
-        line: road([[0, 40], [60, 44]]),
+        line: road([
+          [0, 40],
+          [60, 44],
+        ]),
         atEnd: false,
         halfWidthM: 3,
         hierarchy: "RESIDENTIAL",
@@ -151,20 +266,176 @@ describe("solveJunction", () => {
   it("is deterministic for identical input", () => {
     const n = node(0, 40);
     const build = () => [
-      incidentRoad({ roadId: "south", line: road([[0, 0], [0, 40]]), atEnd: true }),
-      incidentRoad({ roadId: "east", line: road([[0, 40], [40, 40]]), atEnd: false }),
-      incidentRoad({ roadId: "west", line: road([[-40, 40], [0, 40]]), atEnd: true }),
+      incidentRoad({
+        roadId: "south",
+        line: road([
+          [0, 0],
+          [0, 40],
+        ]),
+        atEnd: true,
+      }),
+      incidentRoad({
+        roadId: "east",
+        line: road([
+          [0, 40],
+          [40, 40],
+        ]),
+        atEnd: false,
+      }),
+      incidentRoad({
+        roadId: "west",
+        line: road([
+          [-40, 40],
+          [0, 40],
+        ]),
+        atEnd: true,
+      }),
     ];
     const first = solveJunction(n, build());
     const second = solveJunction(n, build());
     expect(first!.polygon.geometry).toEqual(second!.polygon.geometry);
   });
 
+  it("does not depend on incident-road creation order", () => {
+    const n = node(0, 40);
+    const roads = [
+      incidentRoad({
+        roadId: "south",
+        line: road([
+          [0, 0],
+          [0, 40],
+        ]),
+        atEnd: true,
+      }),
+      incidentRoad({
+        roadId: "east",
+        line: road([
+          [0, 40],
+          [40, 40],
+        ]),
+        atEnd: false,
+      }),
+      incidentRoad({
+        roadId: "west",
+        line: road([
+          [-40, 40],
+          [0, 40],
+        ]),
+        atEnd: true,
+      }),
+      incidentRoad({
+        roadId: "north",
+        line: road([
+          [0, 40],
+          [0, 80],
+        ]),
+        atEnd: false,
+      }),
+    ];
+    const first = solveJunction(n, roads);
+    const second = solveJunction(n, [...roads].reverse());
+    expect(second!.polygon.geometry).toEqual(first!.polygon.geometry);
+    expect(second!.memberRoadIds).toEqual(first!.memberRoadIds);
+  });
+
+  it("keeps the rectangular base stable for any configured corner radius", () => {
+    const n = node(0, 40);
+    const incident = [
+      incidentRoad({
+        roadId: "south",
+        line: road([
+          [0, 0],
+          [0, 40],
+        ]),
+        atEnd: true,
+      }),
+      incidentRoad({
+        roadId: "east",
+        line: road([
+          [0, 40],
+          [40, 40],
+        ]),
+        atEnd: false,
+      }),
+      incidentRoad({
+        roadId: "west",
+        line: road([
+          [-40, 40],
+          [0, 40],
+        ]),
+        atEnd: true,
+      }),
+    ];
+    const tight = solveJunction(n, incident, { cornerRadiusM: 1 });
+    const wide = solveJunction(n, incident, { cornerRadiusM: 10 });
+    const clamped = solveJunction(n, incident, { cornerRadiusM: 10_000 });
+    expect(tight).not.toBeNull();
+    expect(wide).not.toBeNull();
+    expect(clamped).not.toBeNull();
+    expect(clamped!.polygon.geometry).toEqual(
+      solveJunction(n, incident, { cornerRadiusM: 12 })!.polygon.geometry,
+    );
+  });
+
+  it("keeps the through-road boundary stable while local corners change", () => {
+    const n = node(0, 40);
+    const incident = [
+      incidentRoad({
+        roadId: "south",
+        line: road([
+          [0, 0],
+          [0, 40],
+        ]),
+        atEnd: true,
+      }),
+      incidentRoad({
+        roadId: "east",
+        line: road([
+          [0, 40],
+          [40, 40],
+        ]),
+        atEnd: false,
+      }),
+      incidentRoad({
+        roadId: "west",
+        line: road([
+          [-40, 40],
+          [0, 40],
+        ]),
+        atEnd: true,
+      }),
+    ];
+    const tight = solveJunction(n, incident, { cornerRadiusM: 1.5 });
+    const wide = solveJunction(n, incident, { cornerRadiusM: 12 });
+    expect(tight).not.toBeNull();
+    expect(wide).not.toBeNull();
+    const tightExtent = extent(tight!.polygon.geometry);
+    const wideExtent = extent(wide!.polygon.geometry);
+    expect(Math.abs(wideExtent.maxY - tightExtent.maxY)).toBeLessThan(0.0002);
+    expect(Math.abs(wideExtent.minY - tightExtent.minY)).toBeLessThan(0.0002);
+  });
+
   it("never trims a road past its own midpoint on a very short connector", () => {
     const n = node(0, 40);
     const incident = [
-      incidentRoad({ roadId: "stub", line: road([[0, 40], [0, 43]]), atEnd: false, halfWidthM: 6 }),
-      incidentRoad({ roadId: "main", line: road([[0, 40], [40, 40]]), atEnd: false, halfWidthM: 6 }),
+      incidentRoad({
+        roadId: "stub",
+        line: road([
+          [0, 40],
+          [0, 43],
+        ]),
+        atEnd: false,
+        halfWidthM: 6,
+      }),
+      incidentRoad({
+        roadId: "main",
+        line: road([
+          [0, 40],
+          [40, 40],
+        ]),
+        atEnd: false,
+        halfWidthM: 6,
+      }),
     ];
     const result = solveJunction(n, incident);
     expect(result).not.toBeNull();
@@ -174,11 +445,21 @@ describe("solveJunction", () => {
   it("handles two nearly-collinear roads (a near-180-degree continuation) without spikes", () => {
     const n = node(0, 40);
     const incident = [
-      incidentRoad({ roadId: "south", line: road([[0, 0], [0, 40]]), atEnd: true }),
+      incidentRoad({
+        roadId: "south",
+        line: road([
+          [0, 0],
+          [0, 40],
+        ]),
+        atEnd: true,
+      }),
       // 2 degrees off from a perfectly straight continuation.
       incidentRoad({
         roadId: "north",
-        line: road([[0, 40], [1.4, 79.98]]),
+        line: road([
+          [0, 40],
+          [1.4, 79.98],
+        ]),
         atEnd: false,
       }),
     ];
@@ -190,11 +471,21 @@ describe("solveJunction", () => {
   it("handles a very acute (near-zero-degree) angle between two roads without self-intersection", () => {
     const n = node(0, 40);
     const incident = [
-      incidentRoad({ roadId: "stem", line: road([[0, 0], [0, 40]]), atEnd: true }),
+      incidentRoad({
+        roadId: "stem",
+        line: road([
+          [0, 0],
+          [0, 40],
+        ]),
+        atEnd: true,
+      }),
       // Branches off at only ~5 degrees from the stem's own direction.
       incidentRoad({
         roadId: "sliver",
-        line: road([[0, 40], [3.5, 79.9]]),
+        line: road([
+          [0, 40],
+          [3.5, 79.9],
+        ]),
         atEnd: false,
       }),
     ];
@@ -206,8 +497,22 @@ describe("solveJunction", () => {
   it("returns null rather than throwing when every incident line is degenerate (zero-length)", () => {
     const n = node(0, 40);
     const incident = [
-      incidentRoad({ roadId: "a", line: road([[0, 40], [0, 40]]), atEnd: false }),
-      incidentRoad({ roadId: "b", line: road([[0, 40], [0, 40]]), atEnd: false }),
+      incidentRoad({
+        roadId: "a",
+        line: road([
+          [0, 40],
+          [0, 40],
+        ]),
+        atEnd: false,
+      }),
+      incidentRoad({
+        roadId: "b",
+        line: road([
+          [0, 40],
+          [0, 40],
+        ]),
+        atEnd: false,
+      }),
     ];
     expect(() => solveJunction(n, incident)).not.toThrow();
   });

@@ -48,15 +48,6 @@ export function buildRoadLayers(
     "width_m",
     matchOnHierarchy(ROAD_MIN_PIXEL_WIDTH, ROAD_MIN_PIXEL_WIDTH.OTHER),
   );
-  const casingMinimumWidth = matchOnHierarchy(
-    ROAD_CASING_MIN_PIXEL_WIDTH,
-    ROAD_CASING_MIN_PIXEL_WIDTH.OTHER,
-  );
-  const casingWidth = roadWidthPixelsExpression(
-    referenceLatitudeDeg,
-    "casing_width_m",
-    casingMinimumWidth,
-  );
   const selectionWidth = roadWidthPixelsExpression(
     referenceLatitudeDeg,
     "casing_width_m",
@@ -71,6 +62,11 @@ export function buildRoadLayers(
     ["feature-state", "selected"],
     false,
   ] as unknown as ExpressionSpecification;
+  const isHovered: ExpressionSpecification = [
+    "boolean",
+    ["feature-state", "hovered"],
+    false,
+  ] as unknown as ExpressionSpecification;
 
   // Bridge/tunnel/level metadata (`is_bridge`, `is_tunnel`, `level` on
   // each feature) is preserved end-to-end for future rendering passes
@@ -80,28 +76,6 @@ export function buildRoadLayers(
   // per-road dashed style is not safely achievable without a second,
   // filtered layer -- not worth the added layer-stack complexity for
   // Part 1.
-
-  const casing: LayerSpecification = {
-    filter: roadVisibility,
-    id: LAYER_IDS.roadCasing,
-    type: "line",
-    source: SOURCE_IDS.roads,
-    // Real metric road-surface polygons (see roadSurfaceLayers.ts) take
-    // over at SURFACE_DETAIL_MIN_ZOOM -- this simple per-road stroke
-    // stays for city-wide zoom levels where a true-to-scale polygon
-    // would be sub-pixel/invisible anyway.
-    maxzoom: SURFACE_DETAIL_MIN_ZOOM,
-    layout: { "line-cap": "round", "line-join": "round" },
-    paint: {
-      "line-color": [
-        "case",
-        isSelected,
-        theme.selected,
-        matchOnHierarchy(theme.roadCasing, theme.roadCasing.OTHER),
-      ] as ExpressionSpecification,
-      "line-width": casingWidth,
-    },
-  };
 
   const surface: LayerSpecification = {
     filter: roadVisibility,
@@ -114,6 +88,8 @@ export function buildRoadLayers(
       "line-color": [
         "case",
         isSelected,
+        theme.selectedSurface,
+        isHovered,
         theme.selectedSurface,
         matchOnHierarchy(theme.roadAsphalt, theme.roadAsphalt.OTHER),
       ] as ExpressionSpecification,
@@ -156,9 +132,33 @@ export function buildRoadLayers(
       // MapLibre permits feature-state in paint expressions, but not in a
       // layer filter. Keeping unselected features transparent preserves the
       // same visual result without invalidating the entire layer.
-      "line-opacity": ["case", isSelected, 0.25, 0] as ExpressionSpecification,
+      "line-opacity": [
+        "case",
+        isSelected,
+        0.25,
+        isHovered,
+        0.16,
+        0,
+      ] as ExpressionSpecification,
     },
   };
 
-  return [casing, surface, laneMarkings, selection];
+  // The close-zoom road surface is a merged junction polygon and therefore
+  // cannot identify one constituent road. Keep hit testing on the semantic
+  // per-road centerlines so shared-node rendering never changes selection
+  // identity. This layer is interaction-only and has no visible paint.
+  const interaction: LayerSpecification = {
+    id: LAYER_IDS.roadInteraction,
+    type: "line",
+    source: SOURCE_IDS.roads,
+    minzoom: SURFACE_DETAIL_MIN_ZOOM,
+    layout: { "line-cap": "round", "line-join": "round" },
+    paint: {
+      "line-color": "#000000",
+      "line-opacity": 0,
+      "line-width": surfaceWidth,
+    },
+  };
+
+  return [surface, laneMarkings, selection, interaction];
 }

@@ -2,6 +2,7 @@
  * place to see the whole stack (see map/README.md for the draw order). */
 
 export const SOURCE_IDS = {
+  grid: "pixel-lane-editor-grid",
   roads: "pixel-lane-roads",
   intersections: "pixel-lane-intersections",
   trafficLights: "pixel-lane-traffic-lights",
@@ -16,9 +17,12 @@ export const SOURCE_IDS = {
 } as const;
 
 export const LAYER_IDS = {
+  gridMinor: "pixel-lane-editor-grid-minor",
+  gridMajor: "pixel-lane-editor-grid-major",
   roadCasing: "pixel-lane-road-casing",
   roadSurface: "pixel-lane-road-surface",
   roadSurfaceFill: "pixel-lane-road-surface-fill",
+  roadInteraction: "pixel-lane-road-interaction",
   roadSurfaceEdge: "pixel-lane-road-surface-edge",
   laneMarkings: "pixel-lane-lane-markings",
   selection: "pixel-lane-selection",
@@ -30,6 +34,8 @@ export const LAYER_IDS = {
   laneBusLabel: "pixel-lane-lane-bus-label",
   laneBoundaryEdge: "pixel-lane-lane-boundary-edge",
   laneBoundarySeparator: "pixel-lane-lane-boundary-separator",
+  laneBoundarySolid: "pixel-lane-lane-boundary-solid",
+  laneBoundaryCenter: "pixel-lane-lane-boundary-center",
   turnArrows: "pixel-lane-turn-arrows",
   laneParkingLine: "pixel-lane-lane-parking-line",
   laneParkingLabel: "pixel-lane-lane-parking-label",
@@ -44,9 +50,12 @@ export const LAYER_IDS = {
  * casing/surface but below selection/points, so a selected road/
  * intersection still reads clearly through the extra detail. */
 export const LAYER_DRAW_ORDER: readonly string[] = [
+  LAYER_IDS.gridMinor,
+  LAYER_IDS.gridMajor,
   LAYER_IDS.roadCasing,
   LAYER_IDS.roadSurface,
   LAYER_IDS.roadSurfaceFill,
+  LAYER_IDS.roadInteraction,
   LAYER_IDS.roadSurfaceEdge,
   LAYER_IDS.laneMarkings,
   LAYER_IDS.laneBusSurface,
@@ -56,6 +65,8 @@ export const LAYER_DRAW_ORDER: readonly string[] = [
   LAYER_IDS.crosswalks,
   LAYER_IDS.laneBoundaryEdge,
   LAYER_IDS.laneBoundarySeparator,
+  LAYER_IDS.laneBoundarySolid,
+  LAYER_IDS.laneBoundaryCenter,
   LAYER_IDS.laneBusLabel,
   LAYER_IDS.turnArrows,
   LAYER_IDS.selection,
@@ -75,6 +86,7 @@ export const LAYER_GROUPS = {
     LAYER_IDS.roadCasing,
     LAYER_IDS.roadSurface,
     LAYER_IDS.roadSurfaceFill,
+    LAYER_IDS.roadInteraction,
     LAYER_IDS.roadSurfaceEdge,
     LAYER_IDS.laneMarkings,
     LAYER_IDS.laneBusSurface,
@@ -84,6 +96,7 @@ export const LAYER_GROUPS = {
     LAYER_IDS.laneCyclewayLine,
     LAYER_IDS.laneBoundaryEdge,
     LAYER_IDS.laneBoundarySeparator,
+    LAYER_IDS.laneBoundarySolid,
     LAYER_IDS.turnArrows,
     LAYER_IDS.selection,
     LAYER_IDS.roadLabels,

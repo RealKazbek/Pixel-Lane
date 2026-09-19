@@ -22,6 +22,8 @@ import type { RoadHierarchy } from "./roadStyle";
 export interface MapThemeColors {
   /** Empty-style canvas background (`styles/mapStyle.ts`'s `EMPTY_STYLE`). */
   background: string;
+  gridMinor: string;
+  gridMajor: string;
   roadAsphalt: Record<RoadHierarchy, string>;
   roadCasing: Record<RoadHierarchy, string>;
   /** Selected-road surface tint -- distinct from `selected` (the casing/
@@ -31,6 +33,7 @@ export interface MapThemeColors {
   selected: string;
   /** Coarse "multi-lane" dashed hint + real lane-separator dashes. */
   laneMarking: string;
+  roadEdgeYellow: string;
   roadLabel: string;
   roadLabelHalo: string;
   intersectionFill: string;
@@ -46,21 +49,21 @@ export interface MapThemeColors {
 }
 
 const LIGHT_ROAD_ASPHALT: Record<RoadHierarchy, string> = {
-  HIGHWAY: "#78716c", // stone-500 -- lighter surface reads as "paved", not a graph edge
-  ARTERIAL: "#a8a29e", // stone-400
-  COLLECTOR: "#c4b8ac", // warm light stone
-  RESIDENTIAL: "#e5e1da", // near-white warm gray, like light pavement
-  SERVICE: "#ece8e1",
-  OTHER: "#d6d2ca",
+  HIGHWAY: "#374151",
+  ARTERIAL: "#374151",
+  COLLECTOR: "#64748b",
+  RESIDENTIAL: "#64748b",
+  SERVICE: "#94a3b8",
+  OTHER: "#64748b",
 };
 
 const LIGHT_ROAD_CASING: Record<RoadHierarchy, string> = {
-  HIGHWAY: "#1c1917", // stone-900
-  ARTERIAL: "#292524", // stone-800
-  COLLECTOR: "#44403c", // stone-700
-  RESIDENTIAL: "#57534e", // stone-600
-  SERVICE: "#78716c", // stone-500
-  OTHER: "#57534e",
+  HIGHWAY: "#111827",
+  ARTERIAL: "#1f2937",
+  COLLECTOR: "#334155",
+  RESIDENTIAL: "#475569",
+  SERVICE: "#64748b",
+  OTHER: "#334155",
 };
 
 // Dark variant: asphalt gets *darker* toward the top of the hierarchy
@@ -71,30 +74,33 @@ const LIGHT_ROAD_CASING: Record<RoadHierarchy, string> = {
 // (see docs/theming.md's "common mistakes" section for the same rule
 // applied to the shared app tokens).
 const DARK_ROAD_ASPHALT: Record<RoadHierarchy, string> = {
-  HIGHWAY: "#3f3d3a",
-  ARTERIAL: "#4b4844",
-  COLLECTOR: "#57534e",
-  RESIDENTIAL: "#68625b",
-  SERVICE: "#726b62",
-  OTHER: "#5c564f",
+  HIGHWAY: "#1f2937",
+  ARTERIAL: "#334155",
+  COLLECTOR: "#475569",
+  RESIDENTIAL: "#64748b",
+  SERVICE: "#94a3b8",
+  OTHER: "#475569",
 };
 
 const DARK_ROAD_CASING: Record<RoadHierarchy, string> = {
-  HIGHWAY: "#e7e5e4", // stone-200
-  ARTERIAL: "#d6d3d1", // stone-300
-  COLLECTOR: "#a8a29e", // stone-400
-  RESIDENTIAL: "#78716c", // stone-500
-  SERVICE: "#57534e", // stone-600
-  OTHER: "#78716c",
+  HIGHWAY: "#f8fafc",
+  ARTERIAL: "#e2e8f0",
+  COLLECTOR: "#cbd5e1",
+  RESIDENTIAL: "#94a3b8",
+  SERVICE: "#64748b",
+  OTHER: "#cbd5e1",
 };
 
 export const LIGHT_MAP_THEME: MapThemeColors = {
   background: "#f2f1ed",
+  gridMinor: "rgba(100, 116, 139, 0.15)",
+  gridMajor: "rgba(71, 85, 105, 0.28)",
   roadAsphalt: LIGHT_ROAD_ASPHALT,
   roadCasing: LIGHT_ROAD_CASING,
-  selectedSurface: "#dbeafe", // blue-100
+  selectedSurface: "#bfdbfe", // blue-200
   selected: "#2563eb", // blue-600
   laneMarking: "#fafaf9",
+  roadEdgeYellow: "#ca8a04",
   roadLabel: "#292524",
   roadLabelHalo: "#fffdf7",
   intersectionFill: "#78716c",
@@ -110,11 +116,14 @@ export const LIGHT_MAP_THEME: MapThemeColors = {
 
 export const DARK_MAP_THEME: MapThemeColors = {
   background: "#1c1a17",
+  gridMinor: "rgba(148, 163, 184, 0.14)",
+  gridMajor: "rgba(203, 213, 225, 0.28)",
   roadAsphalt: DARK_ROAD_ASPHALT,
   roadCasing: DARK_ROAD_CASING,
   selectedSurface: "#1e3a8a", // blue-900 -- lit-up tint stays legible on a dark surface
   selected: "#60a5fa", // blue-400 -- brighter accent reads against dark asphalt
   laneMarking: "#d6d3d1",
+  roadEdgeYellow: "#facc15",
   roadLabel: "#f5f5f4",
   roadLabelHalo: "#1c1917",
   intersectionFill: "#a8a29e",

@@ -43,9 +43,16 @@ import {
   roadWidthMeters,
   type RoadHierarchy,
 } from "../styles/roadStyle";
-import { pointsMatch, type IncidentRoad, type LngLat } from "../geometry/nodeGeometry";
+import {
+  pointsMatch,
+  type IncidentRoad,
+  type LngLat,
+} from "../geometry/nodeGeometry";
 import { solveJunction } from "../geometry/junctionSolver";
-import { buildRoadEnvelope, type PolygonFeature } from "../geometry/roadEnvelope";
+import {
+  buildRoadEnvelope,
+  type PolygonFeature,
+} from "../geometry/roadEnvelope";
 import { smoothCenterline } from "../geometry/curveSmoothing";
 import type { CoordinateSystem, Intersection } from "../../types/city";
 
@@ -60,6 +67,7 @@ export interface RoadSurfaceProperties {
   hierarchy: RoadHierarchy;
   /** True for a merged multi-road junction polygon. */
   is_junction: boolean;
+  intersection_id?: string;
 }
 
 export type RoadSurfaceFeatureCollection = GeoJSON.FeatureCollection<
@@ -79,7 +87,10 @@ function dominantHierarchy(hierarchies: RoadHierarchy[]): RoadHierarchy {
 
 export function buildRoadSurfaceFeatureCollection(
   roads: AnyRoad[],
-  intersections: Pick<Intersection, "id" | "position" | "connected_road_ids">[],
+  intersections: Pick<
+    Intersection,
+    "id" | "position" | "connected_road_ids" | "junction_corner_radius_m"
+  >[],
   coordinateSystem: CoordinateSystem,
 ): RoadSurfaceFeatureCollection {
   const lineByRoadId = new Map<string, GeoJSON.Feature<GeoJSON.LineString>>();
@@ -100,6 +111,9 @@ export function buildRoadSurfaceFeatureCollection(
               type: "LineString",
               coordinates: smoothCenterline(
                 rawLine.geometry.coordinates as LngLat[],
+                undefined,
+                road.smoothing ?? 1,
+                road.corner_smoothing,
               ),
             },
           }
@@ -118,7 +132,10 @@ export function buildRoadSurfaceFeatureCollection(
     );
     if (memberIds.length < 2) continue;
 
-    const nodePosition = toLngLat(coordinateSystem, intersection.position) as LngLat;
+    const nodePosition = toLngLat(
+      coordinateSystem,
+      intersection.position,
+    ) as LngLat;
     const incident: IncidentRoad[] = [];
     for (const id of memberIds) {
       const line = lineByRoadId.get(id)!;
@@ -141,18 +158,22 @@ export function buildRoadSurfaceFeatureCollection(
     }
     if (incident.length < 2) continue;
 
-    const result = solveJunction(nodePosition, incident);
+    const result = solveJunction(nodePosition, incident, {
+      cornerRadiusM: intersection.junction_corner_radius_m,
+    });
     if (!result) continue;
 
     for (const id of result.memberRoadIds) mergedRoadIds.add(id);
     features.push({
       type: "Feature",
+      id: intersection.id,
       geometry: result.polygon.geometry,
       properties: {
         hierarchy: dominantHierarchy(
           result.memberRoadIds.map((id) => hierarchyByRoadId.get(id)!),
         ),
         is_junction: true,
+        intersection_id: intersection.id,
       },
     });
   }
