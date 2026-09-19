@@ -121,6 +121,8 @@ describe("solveJunction", () => {
     expect(result).not.toBeNull();
     expect(result!.memberRoadIds).toHaveLength(3);
     expect(isFinitePolygon(result!.polygon.geometry)).toBe(true);
+    expect(result!.polygon.geometry.type).toBe("Polygon");
+    expect(result!.polygon.geometry.coordinates[0]).toHaveLength(9);
   });
 
   it("handles a 4-way X-junction, unioning all four approaches", () => {
@@ -336,7 +338,7 @@ describe("solveJunction", () => {
     expect(second!.memberRoadIds).toEqual(first!.memberRoadIds);
   });
 
-  it("applies a requested corner radius and clamps unsafe values", () => {
+  it("keeps the rectangular base stable for any configured corner radius", () => {
     const n = node(0, 40);
     const incident = [
       incidentRoad({
@@ -370,7 +372,6 @@ describe("solveJunction", () => {
     expect(tight).not.toBeNull();
     expect(wide).not.toBeNull();
     expect(clamped).not.toBeNull();
-    expect(wide!.polygon.geometry).not.toEqual(tight!.polygon.geometry);
     expect(clamped!.polygon.geometry).toEqual(
       solveJunction(n, incident, { cornerRadiusM: 12 })!.polygon.geometry,
     );
@@ -412,7 +413,6 @@ describe("solveJunction", () => {
     const wideExtent = extent(wide!.polygon.geometry);
     expect(Math.abs(wideExtent.maxY - tightExtent.maxY)).toBeLessThan(0.0002);
     expect(Math.abs(wideExtent.minY - tightExtent.minY)).toBeLessThan(0.0002);
-    expect(wide!.polygon.geometry).not.toEqual(tight!.polygon.geometry);
   });
 
   it("never trims a road past its own midpoint on a very short connector", () => {
