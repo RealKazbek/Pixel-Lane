@@ -5,21 +5,34 @@ export const ENDPOINT_SNAP_TOLERANCE_PX = 18;
 
 export type RoadEndpoint = "start" | "end";
 
-export interface EndpointSnapTarget {
+export interface RoadEndpointSnapTarget {
+  kind: "road-endpoint";
+  targetId: string;
   roadId: string;
   endpoint: RoadEndpoint;
   point: Point;
   nodeId: string | null;
 }
 
-export interface ScreenEndpointSnapTarget extends EndpointSnapTarget {
-  screenX: number;
-  screenY: number;
+export interface ExistingNodeSnapTarget {
+  kind: "existing-node";
+  targetId: string;
+  point: Point;
+  nodeId: string;
+  connectedRoadIds: string[];
 }
 
-export interface EndpointSnapCandidate extends ScreenEndpointSnapTarget {
+export type EndpointSnapTarget =
+  RoadEndpointSnapTarget | ExistingNodeSnapTarget;
+
+export type ScreenEndpointSnapTarget = EndpointSnapTarget & {
+  screenX: number;
+  screenY: number;
+};
+
+export type EndpointSnapCandidate = ScreenEndpointSnapTarget & {
   distancePx: number;
-}
+};
 
 const POINT_EPSILON = 1e-9;
 const EDITOR_NODE_PREFIX = "editor-node-";
@@ -71,10 +84,12 @@ export function roadEndpointForVertex(
 }
 
 export function buildEndpointSnapTargets(city: City): EndpointSnapTarget[] {
-  return city.roads.flatMap((road) =>
+  const endpointTargets: RoadEndpointSnapTarget[] = city.roads.flatMap((road) =>
     (["start", "end"] as const).map((endpoint) => {
       const node = findRoadEndpointNode(city.intersections, road, endpoint);
       return {
+        kind: "road-endpoint",
+        targetId: `road:${road.id}:${endpoint}`,
         roadId: road.id,
         endpoint,
         point: node
@@ -83,6 +98,22 @@ export function buildEndpointSnapTargets(city: City): EndpointSnapTarget[] {
         nodeId: node?.id ?? null,
       };
     }),
+  );
+  const representedNodeIds = new Set(
+    endpointTargets.flatMap((target) => (target.nodeId ? [target.nodeId] : [])),
+  );
+  const standaloneNodeTargets: ExistingNodeSnapTarget[] = city.intersections
+    .filter((node) => !representedNodeIds.has(node.id))
+    .map((node) => ({
+      kind: "existing-node",
+      targetId: `node:${node.id}`,
+      point: { ...node.position },
+      nodeId: node.id,
+      connectedRoadIds: [...node.connected_road_ids],
+    }));
+
+  return [...endpointTargets, ...standaloneNodeTargets].sort((left, right) =>
+    left.targetId.localeCompare(right.targetId),
   );
 }
 
@@ -96,7 +127,13 @@ export function findEndpointSnapCandidate(
 
   return (
     targets
-      .filter((target) => target.roadId !== movingRoadId)
+      .filter((target) => {
+        if (!movingRoadId) return true;
+        if (target.kind === "road-endpoint") {
+          return target.roadId !== movingRoadId;
+        }
+        return !target.connectedRoadIds.includes(movingRoadId);
+      })
       .map((target) => ({
         ...target,
         distancePx: Math.hypot(
@@ -108,13 +145,12 @@ export function findEndpointSnapCandidate(
       .sort(
         (left, right) =>
           left.distancePx - right.distancePx ||
-          left.roadId.localeCompare(right.roadId) ||
-          left.endpoint.localeCompare(right.endpoint),
+          left.targetId.localeCompare(right.targetId),
       )[0] ?? null
   );
 }
 
-function editorNodeId(target: EndpointSnapTarget): string {
+function editorNodeId(target: RoadEndpointSnapTarget): string {
   return `${EDITOR_NODE_PREFIX}${target.roadId}-${target.endpoint}`;
 }
 
@@ -161,10 +197,19 @@ export function applyEndpointSnap(
   target: EndpointSnapTarget,
   previousNodeId: string | null = null,
 ): City | null {
-  if (movingRoadId === target.roadId) return null;
   const movingRoad = city.roads.find((road) => road.id === movingRoadId);
-  const targetRoad = city.roads.find((road) => road.id === target.roadId);
-  if (!movingRoad || !targetRoad) return null;
+  if (!movingRoad) return null;
+
+  const targetRoad =
+    target.kind === "road-endpoint"
+      ? city.roads.find((road) => road.id === target.roadId)
+      : null;
+  if (target.kind === "road-endpoint") {
+    if (movingRoadId === target.roadId || !targetRoad) return null;
+    if (!samePoint(endpointPoint(targetRoad, target.endpoint), target.point)) {
+      return null;
+    }
+  }
 
   const existingNode = target.nodeId
     ? city.intersections.find(
@@ -173,12 +218,22 @@ export function applyEndpointSnap(
     : null;
   if (target.nodeId && !existingNode) return null;
 
-  const nodeId = existingNode?.id ?? editorNodeId(target);
+  if (target.kind === "existing-node" && !existingNode) return null;
+  const nodeId =
+    existingNode?.id ??
+    (target.kind === "road-endpoint" ? editorNodeId(target) : target.nodeId);
   const canonicalPoint = existingNode?.position ?? target.point;
+  if (
+    target.kind === "road-endpoint" &&
+    targetRoad &&
+    !samePoint(endpointPoint(targetRoad, target.endpoint), canonicalPoint)
+  ) {
+    return null;
+  }
   const connectedRoadIds = [
     ...new Set([
       ...(existingNode?.connected_road_ids ?? []),
-      target.roadId,
+      ...(target.kind === "road-endpoint" ? [target.roadId] : []),
       movingRoadId,
     ]),
   ].sort();
@@ -210,15 +265,11 @@ export function applyEndpointSnap(
 
   return {
     ...city,
-    roads: city.roads.map((road) => {
-      if (road.id === movingRoadId) {
-        return setRoadEndpoint(road, movingEndpoint, canonicalPoint);
-      }
-      if (road.id === target.roadId) {
-        return setRoadEndpoint(road, target.endpoint, canonicalPoint);
-      }
-      return road;
-    }),
+    roads: city.roads.map((road) =>
+      road.id === movingRoadId
+        ? setRoadEndpoint(road, movingEndpoint, canonicalPoint)
+        : road,
+    ),
     intersections: nextIntersections,
   };
 }

@@ -8,6 +8,8 @@ import {
   finalizeEndpointDrag,
   findEndpointSnapCandidate,
   findRoadEndpointNode,
+  type EndpointSnapTarget,
+  type RoadEndpoint,
   type ScreenEndpointSnapTarget,
 } from "./endpointSnapping";
 
@@ -48,8 +50,26 @@ function makeCity(
   };
 }
 
+function endpointTarget(
+  roadId: string,
+  endpoint: RoadEndpoint,
+  point: { x: number; y: number },
+  nodeId: string | null = null,
+): EndpointSnapTarget {
+  return {
+    kind: "road-endpoint",
+    targetId: `road:${roadId}:${endpoint}`,
+    roadId,
+    endpoint,
+    point,
+    nodeId,
+  };
+}
+
 const screenTargets: ScreenEndpointSnapTarget[] = [
   {
+    kind: "road-endpoint",
+    targetId: "road:road-a:end",
     roadId: "road-a",
     endpoint: "end",
     point: { x: 10, y: 0 },
@@ -58,6 +78,8 @@ const screenTargets: ScreenEndpointSnapTarget[] = [
     screenY: 100,
   },
   {
+    kind: "road-endpoint",
+    targetId: "road:road-c:start",
     roadId: "road-c",
     endpoint: "start",
     point: { x: 11, y: 0 },
@@ -68,11 +90,18 @@ const screenTargets: ScreenEndpointSnapTarget[] = [
 ];
 
 describe("endpoint snap detection", () => {
-  it("finds an endpoint inside the screen-space tolerance", () => {
+  it("snaps to another road's end endpoint inside tolerance", () => {
     expect(
       findEndpointSnapCandidate({ x: 102, y: 100 }, screenTargets, "road-b")
-        ?.roadId,
-    ).toBe("road-a");
+        ?.targetId,
+    ).toBe("road:road-a:end");
+  });
+
+  it("snaps to another road's start endpoint inside tolerance", () => {
+    expect(
+      findEndpointSnapCandidate({ x: 106, y: 100 }, screenTargets, "road-b")
+        ?.targetId,
+    ).toBe("road:road-c:start");
   });
 
   it("does not snap outside the screen-space tolerance", () => {
@@ -88,19 +117,89 @@ describe("endpoint snap detection", () => {
   it("chooses the nearest candidate deterministically", () => {
     expect(
       findEndpointSnapCandidate({ x: 105, y: 100 }, screenTargets, "road-b")
-        ?.roadId,
-    ).toBe("road-c");
+        ?.targetId,
+    ).toBe("road:road-c:start");
     expect(
       findEndpointSnapCandidate({ x: 103, y: 100 }, screenTargets, "road-b")
-        ?.roadId,
-    ).toBe("road-a");
+        ?.targetId,
+    ).toBe("road:road-a:end");
   });
 
   it("excludes endpoints from the road currently being edited", () => {
     expect(
       findEndpointSnapCandidate({ x: 100, y: 100 }, screenTargets, "road-a")
-        ?.roadId,
-    ).toBe("road-c");
+        ?.targetId,
+    ).toBe("road:road-c:start");
+  });
+
+  it("does not generate or select intermediate segment vertices", () => {
+    const road = makeRoad("road-a", 0, 100);
+    road.geometry.points.splice(1, 0, { x: 50, y: 0 });
+    const targets = buildEndpointSnapTargets(makeCity([road]));
+    expect(targets).toHaveLength(2);
+    expect(targets.map((target) => target.point)).toEqual([
+      { x: 100, y: 0 },
+      { x: 0, y: 0 },
+    ]);
+
+    const screenTargetsAtEndpoints: ScreenEndpointSnapTarget[] = targets.map(
+      (target) => ({
+        ...target,
+        screenX: target.point.x,
+        screenY: target.point.y,
+      }),
+    );
+    expect(
+      findEndpointSnapCandidate(
+        { x: 50, y: 8 },
+        screenTargetsAtEndpoints,
+        "road-b",
+      ),
+    ).toBeNull();
+    expect(
+      findEndpointSnapCandidate(
+        { x: 50, y: 0 },
+        screenTargetsAtEndpoints,
+        "road-b",
+      ),
+    ).toBeNull();
+  });
+
+  it("does not snap directly over the middle of a road segment", () => {
+    const city = makeCity([makeRoad("road-a", 0, 100)]);
+    const targets = buildEndpointSnapTargets(city).map((target) => ({
+      ...target,
+      screenX: target.point.x,
+      screenY: target.point.y,
+    }));
+
+    expect(
+      findEndpointSnapCandidate({ x: 50, y: 0 }, targets, "road-b"),
+    ).toBeNull();
+  });
+
+  it("excludes an explicit node already connected to the moving road", () => {
+    const city = makeCity([makeRoad("road-a", 0, 100)]);
+    city.intersections = [
+      {
+        id: "node-a",
+        city_id: city.id,
+        position: { x: 50, y: 0 },
+        connected_road_ids: ["road-a", "road-b"],
+        connected_lane_ids: [],
+        control_type: "UNCONTROLLED",
+        traffic_light_id: null,
+      },
+    ];
+    const targets = buildEndpointSnapTargets(city).map((target) => ({
+      ...target,
+      screenX: target.point.x,
+      screenY: target.point.y,
+    }));
+
+    expect(
+      findEndpointSnapCandidate({ x: 50, y: 0 }, targets, "road-b"),
+    ).toBeNull();
   });
 });
 
@@ -109,7 +208,9 @@ describe("endpoint snap topology", () => {
     const city = makeCity();
     const target = buildEndpointSnapTargets(city).find(
       (candidate) =>
-        candidate.roadId === "road-a" && candidate.endpoint === "end",
+        candidate.kind === "road-endpoint" &&
+        candidate.roadId === "road-a" &&
+        candidate.endpoint === "end",
     );
     if (!target) throw new Error("Expected target endpoint");
 
@@ -120,6 +221,7 @@ describe("endpoint snap topology", () => {
     expect(node?.position).toEqual({ x: 10, y: 0 });
     expect(result?.roads[0].geometry.points.at(-1)).toEqual(node?.position);
     expect(result?.roads[1].geometry.points[0]).toEqual(node?.position);
+    expect(result?.roads[0]).toBe(city.roads[0]);
     expect(
       findRoadEndpointNode(result?.intersections ?? [], result!.roads[0], "end")
         ?.id,
@@ -147,6 +249,23 @@ describe("endpoint snap topology", () => {
     ).toBeNull();
   });
 
+  it("keeps visually crossing roads topologically disconnected", () => {
+    const horizontal = makeRoad("road-a", 0, 100);
+    const vertical = makeRoad("road-b", 50, 50);
+    vertical.geometry.points = [
+      { x: 50, y: -50 },
+      { x: 50, y: 50 },
+    ];
+    const city = makeCity([horizontal, vertical]);
+
+    expect(city.intersections).toEqual([]);
+    expect(
+      buildEndpointSnapTargets(city).some(
+        (target) => target.point.x === 50 && target.point.y === 0,
+      ),
+    ).toBe(false);
+  });
+
   it("reuses an existing node and its canonical position", () => {
     const city = makeCity();
     city.intersections = [
@@ -171,13 +290,37 @@ describe("endpoint snap topology", () => {
     expect(result?.roads[1].geometry.points[0]).toEqual({ x: 10, y: 0 });
   });
 
+  it("supports an existing explicit node without projecting onto a segment", () => {
+    const city = makeCity();
+    city.intersections = [
+      {
+        id: "node-explicit",
+        city_id: city.id,
+        position: { x: 15, y: 8 },
+        connected_road_ids: [],
+        connected_lane_ids: [],
+        control_type: "UNCONTROLLED",
+        traffic_light_id: null,
+      },
+    ];
+    const target = buildEndpointSnapTargets(city).find(
+      (candidate) => candidate.targetId === "node:node-explicit",
+    );
+    if (!target) throw new Error("Expected explicit node target");
+
+    const result = applyEndpointSnap(city, "road-b", "start", target);
+    expect(result?.roads[1].geometry.points[0]).toEqual({ x: 15, y: 8 });
+    expect(result?.intersections[0].connected_road_ids).toEqual(["road-b"]);
+    expect(result?.roads[0]).toBe(city.roads[0]);
+  });
+
   it("preserves an existing connection when released without a new snap", () => {
-    const connected = applyEndpointSnap(makeCity(), "road-b", "start", {
-      roadId: "road-a",
-      endpoint: "end",
-      point: { x: 10, y: 0 },
-      nodeId: null,
-    });
+    const connected = applyEndpointSnap(
+      makeCity(),
+      "road-b",
+      "start",
+      endpointTarget("road-a", "end", { x: 10, y: 0 }),
+    );
     if (!connected) throw new Error("Expected connected city");
     const moved = {
       ...connected,
@@ -233,7 +376,9 @@ describe("endpoint snap topology", () => {
     const city = makeCity([makeRoad("road-a", 0, 10)]);
     const target = buildEndpointSnapTargets(city).find(
       (candidate) =>
-        candidate.roadId === "road-a" && candidate.endpoint === "end",
+        candidate.kind === "road-endpoint" &&
+        candidate.roadId === "road-a" &&
+        candidate.endpoint === "end",
     );
     if (!target) throw new Error("Expected target endpoint");
 
