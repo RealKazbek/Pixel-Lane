@@ -10,6 +10,7 @@ import uuid
 from sqlalchemy import select
 
 from app.city.examples import load_four_way_intersection
+from app.city.examples.demo_district import DEMO_DISTRICT_CITY_ID
 from app.city.models.road import Road
 from tests.conftest import requires_postgres
 
@@ -207,3 +208,29 @@ def test_update_road_geometry_rejects_too_few_points(client) -> None:
     )
 
     assert response.status_code == 422
+
+
+@requires_postgres
+def test_demo_city_is_created_once_and_preserves_road_edits(client) -> None:
+    first = client.get("/api/v1/cities/demo")
+    assert first.status_code == 200
+    initial = first.json()
+    assert initial["id"] == str(DEMO_DISTRICT_CITY_ID)
+    road = initial["roads"][0]
+    edited_points = [
+        {"x": point["x"] + 123.0, "y": point["y"] + 45.0} for point in road["geometry"]["points"]
+    ]
+
+    update = client.patch(
+        f"/api/v1/cities/{initial['id']}/roads/{road['id']}/geometry",
+        json={"geometry": {"points": edited_points}},
+    )
+    assert update.status_code == 200
+
+    second = client.get("/api/v1/cities/demo")
+    assert second.status_code == 200
+    persisted = second.json()
+    assert persisted["id"] == initial["id"]
+    assert {item["id"] for item in persisted["roads"]} == {item["id"] for item in initial["roads"]}
+    persisted_road = next(item for item in persisted["roads"] if item["id"] == road["id"])
+    assert persisted_road["geometry"]["points"] == edited_points

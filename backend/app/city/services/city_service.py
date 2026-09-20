@@ -13,6 +13,7 @@ from sqlalchemy.orm import Session
 from app.city.domain.enums import CyclewayType, LaneCountQuality, MedianType, ParkingLaneOrientation
 from app.city.domain.geometry import Point, Polyline
 from app.city.errors import CityValidationError
+from app.city.examples.demo_district import DEMO_DISTRICT_CITY_ID, build_demo_district
 from app.city.repositories import city_repository, spatial_repository
 from app.city.schemas.city import (
     CityCreate,
@@ -114,6 +115,19 @@ def get_city(db: Session, city_id: UUID) -> CityRead | None:
     if city is None:
         return None
     return to_city_read(city)
+
+
+def get_or_create_demo_city(db: Session) -> CityRead:
+    """Return the persisted Demo City, creating its fixture only once.
+
+    The deterministic fixture identity is the lookup key.  In particular,
+    this must not call ``create_city`` when the row already exists: startup
+    and page loads are reads, not destructive re-seeds.
+    """
+    existing = get_city(db, DEMO_DISTRICT_CITY_ID)
+    if existing is not None:
+        return existing
+    return create_city(db, build_demo_district())
 
 
 def list_cities(db: Session, *, limit: int = 50, offset: int = 0) -> list[CitySummary]:

@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useReducer, useState } from "react";
+import { useCallback, useEffect, useReducer, useRef, useState } from "react";
 import { useTranslations } from "next-intl";
 import { mapStyleUrl } from "@/lib/config";
 import {
@@ -41,11 +41,19 @@ import {
   INITIAL_EDITOR_SESSION,
   reduceEditorSession,
 } from "../map/editor/editorState";
+import {
+  buildRoadPropertiesPayload,
+  getDemoCity,
+  updateRoadGeometry,
+  updateRoadProperties,
+} from "../api/cities";
 
 /** City Model is currently an editor document, not a city picker/viewer. */
 export function CityViewerApp() {
   const t = useTranslations("cityModel.fullscreen");
   const [city, setCity] = useState(buildEditorWorkspace);
+  const [hydrated, setHydrated] = useState(false);
+  const skippedInitialPersistence = useRef(false);
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [selected, setSelected] = useState<MapSelection | null>(null);
   const [selectedVertexIndex, setSelectedVertexIndex] = useState<number | null>(
@@ -63,6 +71,41 @@ export function CityViewerApp() {
   const [crosshair, setCrosshair] = useState<{ x: number; y: number } | null>(
     null,
   );
+
+  useEffect(() => {
+    let cancelled = false;
+    getDemoCity()
+      .then((loaded) => {
+        if (cancelled) return;
+        setCity(loaded);
+        setHydrated(true);
+      })
+      .catch((error) => console.error("Failed to load Demo City", error));
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  useEffect(() => {
+    if (!hydrated) return;
+    if (!skippedInitialPersistence.current) {
+      skippedInitialPersistence.current = true;
+      return;
+    }
+    const timer = window.setTimeout(() => {
+      void Promise.all(
+        city.roads.map(async (road) => {
+          await updateRoadGeometry(city.id, road.id, road.geometry);
+          await updateRoadProperties(
+            city.id,
+            road.id,
+            buildRoadPropertiesPayload(road),
+          );
+        }),
+      ).catch((error) => console.error("Failed to persist Demo City edit", error));
+    }, 500);
+    return () => window.clearTimeout(timer);
+  }, [city, hydrated]);
   const selectedRoad =
     selected?.type === "road"
       ? city.roads.find((road) => road.id === selected.id)

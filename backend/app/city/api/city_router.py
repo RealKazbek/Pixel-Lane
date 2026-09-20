@@ -36,6 +36,12 @@ def validate_city(payload: CityCreate) -> CityValidationResult:
     return city_service.validate_city_payload(payload)
 
 
+@router.get("/demo", response_model=CityRead)
+def get_demo_city(db: Session = Depends(get_db)) -> CityRead:
+    """Resolve the stable Demo City without replacing persisted edits."""
+    return city_service.get_or_create_demo_city(db)
+
+
 @router.post("", response_model=CityRead, status_code=status.HTTP_201_CREATED)
 def create_city(payload: CityCreate, db: Session = Depends(get_db)) -> CityRead:
     """Validate then persist a City payload as a single transaction."""
