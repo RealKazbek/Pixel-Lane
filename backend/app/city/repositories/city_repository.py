@@ -57,6 +57,42 @@ def create_city(db: Session, payload: CityCreate) -> City:
     return loaded
 
 
+def initialize_empty_city(db: Session, city_id: UUID, payload: CityCreate) -> City:
+    """Install a fixture into an empty legacy placeholder atomically.
+
+    This is intentionally narrower than imported-city replacement: it is
+    only valid when the existing city has no child entities, and it supports
+    LOCAL_CARTESIAN fixtures whose spatial mirrors are intentionally NULL.
+    """
+    existing = db.execute(select(City).where(City.id == city_id)).scalar_one_or_none()
+    if existing is None:
+        return create_city(db, payload)
+    if (
+        existing.roads
+        or existing.intersections
+        or existing.traffic_lights
+        or existing.traffic_rules
+        or existing.parking_zones
+        or existing.traffic_demands
+        or existing.bus_stops
+        or existing.crosswalks
+    ):
+        return existing
+
+    replacement = build_city(payload)
+    try:
+        db.delete(existing)
+        db.flush()
+        db.add(replacement)
+        db.commit()
+    except Exception:
+        db.rollback()
+        raise
+    loaded = get_city(db, city_id)
+    assert loaded is not None
+    return loaded
+
+
 def city_exists(db: Session, city_id: UUID) -> bool:
     """Cheap existence check for the bbox endpoints -- avoids loading
     the whole city (all roads/lanes/intersections) just to 404 or

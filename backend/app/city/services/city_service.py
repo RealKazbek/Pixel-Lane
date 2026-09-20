@@ -125,9 +125,18 @@ def get_or_create_demo_city(db: Session) -> CityRead:
     and page loads are reads, not destructive re-seeds.
     """
     existing = get_city(db, DEMO_DISTRICT_CITY_ID)
-    if existing is not None:
+    if existing is not None and (existing.roads or existing.intersections):
         return existing
-    return create_city(db, build_demo_district())
+    seed = build_demo_district()
+    if existing is None:
+        return create_city(db, seed)
+
+    # A previous persistence attempt could have created the canonical row
+    # before inserting its child entities. Only an entirely empty placeholder
+    # may be initialized here; any non-empty city is user/database state and
+    # must never be replaced on a read.
+    initialized = city_repository.initialize_empty_city(db, DEMO_DISTRICT_CITY_ID, seed)
+    return to_city_read(initialized)
 
 
 def list_cities(db: Session, *, limit: int = 50, offset: int = 0) -> list[CitySummary]:

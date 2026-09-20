@@ -216,6 +216,8 @@ def test_demo_city_is_created_once_and_preserves_road_edits(client) -> None:
     assert first.status_code == 200
     initial = first.json()
     assert initial["id"] == str(DEMO_DISTRICT_CITY_ID)
+    assert initial["roads"]
+    assert initial["intersections"]
     road = initial["roads"][0]
     edited_points = [
         {"x": point["x"] + 123.0, "y": point["y"] + 45.0} for point in road["geometry"]["points"]

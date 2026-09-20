@@ -390,8 +390,13 @@ export function CityViewerApp() {
           mapStyleUrl={mapStyleUrl}
           overlayVisible
           layerVisibility={DEFAULT_LAYER_VISIBILITY}
-          fitSignal={0}
-          editorWorld={EDITOR_WORLD_BOUNDS}
+          // The empty editor workspace uses a fixed world. Persisted cities
+          // must fit to their loaded geometry once, otherwise the initial
+          // pre-hydration camera can leave the real network off-screen.
+          fitSignal={hydrated ? 1 : 0}
+          editorWorld={
+            city.id === "editor-workspace" ? EDITOR_WORLD_BOUNDS : undefined
+          }
           mode={
             session.mode === "edit" && session.activeTool === "select"
               ? "edit-geometry"
