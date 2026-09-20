@@ -12,8 +12,9 @@ from app.city.schemas.city import (
     CityValidationResult,
 )
 from app.city.schemas.intersection import IntersectionRead
-from app.city.schemas.road import RoadGeometryUpdate, RoadPropertiesUpdate, RoadRead
+from app.city.schemas.road import RoadCreate, RoadGeometryUpdate, RoadPropertiesUpdate, RoadRead
 from app.city.schemas.spatial import BBox, MapRoad
+from app.city.schemas.topology import TopologyUpdate
 from app.city.services import city_service
 from app.db.session import get_db
 
@@ -40,6 +41,11 @@ def validate_city(payload: CityCreate) -> CityValidationResult:
 def get_demo_city(db: Session = Depends(get_db)) -> CityRead:
     """Resolve the stable Demo City without replacing persisted edits."""
     return city_service.get_or_create_demo_city(db)
+
+
+@router.get("/editor-workspace", response_model=CityRead)
+def get_editor_workspace(db: Session = Depends(get_db)) -> CityRead:
+    return city_service.get_or_create_editor_workspace(db)
 
 
 @router.post("", response_model=CityRead, status_code=status.HTTP_201_CREATED)
@@ -123,6 +129,36 @@ def update_road_geometry(
     if road is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Road not found")
     return road
+
+
+@router.post("/{city_id}/roads", response_model=RoadRead, status_code=status.HTTP_201_CREATED)
+def create_road(city_id: UUID, payload: RoadCreate, db: Session = Depends(get_db)) -> RoadRead:
+    try:
+        road = city_service.create_road(db, city_id, payload)
+    except CityValidationError as exc:
+        raise HTTPException(
+            status_code=422,
+            detail={"issues": [issue.model_dump() for issue in exc.issues]},
+        ) from exc
+    if road is None:
+        raise HTTPException(status_code=404, detail="City not found")
+    return road
+
+
+@router.delete("/{city_id}/roads/{road_id}", status_code=status.HTTP_204_NO_CONTENT)
+def delete_road(city_id: UUID, road_id: UUID, db: Session = Depends(get_db)) -> None:
+    if not city_service.delete_road(db, city_id, road_id):
+        raise HTTPException(status_code=404, detail="Road not found")
+
+
+@router.put("/{city_id}/topology", status_code=status.HTTP_204_NO_CONTENT)
+def replace_topology(city_id: UUID, payload: TopologyUpdate, db: Session = Depends(get_db)) -> None:
+    try:
+        persisted = city_service.replace_topology(db, city_id, payload)
+    except ValueError as exc:
+        raise HTTPException(status_code=422, detail="TOPOLOGY_ROAD_NOT_FOUND") from exc
+    if not persisted:
+        raise HTTPException(status_code=404, detail="City not found")
 
 
 @router.patch("/{city_id}/roads/{road_id}/properties", response_model=RoadRead)

@@ -3,6 +3,16 @@ import { updatePolylineVertex } from "../map/editor/polylineEditing";
 
 export const ENDPOINT_SNAP_TOLERANCE_PX = 18;
 
+function persistedId(value: string, seed: string): string {
+  if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(seed)) {
+    return value;
+  }
+  let hash = 2166136261;
+  for (const character of value) hash = Math.imul(hash ^ character.charCodeAt(0), 16777619);
+  const hex = (hash >>> 0).toString(16).padStart(8, "0");
+  return `${hex}${hex}${hex.slice(0, 8)}-${hex.slice(0, 4)}-5${hex.slice(1, 4)}-8${hex.slice(1, 4)}-${hex}${hex.slice(0, 4)}`;
+}
+
 export type RoadEndpoint = "start" | "end";
 
 export interface RoadEndpointSnapTarget {
@@ -180,11 +190,11 @@ export function findEndpointSnapCandidate(
 }
 
 function editorNodeId(target: RoadEndpointSnapTarget): string {
-  return `${EDITOR_NODE_PREFIX}${target.roadId}-${target.endpoint}`;
+  return persistedId(`${EDITOR_NODE_PREFIX}${target.roadId}-${target.endpoint}`, target.roadId);
 }
 
 function segmentNodeId(target: RoadSegmentSnapTarget): string {
-  return `editor-node-${target.roadId}-segment-${target.segmentIndex}-${target.point.x}-${target.point.y}`;
+  return persistedId(`editor-node-${target.roadId}-segment-${target.segmentIndex}-${target.point.x}-${target.point.y}`, target.roadId);
 }
 
 function splitRoadAtPoint(
@@ -232,7 +242,7 @@ function nextSplitRoadId(
   segmentIndex: number,
 ): string {
   const existingIds = new Set(city.roads.map((road) => road.id));
-  const base = `${roadId}-split-${segmentIndex}`;
+  const base = persistedId(`${roadId}-split-${segmentIndex}`, roadId);
   if (!existingIds.has(base)) return base;
   let suffix = 2;
   while (existingIds.has(`${base}-${suffix}`)) suffix += 1;

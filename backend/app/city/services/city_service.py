@@ -14,6 +14,7 @@ from app.city.domain.enums import CyclewayType, LaneCountQuality, MedianType, Pa
 from app.city.domain.geometry import Point, Polyline
 from app.city.errors import CityValidationError
 from app.city.examples.demo_district import DEMO_DISTRICT_CITY_ID, build_demo_district
+from app.city.examples.editor_workspace import EDITOR_WORKSPACE_CITY_ID, build_editor_workspace
 from app.city.repositories import city_repository, spatial_repository
 from app.city.schemas.city import (
     CityCreate,
@@ -24,8 +25,9 @@ from app.city.schemas.city import (
 )
 from app.city.schemas.import_city import CityImport
 from app.city.schemas.intersection import IntersectionRead
-from app.city.schemas.road import RoadPropertiesUpdate, RoadRead
+from app.city.schemas.road import RoadCreate, RoadPropertiesUpdate, RoadRead
 from app.city.schemas.spatial import BBox, MapLaneSummary, MapRoad
+from app.city.schemas.topology import TopologyUpdate
 from app.city.services.city_mapper import to_city_read, to_intersection_read, to_road_read
 from app.city.validators.city_validator import validate_city
 
@@ -139,6 +141,13 @@ def get_or_create_demo_city(db: Session) -> CityRead:
     return to_city_read(initialized)
 
 
+def get_or_create_editor_workspace(db: Session) -> CityRead:
+    existing = get_city(db, EDITOR_WORKSPACE_CITY_ID)
+    if existing is not None:
+        return existing
+    return create_city(db, build_editor_workspace())
+
+
 def list_cities(db: Session, *, limit: int = 50, offset: int = 0) -> list[CitySummary]:
     cities = city_repository.list_cities(db, limit=limit, offset=offset)
     return [CitySummary.model_validate(city) for city in cities]
@@ -217,6 +226,19 @@ def update_road_properties(
         raise ValueError("ROAD_NAME_EMPTY")
     road = city_repository.update_road_properties(db, city_id, road_id, properties)
     return to_road_read(road) if road is not None else None
+
+
+def create_road(db: Session, city_id: UUID, road: RoadCreate) -> RoadRead | None:
+    created = city_repository.create_road(db, city_id, road)
+    return to_road_read(created) if created is not None else None
+
+
+def delete_road(db: Session, city_id: UUID, road_id: UUID) -> bool:
+    return city_repository.delete_road(db, city_id, road_id)
+
+
+def replace_topology(db: Session, city_id: UUID, payload: TopologyUpdate) -> bool:
+    return city_repository.replace_topology(db, city_id, payload)
 
 
 def get_intersection(db: Session, city_id: UUID, intersection_id: UUID) -> IntersectionRead | None:

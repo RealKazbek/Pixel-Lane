@@ -20,7 +20,8 @@ from app.city.models.road import Road
 from app.city.models.traffic_light import TrafficLight
 from app.city.repositories.city_builder import build_city
 from app.city.schemas.city import CityCreate
-from app.city.schemas.road import RoadPropertiesUpdate
+from app.city.schemas.road import RoadCreate, RoadPropertiesUpdate
+from app.city.schemas.topology import TopologyUpdate
 
 # Eager-load every relationship a CityRead needs in a bounded number of
 # queries (selectinload avoids both N+1 row-by-row lookups and a single
@@ -184,3 +185,101 @@ def update_road_properties(
         db.rollback()
         raise
     return road
+
+
+def create_road(db: Session, city_id: UUID, payload: RoadCreate) -> Road | None:
+    city = db.execute(select(City).where(City.id == city_id)).scalar_one_or_none()
+    if city is None:
+        return None
+    road = Road(
+        id=payload.id,
+        city_id=city_id,
+        name=payload.name,
+        road_type=payload.road_type.value,
+        geometry=[point.model_dump() for point in payload.geometry.points],
+        default_speed_limit_kmh=payload.default_speed_limit_kmh,
+        width_m=payload.width_m,
+        is_width_estimated=payload.is_width_estimated,
+        carriageway_count=payload.carriageway_count,
+        median=payload.median.value,
+        level=payload.level,
+        is_bridge=payload.is_bridge,
+        is_tunnel=payload.is_tunnel,
+        lane_count_quality=payload.lane_count_quality.value,
+        left_edge_marking=payload.left_edge_marking.value,
+        right_edge_marking=payload.right_edge_marking.value,
+        lane_boundary_markings=[m.value for m in payload.lane_boundary_markings]
+        if payload.lane_boundary_markings is not None
+        else None,
+    )
+    road.lanes = [
+        Lane(
+            id=lane.id,
+            road_id=payload.id,
+            index=lane.index,
+            direction=lane.direction.value,
+            allowed_movements=[movement.value for movement in lane.allowed_movements],
+            lane_type=lane.lane_type.value,
+            speed_limit_kmh=lane.speed_limit_kmh,
+        )
+        for lane in payload.lanes
+    ]
+    db.add(road)
+    db.execute(update(City).where(City.id == city_id).values(updated_at=func.now()))
+    try:
+        db.commit()
+    except Exception:
+        db.rollback()
+        raise
+    loaded = db.execute(
+        select(Road).where(Road.id == payload.id).options(selectinload(Road.lanes))
+    ).scalar_one()
+    return loaded
+
+
+def delete_road(db: Session, city_id: UUID, road_id: UUID) -> bool:
+    road = db.execute(
+        select(Road).where(Road.id == road_id, Road.city_id == city_id)
+    ).scalar_one_or_none()
+    if road is None:
+        return False
+    db.delete(road)
+    db.execute(update(City).where(City.id == city_id).values(updated_at=func.now()))
+    try:
+        db.commit()
+    except Exception:
+        db.rollback()
+        raise
+    return True
+
+
+def replace_topology(db: Session, city_id: UUID, payload: TopologyUpdate) -> bool:
+    city = get_city(db, city_id)
+    if city is None:
+        return False
+    roads = {road.id: road for road in city.roads}
+    for update_payload in payload.roads:
+        road = roads.get(update_payload.id)
+        if road is None:
+            raise ValueError("TOPOLOGY_ROAD_NOT_FOUND")
+        road.geometry = [point.model_dump() for point in update_payload.geometry.points]
+    for intersection in list(city.intersections):
+        db.delete(intersection)
+    db.flush()
+    for item in payload.intersections:
+        intersection = Intersection(
+            id=item.id,
+            city_id=city_id,
+            position_x=item.position.x,
+            position_y=item.position.y,
+            control_type=item.control_type.value,
+        )
+        intersection.connected_roads = [roads[road_id] for road_id in item.connected_road_ids]
+        db.add(intersection)
+    db.execute(update(City).where(City.id == city_id).values(updated_at=func.now()))
+    try:
+        db.commit()
+    except Exception:
+        db.rollback()
+        raise
+    return True

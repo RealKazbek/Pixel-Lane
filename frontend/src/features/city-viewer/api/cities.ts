@@ -20,10 +20,9 @@ export function getCity(cityId: string): Promise<City> {
   return apiRequest<City>(`/api/v1/cities/${cityId}`);
 }
 
-/** Resolve the server-backed Demo City. The server owns creation and uses a
- * deterministic identity; the browser never seeds or reconstructs it. */
-export function getDemoCity(): Promise<City> {
-  return apiRequest<City>("/api/v1/cities/demo");
+/** Resolve the persisted PL-005 editor document. */
+export function getEditorWorkspace(): Promise<City> {
+  return apiRequest<City>("/api/v1/cities/editor-workspace");
 }
 
 export async function getCityForMap(cityId: string): Promise<City> {
@@ -140,6 +139,36 @@ export function updateRoadProperties(
     `/api/v1/cities/${cityId}/roads/${roadId}/properties`,
     { method: "PATCH", body: JSON.stringify(properties) },
   );
+}
+
+export function createRoad(cityId: string, road: Road): Promise<Road> {
+  return apiRequest<Road>(`/api/v1/cities/${cityId}/roads`, {
+    method: "POST",
+    body: JSON.stringify({ ...road, city_id: undefined }),
+  });
+}
+
+export function deleteRoad(cityId: string, roadId: string): Promise<void> {
+  return apiRequest<void>(`/api/v1/cities/${cityId}/roads/${roadId}`, {
+    method: "DELETE",
+  });
+}
+
+export function replaceTopology(cityId: string, city: Pick<City, "roads" | "intersections">): Promise<void> {
+  return apiRequest<void>(`/api/v1/cities/${cityId}/topology`, {
+    method: "PUT",
+    body: JSON.stringify({
+      roads: city.roads.map((road) => ({ id: road.id, geometry: road.geometry })),
+      intersections: city.intersections.map((intersection) => ({
+        id: intersection.id,
+        position: intersection.position,
+        connected_road_ids: intersection.connected_road_ids,
+        connected_lane_ids: intersection.connected_lane_ids,
+        control_type: intersection.control_type,
+        traffic_light_id: intersection.traffic_light_id,
+      })),
+    }),
+  });
 }
 
 export function buildRoadPropertiesPayload(road: Road) {
