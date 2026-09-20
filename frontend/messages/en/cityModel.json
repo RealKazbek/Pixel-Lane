@@ -106,6 +106,13 @@
     "lanes": "Lanes",
     "laneWidth": "Lane width",
     "directions": "Directions",
+    "turnPermissions": "Turn permissions",
+    "movement": {
+      "STRAIGHT": "Straight",
+      "LEFT": "Left",
+      "RIGHT": "Right",
+      "U_TURN": "U-turn"
+    },
     "laneNumber": "Lane {number}",
     "markings": "Markings",
     "leftEdge": "Left edge",

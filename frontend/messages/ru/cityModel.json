@@ -106,6 +106,13 @@
     "lanes": "Полосы",
     "laneWidth": "Ширина полосы",
     "directions": "Направления",
+    "turnPermissions": "Разрешённые манёвры",
+    "movement": {
+      "STRAIGHT": "Прямо",
+      "LEFT": "Налево",
+      "RIGHT": "Направо",
+      "U_TURN": "Разворот"
+    },
     "laneNumber": "Полоса {number}",
     "markings": "Разметка",
     "leftEdge": "Левый край",

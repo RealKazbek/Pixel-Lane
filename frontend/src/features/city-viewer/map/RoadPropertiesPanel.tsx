@@ -216,7 +216,9 @@ export function RoadPropertiesPanel({
         </div>
       </fieldset>
       <fieldset className="mt-3">
-        <legend className="mb-1 text-muted-foreground">Turn permissions</legend>
+        <legend className="mb-1 text-muted-foreground">
+          {t("turnPermissions")}
+        </legend>
         {road.lanes.map((lane, laneIndex) => (
           <div key={lane.id} className="mt-2">
             <span className="block text-[11px]">{t("laneNumber", { number: laneIndex + 1 })}</span>
@@ -236,7 +238,7 @@ export function RoadPropertiesPanel({
                         onChange({ lane_allowed_movements: next });
                       }}
                     />
-                    {movement.replace("_", " ")}
+                    {t(`movement.${movement}`)}
                   </label>
                 );
               })}

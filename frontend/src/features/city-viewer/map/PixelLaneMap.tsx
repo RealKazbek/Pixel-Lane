@@ -163,7 +163,7 @@ export function PixelLaneMap({
   // Entity detail responses must not recenter the map.
   const bounds = useMemo(
     () =>
-      editorWorld
+      editorWorld && city.roads.length === 0
         ? computeEditorWorldBounds(editorWorld, city.coordinate_system)
         : computeCityBounds(city),
     [city, editorWorld],
@@ -174,7 +174,7 @@ export function PixelLaneMap({
   );
   const editor = useGeometryEditor();
   const appliedStyleKeyRef = useRef<string | null>(null);
-  const lastFitSignalRef = useRef<number | null>(null);
+  const lastFitKeyRef = useRef<string | null>(null);
   const [gridZoom, setGridZoom] = useState(16);
   const [vertexScreenPoints, setVertexScreenPoints] = useState<
     { index: number; x: number; y: number }[]
@@ -544,11 +544,15 @@ export function PixelLaneMap({
   useEffect(() => {
     const map = mapRef.current;
     if (!map || !isLoaded || !bounds) return;
-    if (lastFitSignalRef.current === fitSignal) return;
-    lastFitSignalRef.current = fitSignal;
-    map.fitBounds(bounds, { padding: editorWorld ? 16 : 48, duration: 0 });
+    const fitKey = `${city.id}:${fitSignal}`;
+    if (lastFitKeyRef.current === fitKey) return;
+    lastFitKeyRef.current = fitKey;
+    map.fitBounds(bounds, {
+      padding: editorWorld && city.roads.length === 0 ? 16 : 48,
+      duration: 0,
+    });
     // eslint-disable-next-line react-hooks/exhaustive-deps -- fitSignal is a manual trigger
-  }, [isLoaded, bounds, editorWorld, fitSignal]);
+  }, [isLoaded, bounds, city.id, city.roads.length, editorWorld, fitSignal]);
 
   // Independent "jump to a specific area" camera request -- e.g. the
   // Road Geometry Lab's fixture list. Only reacts to `token` changing,

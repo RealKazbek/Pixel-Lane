@@ -106,6 +106,13 @@
     "lanes": "Жолақтар",
     "laneWidth": "Жолақ ені",
     "directions": "Бағыттар",
+    "turnPermissions": "Бұрылу рұқсаттары",
+    "movement": {
+      "STRAIGHT": "Тура",
+      "LEFT": "Солға",
+      "RIGHT": "Оңға",
+      "U_TURN": "Кері бұрылу"
+    },
     "laneNumber": "Жолақ {number}",
     "markings": "Жол таңбалары",
     "leftEdge": "Сол жақ шеті",
