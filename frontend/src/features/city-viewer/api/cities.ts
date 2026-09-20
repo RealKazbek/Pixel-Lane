@@ -20,6 +20,11 @@ export function getCity(cityId: string): Promise<City> {
   return apiRequest<City>(`/api/v1/cities/${cityId}`);
 }
 
+/** Resolve the persisted PL-005 editor document. */
+export function getEditorWorkspace(): Promise<City> {
+  return apiRequest<City>("/api/v1/cities/editor-workspace");
+}
+
 export async function getCityForMap(cityId: string): Promise<City> {
   const metadata = await apiRequest<
     Omit<
@@ -134,4 +139,50 @@ export function updateRoadProperties(
     `/api/v1/cities/${cityId}/roads/${roadId}/properties`,
     { method: "PATCH", body: JSON.stringify(properties) },
   );
+}
+
+export function createRoad(cityId: string, road: Road): Promise<Road> {
+  return apiRequest<Road>(`/api/v1/cities/${cityId}/roads`, {
+    method: "POST",
+    body: JSON.stringify({ ...road, city_id: undefined }),
+  });
+}
+
+export function deleteRoad(cityId: string, roadId: string): Promise<void> {
+  return apiRequest<void>(`/api/v1/cities/${cityId}/roads/${roadId}`, {
+    method: "DELETE",
+  });
+}
+
+export function replaceTopology(cityId: string, city: Pick<City, "roads" | "intersections">): Promise<void> {
+  return apiRequest<void>(`/api/v1/cities/${cityId}/topology`, {
+    method: "PUT",
+    body: JSON.stringify({
+      roads: city.roads.map((road) => ({ id: road.id, geometry: road.geometry })),
+      intersections: city.intersections.map((intersection) => ({
+        id: intersection.id,
+        position: intersection.position,
+        connected_road_ids: intersection.connected_road_ids,
+        connected_lane_ids: intersection.connected_lane_ids,
+        control_type: intersection.control_type,
+        traffic_light_id: intersection.traffic_light_id,
+      })),
+    }),
+  });
+}
+
+export function buildRoadPropertiesPayload(road: Road) {
+  const laneCount = Math.max(road.lanes.length, 1);
+  const requestedWidth = road.width_m ?? laneCount * 4;
+  const laneWidth = Math.min(6, Math.max(2.5, requestedWidth / laneCount));
+  return {
+    name: road.name,
+    width_m: laneWidth * laneCount,
+    lane_count: laneCount,
+    lane_width_m: laneWidth,
+    lane_directions: road.lanes.map((lane) => lane.direction),
+    left_edge_marking: road.left_edge_marking ?? "SOLID_YELLOW",
+    right_edge_marking: road.right_edge_marking ?? "SOLID_YELLOW",
+    lane_boundary_markings: road.lane_boundary_markings ?? [],
+  } as const;
 }

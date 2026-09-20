@@ -1,4 +1,5 @@
 {
+  "brand": { "displayName": "PIXEL LANE", "subtitle": "Urban Mobility Studio" },
   "siteTitle": "Pixel Lane — Intelligent Urban Traffic Management",
   "siteDescription": "Pixel Lane models city road networks, analyzes traffic, and prepares infrastructure for simulation-driven urban mobility decisions.",
   "languageSwitcherLabel": "Choose language",

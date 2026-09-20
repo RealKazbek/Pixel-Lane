@@ -3,8 +3,7 @@
 import { useTheme } from "next-themes";
 import { useTranslations } from "next-intl";
 
-const MODES = ["light", "dark", "system"] as const;
-type Mode = (typeof MODES)[number];
+type Mode = "light" | "dark" | "system";
 
 // Icons, not first-letter abbreviations: initials collide across
 // locales (e.g. Kazakh "Жарық"/"Жүйелік" both start with "Ж").
@@ -67,39 +66,19 @@ export function ThemeSwitcher({
   // only a harmless one-frame highlight update once the real value is
   // known (see docs/theming.md).
   const active: Mode = (theme as Mode) ?? "system";
+  void variant;
+  const nextMode: Mode =
+    active === "dark" ? "light" : active === "light" ? "system" : "dark";
 
   return (
-    <div
-      role="group"
-      aria-label={t("label")}
-      className="inline-flex items-center gap-0.5 rounded-md border border-border-subtle p-0.5 text-xs"
+    <button
+      type="button"
+      onClick={() => setTheme(nextMode)}
+      aria-label={t(active)}
+      title={t(active)}
+      className="inline-flex items-center rounded-md border border-border-subtle p-2 text-foreground transition-colors hover:bg-surface-raised focus-visible:outline-2 focus-visible:outline-primary"
     >
-      {MODES.map((mode) => {
-        const isActive = mode === active;
-        return (
-          <button
-            key={mode}
-            type="button"
-            onClick={() => setTheme(mode)}
-            aria-current={isActive ? "true" : undefined}
-            aria-label={t(mode)}
-            title={t(mode)}
-            className={`rounded px-2 py-1 font-medium transition-colors ${
-              isActive
-                ? "bg-primary text-white"
-                : "text-zinc-600 hover:bg-zinc-100 dark:text-zinc-300 dark:hover:bg-zinc-800"
-            }`}
-          >
-            {variant === "full" ? (
-              t(mode)
-            ) : (
-              <span className="flex h-3.5 w-3.5 items-center justify-center">
-                {MODE_ICON[mode]}
-              </span>
-            )}
-          </button>
-        );
-      })}
-    </div>
+      {MODE_ICON[active]}
+    </button>
   );
 }

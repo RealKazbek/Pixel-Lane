@@ -1,4 +1,5 @@
 {
+  "brand": { "displayName": "PIXEL LANE", "subtitle": "Urban Mobility Studio" },
   "siteTitle": "Pixel Lane — интеллектуальная система управления городским движением",
   "siteDescription": "Pixel Lane моделирует дорожную сеть города, анализирует трафик и готовит инфраструктуру к решениям на основе симуляции для развития городской мобильности.",
   "languageSwitcherLabel": "Выбор языка",
