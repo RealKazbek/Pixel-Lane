@@ -159,7 +159,7 @@ def generate_intersection_connections(city: CityRead, intersection_id: UUID) -> 
 
 def _is_incoming(city: CityRead, intersection_id: UUID, approach: LaneApproach) -> bool:
     intersection = next(item for item in city.intersections if item.id == intersection_id)
-    road = next(item for item in city.roads if item.id == str(approach.road_id))
+    road = next(item for item in city.roads if item.id == approach.road_id)
     first, last = road.geometry.points[0], road.geometry.points[-1]
     at_first = hypot(first.x - intersection.position.x, first.y - intersection.position.y) <= hypot(
         last.x - intersection.position.x, last.y - intersection.position.y
