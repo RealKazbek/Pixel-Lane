@@ -90,6 +90,20 @@ def test_lane_connections_persist_and_reload(client) -> None:
 
 
 @requires_postgres
+def test_auto_lane_connections_is_deterministic(client) -> None:
+    data = _payload()
+    assert client.post("/api/v1/cities", json=data).status_code == 201
+
+    first = client.post(f"/api/v1/cities/{data['id']}/lane-connections/auto")
+    second = client.post(f"/api/v1/cities/{data['id']}/lane-connections/auto")
+
+    assert first.status_code == 200
+    assert second.status_code == 200
+    assert first.json() == second.json()
+    assert set(first.json()) == {"connections", "warnings"}
+
+
+@requires_postgres
 def test_get_unknown_city_returns_404(client) -> None:
     response = client.get(f"/api/v1/cities/{uuid.uuid4()}")
     assert response.status_code == 404

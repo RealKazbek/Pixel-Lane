@@ -168,10 +168,11 @@ export function replaceLaneConnections(
   );
 }
 
-export function generateLaneConnections(
-  cityId: string,
-): Promise<LaneConnection[]> {
-  return apiRequest<LaneConnection[]>(
+export function generateLaneConnections(cityId: string): Promise<{
+  connections: LaneConnection[];
+  warnings: string[];
+}> {
+  return apiRequest<{ connections: LaneConnection[]; warnings: string[] }>(
     `/api/v1/cities/${cityId}/lane-connections/auto`,
     { method: "POST" },
   );
