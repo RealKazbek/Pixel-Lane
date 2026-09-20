@@ -393,6 +393,32 @@ describe("endpoint snap topology", () => {
     ).toBe(node?.id);
   });
 
+  it("persists every lane on roads connected to a snapped node", () => {
+    const first = makeRoad("road-a", 0, 10);
+    first.lanes = [
+      { id: "lane-a-0", road_id: first.id, index: 0, direction: "FORWARD", allowed_movements: [], lane_type: "GENERAL", speed_limit_kmh: null },
+      { id: "lane-a-1", road_id: first.id, index: 1, direction: "BACKWARD", allowed_movements: [], lane_type: "GENERAL", speed_limit_kmh: null },
+    ];
+    const second = makeRoad("road-b", 20, 30);
+    second.lanes = [
+      { id: "lane-b-0", road_id: second.id, index: 0, direction: "FORWARD", allowed_movements: [], lane_type: "GENERAL", speed_limit_kmh: null },
+      { id: "lane-b-1", road_id: second.id, index: 1, direction: "BACKWARD", allowed_movements: [], lane_type: "GENERAL", speed_limit_kmh: null },
+    ];
+    const result = applyEndpointSnap(
+      makeCity([first, second]),
+      second.id,
+      "start",
+      endpointTarget(first.id, "end", { x: 10, y: 0 }),
+    );
+
+    expect(result?.intersections[0].connected_lane_ids).toEqual([
+      "lane-a-0",
+      "lane-a-1",
+      "lane-b-0",
+      "lane-b-1",
+    ]);
+  });
+
   it("does not infer topology from identical coordinates", () => {
     const city = makeCity([
       makeRoad("road-a", 0, 10),

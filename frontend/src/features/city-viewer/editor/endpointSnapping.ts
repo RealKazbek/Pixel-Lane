@@ -76,6 +76,24 @@ function endpointIndex(road: Road, endpoint: RoadEndpoint): number {
   return endpoint === "start" ? 0 : road.geometry.points.length - 1;
 }
 
+/** Keep persisted lane topology in step with the road membership of a node.
+ * Snapping is the editor's topology mutation boundary; leaving this list
+ * empty makes a valid connected road graph unusable to lane matching. */
+function reconcileConnectedLaneIds(
+  roads: readonly Road[],
+  intersections: readonly Intersection[],
+): Intersection[] {
+  const lanesByRoadId = new Map(
+    roads.map((road) => [road.id, road.lanes.map((lane) => lane.id)]),
+  );
+  return intersections.map((intersection) => ({
+    ...intersection,
+    connected_lane_ids: intersection.connected_road_ids
+      .flatMap((roadId) => lanesByRoadId.get(roadId) ?? [])
+      .sort(),
+  }));
+}
+
 export function findRoadEndpointNode(
   intersections: readonly Intersection[],
   road: Pick<Road, "id" | "geometry">,
@@ -462,14 +480,17 @@ export function applyEndpointSnap(
     return {
       ...city,
       roads: nextRoads,
-      intersections: nextIntersectionsWithSplit,
+      intersections: reconcileConnectedLaneIds(
+        nextRoads,
+        nextIntersectionsWithSplit,
+      ),
     };
   }
 
   return {
     ...city,
     roads: nextRoads,
-    intersections: nextIntersections,
+    intersections: reconcileConnectedLaneIds(nextRoads, nextIntersections),
   };
 }
 

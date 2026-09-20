@@ -14,9 +14,8 @@ export function buildLaneConnectionLayers(
       layout: { "line-cap": "round", "line-join": "round" },
       paint: {
         "line-color": theme.laneConnection,
-        "line-width": 2.5,
-        "line-opacity": 0.9,
-        "line-dasharray": [1.5, 1],
+        "line-width": 4,
+        "line-opacity": 1,
       },
     } as LayerSpecification,
   ];

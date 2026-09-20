@@ -57,7 +57,11 @@ function laneEndpoint(
   const length = distance(point(coordinates[0]), point(coordinates.at(-1)!), {
     units: "meters",
   });
-  const fromNodeDistance = Math.min(5, Math.max(0.5, length / 3));
+  // Keep the connector visibly rooted in each lane rather than collapsing
+  // all four approaches into a tiny marker at the node. This is still
+  // junction-local (12 m maximum), but gives the debug layer enough length
+  // to remain legible at the editor's normal inspection zoom.
+  const fromNodeDistance = Math.min(12, Math.max(1, length / 3));
   const endpoint = along(
     lineFeature,
     nodeAtStart ? fromNodeDistance : Math.max(0, length - fromNodeDistance),

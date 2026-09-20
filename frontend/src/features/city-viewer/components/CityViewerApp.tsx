@@ -22,7 +22,13 @@ import {
 } from "../map/editor/polylineEditing";
 import { EDITOR_WORLD_BOUNDS } from "../editor/editorWorld";
 import { PixelLaneMap } from "../map/PixelLaneMap";
-import { DEFAULT_LAYER_VISIBILITY, type MapSelection } from "../map/types";
+import { MapLayersToggle } from "../map/MapLayersToggle";
+import {
+  DEFAULT_LAYER_VISIBILITY,
+  type MapSelection,
+  type LayerVisibility,
+} from "../map/types";
+import type { LayerGroupId } from "../map/layers/layerIds";
 import { EditorToolbar } from "../map/EditorToolbar";
 import { RoadPropertiesPanel } from "../map/RoadPropertiesPanel";
 import { IntersectionPropertiesPanel } from "../map/IntersectionPropertiesPanel";
@@ -101,10 +107,14 @@ function applyRoadChanges(road: Road, changes: RoadChanges): Road {
 /** City Model is currently an editor document, not a city picker/viewer. */
 export function CityViewerApp() {
   const t = useTranslations("cityModel.fullscreen");
+  const tMap = useTranslations("cityModel.map");
   const [city, setCity] = useState(buildEditorWorkspace);
   const [hydrated, setHydrated] = useState(false);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [isFullscreen, setIsFullscreen] = useState(false);
+  const [layerVisibility, setLayerVisibility] = useState<LayerVisibility>(
+    DEFAULT_LAYER_VISIBILITY,
+  );
   const [selected, setSelected] = useState<MapSelection | null>(null);
   const [selectedVertexIndex, setSelectedVertexIndex] = useState<number | null>(
     null,
@@ -253,6 +263,12 @@ export function CityViewerApp() {
   const handleSelect = useCallback((selection: MapSelection | null) => {
     setSelected(selection);
     setSelectedVertexIndex(null);
+  }, []);
+  const handleToggleLayer = useCallback((layer: LayerGroupId) => {
+    setLayerVisibility((current) => ({
+      ...current,
+      [layer]: !current[layer],
+    }));
   }, []);
   const handleEndpointDrag = useCallback(
     (vertexIndex: number, point: Point) => {
@@ -430,6 +446,14 @@ export function CityViewerApp() {
         }}
         onPointerLeave={() => setCrosshair(null)}
       >
+        {!hydrated && !loadError ? (
+          <div
+            className="flex flex-1 items-center justify-center text-sm text-muted-foreground"
+            role="status"
+          >
+            {tMap("loadingCity")}
+          </div>
+        ) : (
         <PixelLaneMap
           city={city}
           selected={selected}
@@ -442,7 +466,7 @@ export function CityViewerApp() {
           basemapEnabled={false}
           mapStyleUrl={mapStyleUrl}
           overlayVisible
-          layerVisibility={DEFAULT_LAYER_VISIBILITY}
+          layerVisibility={layerVisibility}
           // The empty editor workspace uses a fixed world. Persisted cities
           // must fit to their loaded geometry once, otherwise the initial
           // pre-hydration camera can leave the real network off-screen.
@@ -464,6 +488,7 @@ export function CityViewerApp() {
           onScaleChange={setScale}
           onRoadGeometryChange={handleRoadGeometryChange}
         />
+        )}
         {loadError && (
           <div role="alert" className="absolute left-3 top-3 rounded-md bg-surface p-3 text-sm text-danger shadow">
             Failed to load the EditorWorkspace. Check the backend and reload.
@@ -516,6 +541,14 @@ export function CityViewerApp() {
             onExitEdit={() => dispatch({ type: "exit-edit" })}
             onSetTool={(tool) => dispatch({ type: "set-tool", tool })}
           />
+        </div>
+        <div className="pointer-events-none absolute left-3 top-14">
+          <div className="pointer-events-auto rounded-lg border border-border-subtle bg-surface/90 p-1.5 shadow-sm backdrop-blur">
+            <MapLayersToggle
+              layerVisibility={layerVisibility}
+              onToggleLayer={handleToggleLayer}
+            />
+          </div>
         </div>
         {session.activeTool === "draw-road" && crosshair && (
           <div
