@@ -2,14 +2,7 @@
 
 import { useLocale, useTranslations } from "next-intl";
 import { useParams } from "next/navigation";
-import { routing } from "@/i18n/routing";
 import { usePathname, useRouter } from "@/i18n/navigation";
-
-const LOCALE_LABELS: Record<string, string> = {
-  kk: "Қазақша",
-  ru: "Русский",
-  en: "English",
-};
 
 const LOCALE_SHORT: Record<string, string> = {
   kk: "ҚАЗ",
@@ -34,6 +27,7 @@ export function LanguageSwitcher({
   const params = useParams();
   const router = useRouter();
   const t = useTranslations("common");
+  void variant;
 
   function switchTo(nextLocale: string) {
     router.replace(
@@ -44,31 +38,18 @@ export function LanguageSwitcher({
     );
   }
 
+  const nextLocale = locale === "ru" ? "en" : locale === "en" ? "kk" : "ru";
   return (
-    <div
-      role="group"
+    <button
+      type="button"
+      onClick={() => switchTo(nextLocale)}
       aria-label={t("languageSwitcherLabel")}
-      className="inline-flex items-center gap-0.5 rounded-md border border-border-subtle p-0.5 text-xs"
+      className="inline-flex items-center gap-1 rounded-md border border-border-subtle px-2 py-1.5 text-xs font-medium text-foreground transition-colors hover:bg-surface-raised focus-visible:outline-2 focus-visible:outline-primary"
     >
-      {routing.locales.map((loc) => {
-        const isActive = loc === locale;
-        return (
-          <button
-            key={loc}
-            type="button"
-            onClick={() => switchTo(loc)}
-            aria-current={isActive ? "true" : undefined}
-            aria-label={LOCALE_LABELS[loc]}
-            className={`rounded px-2 py-1 font-medium transition-colors ${
-              isActive
-                ? "bg-primary text-white"
-                : "text-zinc-600 hover:bg-zinc-100 dark:text-zinc-300 dark:hover:bg-zinc-800"
-            }`}
-          >
-            {variant === "full" ? LOCALE_LABELS[loc] : LOCALE_SHORT[loc]}
-          </button>
-        );
-      })}
-    </div>
+      <span aria-hidden>
+        {locale === "kk" ? "🇰🇿" : locale === "ru" ? "🇷🇺" : "🇬🇧"}
+      </span>
+      {LOCALE_SHORT[locale]}
+    </button>
   );
 }

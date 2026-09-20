@@ -1,7 +1,6 @@
-import { useTranslations } from "next-intl";
 import { Link } from "@/i18n/navigation";
+import { useTranslations } from "next-intl";
 import { MobileNav } from "./MobileNav";
-import { StatusCheck } from "@/components/status-check";
 import { LanguageSwitcher } from "@/components/ui/LanguageSwitcher";
 import { ThemeSwitcher } from "@/components/ui/ThemeSwitcher";
 
@@ -10,8 +9,6 @@ import { ThemeSwitcher } from "@/components/ui/ThemeSwitcher";
  * inside the app you're already "in the platform". */
 export function AppHeader() {
   const t = useTranslations("common");
-  const tStatus = useTranslations("common.status");
-
   return (
     <header className="relative border-b border-border-subtle bg-surface">
       <div className="flex items-center justify-between gap-4 px-4 py-3">
@@ -31,25 +28,16 @@ export function AppHeader() {
           </Link>
         </div>
         <div className="flex items-center gap-3">
-          <StatusCheck
-            messages={{
-              checking: tStatus("backendApi", { status: tStatus("checking") }),
-              reachable: tStatus("backendApi", {
-                status: tStatus("reachable"),
-              }),
-              unreachable: tStatus("backendApi", {
-                status: tStatus("unreachable"),
-              }),
-            }}
-          />
+          <div className="pointer-events-none absolute left-1/2 hidden -translate-x-1/2 text-center sm:block">
+            <div className="font-display text-sm font-semibold tracking-[0.24em] text-foreground">
+              {t("brand.displayName")}
+            </div>
+            <div className="mt-0.5 text-[10px] tracking-[0.14em] text-muted-foreground">
+              {t("brand.subtitle")}
+            </div>
+          </div>
           <ThemeSwitcher />
           <LanguageSwitcher />
-          <Link
-            href="/"
-            className="hidden text-xs text-zinc-500 underline-offset-2 hover:underline dark:text-zinc-400 sm:inline"
-          >
-            {t("actions.exitToWebsite")}
-          </Link>
         </div>
       </div>
     </header>
