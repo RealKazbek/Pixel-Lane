@@ -57,6 +57,39 @@ def test_create_and_retrieve_city(client) -> None:
 
 
 @requires_postgres
+def test_lane_connections_persist_and_reload(client) -> None:
+    data = _payload()
+    client.post("/api/v1/cities", json=data)
+    intersection = data["intersections"][0]
+    from_road = data["roads"][0]
+    to_road = data["roads"][1]
+    connection = {
+        "id": str(uuid.uuid5(uuid.NAMESPACE_URL, "pixel-lane/test-persisted-connection")),
+        "intersection_id": intersection["id"],
+        "from_road_id": from_road["id"],
+        "from_lane_id": from_road["lanes"][0]["id"],
+        "to_road_id": to_road["id"],
+        "to_lane_id": to_road["lanes"][0]["id"],
+        "maneuver": "STRAIGHT",
+    }
+
+    response = client.put(
+        f"/api/v1/cities/{data['id']}/lane-connections",
+        json={"connections": [connection]},
+    )
+    assert response.status_code == 200
+    assert response.json() == [
+        {**connection, "city_id": data["id"]},
+    ]
+
+    refreshed = client.get(f"/api/v1/cities/{data['id']}")
+    assert refreshed.status_code == 200
+    assert refreshed.json()["lane_connections"] == [
+        {**connection, "city_id": data["id"]},
+    ]
+
+
+@requires_postgres
 def test_get_unknown_city_returns_404(client) -> None:
     response = client.get(f"/api/v1/cities/{uuid.uuid4()}")
     assert response.status_code == 404

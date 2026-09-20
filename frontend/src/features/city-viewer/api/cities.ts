@@ -8,6 +8,7 @@ import type {
   MapRoad,
   LaneBoundaryMarking,
   RoadEdgeMarking,
+  LaneConnection,
 } from "../types/city";
 import type { TrafficAnalysisResult } from "../types/traffic-analysis";
 import type { BBox } from "../map/adapters/viewport";
@@ -152,6 +153,28 @@ export function deleteRoad(cityId: string, roadId: string): Promise<void> {
   return apiRequest<void>(`/api/v1/cities/${cityId}/roads/${roadId}`, {
     method: "DELETE",
   });
+}
+
+export function replaceLaneConnections(
+  cityId: string,
+  connections: Omit<LaneConnection, "city_id">[],
+): Promise<LaneConnection[]> {
+  return apiRequest<LaneConnection[]>(
+    `/api/v1/cities/${cityId}/lane-connections`,
+    {
+      method: "PUT",
+      body: JSON.stringify({ connections }),
+    },
+  );
+}
+
+export function generateLaneConnections(
+  cityId: string,
+): Promise<LaneConnection[]> {
+  return apiRequest<LaneConnection[]>(
+    `/api/v1/cities/${cityId}/lane-connections/auto`,
+    { method: "POST" },
+  );
 }
 
 export function replaceTopology(cityId: string, city: Pick<City, "roads" | "intersections">): Promise<void> {

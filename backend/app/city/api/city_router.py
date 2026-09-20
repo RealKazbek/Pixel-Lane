@@ -12,6 +12,11 @@ from app.city.schemas.city import (
     CityValidationResult,
 )
 from app.city.schemas.intersection import IntersectionRead
+from app.city.schemas.lane_connection import (
+    LaneConnectionGenerationResult,
+    LaneConnectionRead,
+    LaneConnectionsUpdate,
+)
 from app.city.schemas.road import RoadCreate, RoadGeometryUpdate, RoadPropertiesUpdate, RoadRead
 from app.city.schemas.spatial import BBox, MapRoad
 from app.city.schemas.topology import TopologyUpdate
@@ -159,6 +164,38 @@ def replace_topology(city_id: UUID, payload: TopologyUpdate, db: Session = Depen
         raise HTTPException(status_code=422, detail="TOPOLOGY_ROAD_NOT_FOUND") from exc
     if not persisted:
         raise HTTPException(status_code=404, detail="City not found")
+
+
+@router.put(
+    "/{city_id}/lane-connections",
+    response_model=list[LaneConnectionRead],
+)
+def replace_lane_connections(
+    city_id: UUID, payload: LaneConnectionsUpdate, db: Session = Depends(get_db)
+) -> list[LaneConnectionRead]:
+    try:
+        connections = city_service.replace_lane_connections(db, city_id, payload.connections)
+    except CityValidationError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
+            detail={"issues": [issue.model_dump() for issue in exc.issues]},
+        ) from exc
+    if connections is None:
+        raise HTTPException(status_code=404, detail="City not found")
+    return connections
+
+
+@router.post(
+    "/{city_id}/lane-connections/auto",
+    response_model=LaneConnectionGenerationResult,
+)
+def auto_generate_lane_connections(
+    city_id: UUID, db: Session = Depends(get_db)
+) -> LaneConnectionGenerationResult:
+    result = city_service.auto_generate_lane_connections(db, city_id)
+    if result is None:
+        raise HTTPException(status_code=404, detail="City not found")
+    return result
 
 
 @router.patch("/{city_id}/roads/{road_id}/properties", response_model=RoadRead)

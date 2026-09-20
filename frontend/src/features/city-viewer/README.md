@@ -39,6 +39,9 @@ does not depend on React or Next.js.
   Model `Intersection` identity and its canonical position. Coincident endpoint
   coordinates without that shared node remain disconnected. Screen-space
   candidate detection and snap feedback are derived UI behavior only.
+- Lane-to-lane connectivity is semantic City Model data (`LaneConnection`),
+  not a painted marking. Connection curves and turn arrows are derived map
+  layers and must be regenerated from persisted domain fields.
 
 ## Where to add new code
 

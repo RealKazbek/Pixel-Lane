@@ -10,7 +10,8 @@ manually-entered traffic demand. The source of truth other subsystems
 ## Public API
 
 - `app.city.services.city_service` — `validate_city_payload`,
-  `create_city`, `get_city`, `list_cities`. Callers (routes, other
+  `create_city`, `get_city`, `list_cities`, and lane-connection mutation
+  services. Callers (routes, other
   services) should go through this, not the repository or validator
   directly.
 - REST: `POST /api/v1/cities/validate`, `POST /api/v1/cities`,
@@ -40,6 +41,10 @@ data and calls `services/` like any other caller -- see its own README.
 - Structural validation is Pydantic's job; cross-reference validation
   (`validators/city_validator.py`) is separate and pure (no DB).
 - Creating a City is one transaction — never partially persisted.
+- `LaneConnection` is explicit persisted movement from a source lane through
+  an `Intersection` to a target lane. Its UUID is stable for the same
+  intersection, lane pair, and maneuver; painted markings never define
+  connectivity.
 
 ## Where to add new code
 

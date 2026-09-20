@@ -107,6 +107,119 @@ def validate_city(city: CityCreate) -> list[ValidationIssue]:
                     )
                 )
 
+    seen_connection_keys: set[tuple[UUID, UUID, UUID, MovementType]] = set()
+    for ci, connection in enumerate(city.lane_connections):
+        path = f"lane_connections[{ci}]"
+        register_id(connection.id, f"{path}.id")
+        connection_key = (
+            connection.intersection_id,
+            connection.from_lane_id,
+            connection.to_lane_id,
+            connection.maneuver,
+        )
+        if connection_key in seen_connection_keys:
+            issues.append(
+                ValidationIssue(
+                    code="DUPLICATE_CONNECTION",
+                    message="The same lane movement is repeated",
+                    path=path,
+                )
+            )
+        seen_connection_keys.add(connection_key)
+        if connection.intersection_id not in intersection_ids:
+            issues.append(
+                ValidationIssue(
+                    code="UNKNOWN_INTERSECTION_REFERENCE",
+                    message="Lane connection references unknown intersection",
+                    path=f"{path}.intersection_id",
+                )
+            )
+        if connection.from_road_id not in road_ids:
+            issues.append(
+                ValidationIssue(
+                    code="UNKNOWN_ROAD_REFERENCE",
+                    message="Lane connection references unknown source road",
+                    path=f"{path}.from_road_id",
+                )
+            )
+        if connection.to_road_id not in road_ids:
+            issues.append(
+                ValidationIssue(
+                    code="UNKNOWN_ROAD_REFERENCE",
+                    message="Lane connection references unknown target road",
+                    path=f"{path}.to_road_id",
+                )
+            )
+        if connection.from_lane_id not in lane_ids:
+            issues.append(
+                ValidationIssue(
+                    code="UNKNOWN_LANE_REFERENCE",
+                    message="Lane connection references unknown source lane",
+                    path=f"{path}.from_lane_id",
+                )
+            )
+        elif lane_road.get(connection.from_lane_id) != connection.from_road_id:
+            issues.append(
+                ValidationIssue(
+                    code="LANE_ROAD_MISMATCH",
+                    message="Source lane does not belong to source road",
+                    path=f"{path}.from_lane_id",
+                )
+            )
+        if connection.to_lane_id not in lane_ids:
+            issues.append(
+                ValidationIssue(
+                    code="UNKNOWN_LANE_REFERENCE",
+                    message="Lane connection references unknown target lane",
+                    path=f"{path}.to_lane_id",
+                )
+            )
+        elif lane_road.get(connection.to_lane_id) != connection.to_road_id:
+            issues.append(
+                ValidationIssue(
+                    code="LANE_ROAD_MISMATCH",
+                    message="Target lane does not belong to target road",
+                    path=f"{path}.to_lane_id",
+                )
+            )
+
+        found_intersection = next(
+            (item for item in city.intersections if item.id == connection.intersection_id), None
+        )
+        if found_intersection is not None:
+            if connection.from_road_id not in found_intersection.connected_road_ids:
+                issues.append(
+                    ValidationIssue(
+                        code="CONNECTION_ROAD_NOT_AT_INTERSECTION",
+                        message="Source road is not connected to the intersection",
+                        path=f"{path}.from_road_id",
+                    )
+                )
+            if connection.to_road_id not in found_intersection.connected_road_ids:
+                issues.append(
+                    ValidationIssue(
+                        code="CONNECTION_ROAD_NOT_AT_INTERSECTION",
+                        message="Target road is not connected to the intersection",
+                        path=f"{path}.to_road_id",
+                    )
+                )
+            if connection.from_lane_id not in found_intersection.connected_lane_ids:
+                issues.append(
+                    ValidationIssue(
+                        code="CONNECTION_LANE_NOT_AT_INTERSECTION",
+                        message="Source lane is not connected to the intersection",
+                        path=f"{path}.from_lane_id",
+                    )
+                )
+            if connection.to_lane_id not in found_intersection.connected_lane_ids:
+                issues.append(
+                    ValidationIssue(
+                        code="CONNECTION_LANE_NOT_AT_INTERSECTION",
+                        message="Target lane is not connected to the intersection",
+                        path=f"{path}.to_lane_id",
+                    )
+                )
+
     traffic_light_ids: set[UUID] = set()
     intersections_with_light: set[UUID] = set()
 

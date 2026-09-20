@@ -123,3 +123,51 @@ def test_malformed_nested_payload_rejected() -> None:
     data["roads"][0]["lanes"] = "not-a-list"
     with pytest.raises(ValidationError):
         CityCreate.model_validate(data)
+
+
+def test_valid_lane_connection_has_no_issues() -> None:
+    data = _payload()
+    intersection = data["intersections"][0]
+    from_road = data["roads"][0]
+    to_road = data["roads"][1]
+    data["lane_connections"] = [
+        {
+            "id": str(uuid.uuid5(uuid.NAMESPACE_URL, "pixel-lane/test-connection")),
+            "intersection_id": intersection["id"],
+            "from_road_id": from_road["id"],
+            "from_lane_id": from_road["lanes"][0]["id"],
+            "to_road_id": to_road["id"],
+            "to_lane_id": to_road["lanes"][0]["id"],
+            "maneuver": "STRAIGHT",
+        }
+    ]
+    city = CityCreate.model_validate(data)
+    assert validate_city(city) == []
+
+
+@pytest.mark.parametrize(
+    ("field", "code"),
+    [
+        ("intersection_id", "UNKNOWN_INTERSECTION_REFERENCE"),
+        ("from_road_id", "UNKNOWN_ROAD_REFERENCE"),
+        ("from_lane_id", "UNKNOWN_LANE_REFERENCE"),
+    ],
+)
+def test_invalid_lane_connection_reference_is_rejected(field: str, code: str) -> None:
+    data = _payload()
+    intersection = data["intersections"][0]
+    from_road = data["roads"][0]
+    to_road = data["roads"][1]
+    connection = {
+        "id": str(uuid.uuid4()),
+        "intersection_id": intersection["id"],
+        "from_road_id": from_road["id"],
+        "from_lane_id": from_road["lanes"][0]["id"],
+        "to_road_id": to_road["id"],
+        "to_lane_id": to_road["lanes"][0]["id"],
+        "maneuver": "STRAIGHT",
+    }
+    connection[field] = str(uuid.uuid4())
+    data["lane_connections"] = [connection]
+    city = CityCreate.model_validate(data)
+    assert any(issue.code == code for issue in validate_city(city))

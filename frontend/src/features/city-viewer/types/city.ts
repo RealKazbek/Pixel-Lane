@@ -22,6 +22,17 @@ export type LaneType =
 
 export type MovementType = "LEFT" | "STRAIGHT" | "RIGHT" | "U_TURN";
 
+export interface LaneConnection {
+  id: string;
+  city_id: string;
+  intersection_id: string;
+  from_road_id: string;
+  from_lane_id: string;
+  to_road_id: string;
+  to_lane_id: string;
+  maneuver: MovementType;
+}
+
 export type IntersectionControlType =
   | "UNCONTROLLED"
   | "STOP_SIGN"
@@ -217,6 +228,7 @@ export interface City {
   parking_zones: ParkingZone[];
   bus_stops: BusStop[];
   crosswalks: Crosswalk[];
+  lane_connections?: LaneConnection[];
 }
 
 export interface CitySummary {

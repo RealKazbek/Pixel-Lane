@@ -16,10 +16,12 @@ from app.city.domain.geometry import WGS84_SRID, Polyline, polyline_to_wkt
 from app.city.models.city import City
 from app.city.models.intersection import Intersection
 from app.city.models.lane import Lane
+from app.city.models.lane_connection import LaneConnection
 from app.city.models.road import Road
 from app.city.models.traffic_light import TrafficLight
 from app.city.repositories.city_builder import build_city
 from app.city.schemas.city import CityCreate
+from app.city.schemas.lane_connection import LaneConnectionCreate
 from app.city.schemas.road import RoadCreate, RoadPropertiesUpdate
 from app.city.schemas.topology import TopologyUpdate
 
@@ -35,6 +37,7 @@ _CITY_LOAD_OPTIONS = (
     selectinload(City.traffic_rules),
     selectinload(City.parking_zones),
     selectinload(City.traffic_demands),
+    selectinload(City.lane_connections),
 )
 
 
@@ -105,6 +108,37 @@ def city_exists(db: Session, city_id: UUID) -> bool:
 def get_city(db: Session, city_id: UUID) -> City | None:
     stmt = select(City).where(City.id == city_id).options(*_CITY_LOAD_OPTIONS)
     return db.execute(stmt).unique().scalar_one_or_none()
+
+
+def replace_lane_connections(
+    db: Session, city_id: UUID, connections: list[LaneConnectionCreate]
+) -> City | None:
+    """Replace one city's explicit lane movements in one transaction."""
+    city = get_city(db, city_id)
+    if city is None:
+        return None
+
+    city.lane_connections.clear()
+    city.lane_connections.extend(
+        LaneConnection(
+            id=connection.id,
+            city_id=city_id,
+            intersection_id=connection.intersection_id,
+            from_road_id=connection.from_road_id,
+            from_lane_id=connection.from_lane_id,
+            to_road_id=connection.to_road_id,
+            to_lane_id=connection.to_lane_id,
+            maneuver=connection.maneuver.value,
+        )
+        for connection in connections
+    )
+    city.updated_at = func.now()
+    try:
+        db.commit()
+    except Exception:
+        db.rollback()
+        raise
+    return get_city(db, city_id)
 
 
 def list_cities(db: Session, *, limit: int = 50, offset: int = 0) -> list[City]:
