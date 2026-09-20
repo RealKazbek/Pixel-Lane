@@ -23,6 +23,7 @@ import {
 import { buildRoadLayers } from "./roadLayers";
 import { buildRoadSurfaceLayers } from "./roadSurfaceLayers";
 import { buildLaneDetailLayers } from "./laneDetailLayers";
+import { buildLaneConnectionLayers } from "./laneConnectionLayers";
 import { buildAmenityLayers } from "./amenityLayers";
 import { ensurePixelLaneIcons } from "./icons";
 import {
@@ -45,6 +46,7 @@ import type {
   LaneUseMarkingFeatureCollection,
   TurnArrowFeatureCollection,
 } from "../adapters/laneGeometry";
+import type { LaneConnectionFeatureCollection } from "../adapters/laneConnectionGeometry";
 import type { RoadSurfaceFeatureCollection } from "../adapters/roadSurfaceGeometry";
 import type {
   BusStopFeatureCollection,
@@ -60,6 +62,7 @@ export interface PixelLaneGeoJson {
   laneSurfaces: LaneSurfaceFeatureCollection;
   laneBoundaries: LaneBoundaryFeatureCollection;
   turnArrows: TurnArrowFeatureCollection;
+  laneConnections: LaneConnectionFeatureCollection;
   laneUseMarkings: LaneUseMarkingFeatureCollection;
   roadSurfaces: RoadSurfaceFeatureCollection;
   busStops: BusStopFeatureCollection;
@@ -88,6 +91,7 @@ function buildAllLayers(
     ...buildRoadLayers(referenceLatitudeDeg, theme),
     ...buildRoadSurfaceLayers(theme),
     ...buildLaneDetailLayers(theme),
+    ...buildLaneConnectionLayers(theme),
     ...buildAmenityLayers(theme),
     ...buildIntersectionLayers(theme),
     buildTrafficLightLayer(theme),
@@ -142,6 +146,12 @@ export function addPixelLaneSourcesAndLayers(
     map.addSource(SOURCE_IDS.turnArrows, {
       type: "geojson",
       data: data.turnArrows,
+    });
+  }
+  if (!map.getSource(SOURCE_IDS.laneConnections)) {
+    map.addSource(SOURCE_IDS.laneConnections, {
+      type: "geojson",
+      data: data.laneConnections,
     });
   }
   if (!map.getSource(SOURCE_IDS.laneUseMarkings)) {
@@ -244,6 +254,9 @@ export function updatePixelLaneData(
   const turnArrowsSource = map.getSource(SOURCE_IDS.turnArrows);
   if (turnArrowsSource instanceof GeoJSONSource)
     turnArrowsSource.setData(data.turnArrows);
+  const laneConnectionsSource = map.getSource(SOURCE_IDS.laneConnections);
+  if (laneConnectionsSource instanceof GeoJSONSource)
+    laneConnectionsSource.setData(data.laneConnections);
 
   const laneUseMarkingsSource = map.getSource(SOURCE_IDS.laneUseMarkings);
   if (laneUseMarkingsSource instanceof GeoJSONSource)

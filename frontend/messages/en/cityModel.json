@@ -162,6 +162,8 @@
     "trafficLights": "Traffic lights",
     "trafficLightsTooltip": "Show or hide traffic lights",
     "amenities": "Amenities",
-    "amenitiesTooltip": "Show or hide bus stops and pedestrian crossings"
+    "amenitiesTooltip": "Show or hide bus stops and pedestrian crossings",
+    "connections": "Connections",
+    "connectionsTooltip": "Show or hide lane-to-lane connection curves"
   }
 }

@@ -53,6 +53,7 @@ import {
   buildBusStopFeatureCollection,
   buildCrosswalkFeatureCollection,
 } from "./adapters/cityAmenitiesToGeoJson";
+import { buildLaneConnectionFeatureCollection } from "./adapters/laneConnectionGeometry";
 import {
   addPixelLaneSourcesAndLayers,
   setLayerGroupVisibility,
@@ -354,6 +355,18 @@ export function PixelLaneMap({
         city.coordinate_system,
         visibleIntersections,
       ),
+      laneConnections: buildLaneConnectionFeatureCollection(
+        {
+          roads:
+            city.coordinate_system === "LOCAL_CARTESIAN" ? city.roads : [],
+          intersections:
+            city.coordinate_system === "LOCAL_CARTESIAN"
+              ? city.intersections
+              : [],
+          lane_connections: city.lane_connections,
+        },
+        city.coordinate_system,
+      ),
       laneUseMarkings: buildLaneUseMarkingFeatureCollection(
         visibleRoads,
         city.coordinate_system,
@@ -385,6 +398,8 @@ export function PixelLaneMap({
     city.bus_stops,
     city.crosswalks,
     city.roads,
+    city.intersections,
+    city.lane_connections,
     editorWorld,
     gridZoom,
   ]);

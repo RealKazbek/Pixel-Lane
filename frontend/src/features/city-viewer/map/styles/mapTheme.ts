@@ -43,6 +43,7 @@ export interface MapThemeColors {
   busLane: string;
   parking: string;
   cycleway: string;
+  laneConnection: string;
   /** Bus/parking badge icon (`layers/icons.ts`) fill + text + border. */
   busBadge: { fill: string; text: string; border: string };
   parkingBadge: { fill: string; text: string; border: string };
@@ -110,6 +111,7 @@ export const LIGHT_MAP_THEME: MapThemeColors = {
   busLane: "#c2410c", // orange-700
   parking: "#78716c",
   cycleway: "#16a34a",
+  laneConnection: "#f97316",
   busBadge: { fill: "#c2410c", text: "#fff7ed", border: "#7c2d12" },
   parkingBadge: { fill: "#57534e", text: "#fafaf9", border: "#292524" },
 };
@@ -133,6 +135,7 @@ export const DARK_MAP_THEME: MapThemeColors = {
   busLane: "#fb923c", // orange-400 -- brighter than light mode's 700 for dark-surface contrast
   parking: "#d6d3d1",
   cycleway: "#4ade80",
+  laneConnection: "#fb923c",
   busBadge: { fill: "#fb923c", text: "#1c1917", border: "#431407" },
   parkingBadge: { fill: "#d6d3d1", text: "#1c1917", border: "#0c0a09" },
 };
