@@ -15,8 +15,9 @@
  *
  * Nothing here fabricates turn/bus/parking/cycleway data -- every one of
  * these features is only drawn when the corresponding source-derived
- * field (`Lane.allowed_turns`, `Lane.lane_type`, `Road.parking_left/
- * right`, `Road.cycleway_left/right`) is present and not UNKNOWN/absent.
+ * fields (`Lane.allowed_turns` or editor-authored `Lane.allowed_movements`,
+ * `Lane.lane_type`, `Road.parking_left/right`, `Road.cycleway_left/right`)
+ * are present and not UNKNOWN/absent.
  *
  * IMPORTANT -- `LOCAL_CARTESIAN`-only: every builder below returns an
  * empty collection for `WGS84` (real-world imports, e.g. Almaty). This
@@ -60,6 +61,7 @@ import type {
   Intersection,
   ParkingLaneOrientation,
   TurnLaneType,
+  MovementType,
   LaneBoundaryMarking,
   RoadEdgeMarking,
 } from "../../types/city";
@@ -122,8 +124,9 @@ export type LaneUseMarkingFeatureCollection = GeoJSON.FeatureCollection<
   LaneUseMarkingProperties
 >;
 
-const TURN_ARROW_GLYPHS: Record<TurnLaneType, string> = {
+const TURN_ARROW_GLYPHS: Record<TurnLaneType | MovementType, string> = {
   LEFT: "←",
+  STRAIGHT: "↑",
   SLIGHT_LEFT: "↖",
   THROUGH: "↑",
   SLIGHT_RIGHT: "↗",
@@ -132,13 +135,14 @@ const TURN_ARROW_GLYPHS: Record<TurnLaneType, string> = {
   MERGE_TO_LEFT: "⬉",
   MERGE_TO_RIGHT: "⬈",
   NONE: "",
+  U_TURN: "↺",
 };
 
 /** `null` when there is nothing worth drawing (no data, or the only
  * token is the explicit "no turn indicated" marker) -- never a fabricated
  * default arrow. */
 function turnArrowGlyph(
-  tokens: TurnLaneType[] | null | undefined,
+  tokens: (TurnLaneType | MovementType)[] | null | undefined,
 ): string | null {
   if (!tokens || tokens.length === 0) return null;
   const glyph = tokens.map((t) => TURN_ARROW_GLYPHS[t]).join("");
@@ -474,7 +478,17 @@ export function buildTurnArrowFeatureCollection(
     const coords = line.geometry.coordinates;
     const roadBearing = bearing(coords[0], coords[coords.length - 1]);
     for (const lane of lanes) {
-      const arrow = turnArrowGlyph(lane.allowed_turns);
+      // Imported turn:lanes data remains the most specific source when it is
+      // present. Editor-authored semantic permissions are the fallback; the
+      // arrow is never the source of truth for either representation.
+      const semanticMovements: MovementType[] =
+        "allowed_movements" in lane
+          ? (lane as { allowed_movements: MovementType[] }).allowed_movements
+          : [];
+      const arrow = turnArrowGlyph(
+        lane.allowed_turns ??
+          (semanticMovements.length > 0 ? semanticMovements : null),
+      );
       if (!arrow) continue;
       const offset = safeOffset(
         line,
@@ -483,9 +497,16 @@ export function buildTurnArrowFeatureCollection(
       if (!offset) continue;
       let point: GeoJSON.Feature<GeoJSON.Point>;
       try {
-        point = along(offset, lengthM * TURN_ARROW_POSITION_FRACTION, {
-          units: "meters",
-        });
+        point = along(
+          offset,
+          lengthM *
+            ("direction" in lane && lane.direction === "BACKWARD"
+              ? 1 - TURN_ARROW_POSITION_FRACTION
+              : TURN_ARROW_POSITION_FRACTION),
+          {
+            units: "meters",
+          },
+        );
       } catch {
         continue;
       }
@@ -498,7 +519,10 @@ export function buildTurnArrowFeatureCollection(
           arrow,
           // MapLibre `text-rotate` is clockwise from north; `@turf/bearing`
           // already returns that convention (-180..180, 0 = north).
-          bearing: roadBearing,
+          bearing:
+            "direction" in lane && lane.direction === "BACKWARD"
+              ? (roadBearing + 180) % 360
+              : roadBearing,
         },
       });
     }

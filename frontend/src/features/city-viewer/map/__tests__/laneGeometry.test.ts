@@ -142,7 +142,12 @@ describe("buildTurnArrowFeatureCollection", () => {
     const road = makeRoad({
       lanes: [
         makeLane({ index: 0, allowed_turns: ["LEFT"] }),
-        makeLane({ id: "lane-1", index: 1, allowed_turns: null }),
+        makeLane({
+          id: "lane-1",
+          index: 1,
+          allowed_turns: null,
+          allowed_movements: [],
+        }),
       ],
     });
     const fc = buildTurnArrowFeatureCollection([road], "LOCAL_CARTESIAN");
@@ -163,8 +168,13 @@ describe("buildTurnArrowFeatureCollection", () => {
   it("never fabricates an arrow when allowed_turns is absent or empty", () => {
     const road = makeRoad({
       lanes: [
-        makeLane({ allowed_turns: undefined }),
-        makeLane({ id: "lane-1", index: 1, allowed_turns: [] }),
+        makeLane({ allowed_turns: undefined, allowed_movements: [] }),
+        makeLane({
+          id: "lane-1",
+          index: 1,
+          allowed_turns: [],
+          allowed_movements: [],
+        }),
       ],
     });
     const fc = buildTurnArrowFeatureCollection([road], "LOCAL_CARTESIAN");
@@ -177,6 +187,34 @@ describe("buildTurnArrowFeatureCollection", () => {
     const fc = buildTurnArrowFeatureCollection([road], "LOCAL_CARTESIAN");
 
     expect(fc.features).toHaveLength(0);
+  });
+
+  it("renders editor turn permissions when imported turn data is absent", () => {
+    const road = makeRoad({
+      lanes: [
+        makeLane({
+          allowed_turns: null,
+          allowed_movements: ["LEFT", "U_TURN"],
+        }),
+      ],
+    });
+    const fc = buildTurnArrowFeatureCollection([road], "LOCAL_CARTESIAN");
+    expect(fc.features[0].properties.arrow).toBe("←↺");
+  });
+
+  it("reverses arrow orientation and places backward arrows before the approach", () => {
+    const road = makeRoad({
+      lanes: [
+        makeLane({
+          direction: "BACKWARD",
+          allowed_turns: null,
+          allowed_movements: ["STRAIGHT"],
+        }),
+      ],
+    });
+    const fc = buildTurnArrowFeatureCollection([road], "LOCAL_CARTESIAN");
+    expect(fc.features[0].properties.bearing).toBe(180);
+    expect(fc.features[0].geometry.coordinates[1]).toBeLessThan(0.003);
   });
 });
 
