@@ -161,7 +161,7 @@ def replace_topology(city_id: UUID, payload: TopologyUpdate, db: Session = Depen
     try:
         persisted = city_service.replace_topology(db, city_id, payload)
     except ValueError as exc:
-        raise HTTPException(status_code=422, detail="TOPOLOGY_ROAD_NOT_FOUND") from exc
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
     if not persisted:
         raise HTTPException(status_code=404, detail="City not found")
 

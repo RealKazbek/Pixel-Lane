@@ -104,6 +104,26 @@ def test_auto_lane_connections_is_deterministic(client) -> None:
 
 
 @requires_postgres
+def test_topology_persists_connected_lane_ids(client) -> None:
+    data = _payload()
+    assert client.post("/api/v1/cities", json=data).status_code == 201
+
+    response = client.put(
+        f"/api/v1/cities/{data['id']}/topology",
+        json={
+            "roads": [{"id": road["id"], "geometry": road["geometry"]} for road in data["roads"]],
+            "intersections": data["intersections"],
+        },
+    )
+    assert response.status_code == 204
+
+    refreshed = client.get(f"/api/v1/cities/{data['id']}").json()
+    expected = {item["id"]: sorted(item["connected_lane_ids"]) for item in data["intersections"]}
+    actual = {item["id"]: sorted(item["connected_lane_ids"]) for item in refreshed["intersections"]}
+    assert actual == expected
+
+
+@requires_postgres
 def test_get_unknown_city_returns_404(client) -> None:
     response = client.get(f"/api/v1/cities/{uuid.uuid4()}")
     assert response.status_code == 404

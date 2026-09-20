@@ -296,6 +296,7 @@ def replace_topology(db: Session, city_id: UUID, payload: TopologyUpdate) -> boo
     if city is None:
         return False
     roads = {road.id: road for road in city.roads}
+    lanes = {lane.id: lane for road in city.roads for lane in road.lanes}
     for update_payload in payload.roads:
         road = roads.get(update_payload.id)
         if road is None:
@@ -312,7 +313,20 @@ def replace_topology(db: Session, city_id: UUID, payload: TopologyUpdate) -> boo
             position_y=item.position.y,
             control_type=item.control_type.value,
         )
-        intersection.connected_roads = [roads[road_id] for road_id in item.connected_road_ids]
+        connected_roads = [roads.get(road_id) for road_id in item.connected_road_ids]
+        if any(road is None for road in connected_roads):
+            raise ValueError("TOPOLOGY_ROAD_NOT_FOUND")
+        intersection.connected_roads = [road for road in connected_roads if road is not None]
+        connected_lanes = [lanes.get(lane_id) for lane_id in item.connected_lane_ids]
+        if any(lane is None for lane in connected_lanes):
+            raise ValueError("TOPOLOGY_LANE_NOT_FOUND")
+        if any(
+            lane.road_id not in item.connected_road_ids
+            for lane in connected_lanes
+            if lane is not None
+        ):
+            raise ValueError("TOPOLOGY_LANE_ROAD_MISMATCH")
+        intersection.connected_lanes = [lane for lane in connected_lanes if lane is not None]
         db.add(intersection)
     db.execute(update(City).where(City.id == city_id).values(updated_at=func.now()))
     try:

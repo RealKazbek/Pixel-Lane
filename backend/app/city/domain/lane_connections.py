@@ -106,7 +106,10 @@ def _road_approaches(city: CityRead, intersection_id: UUID) -> tuple[LaneApproac
         first, last = points[0], points[-1]
         first_distance = hypot(first.x - intersection.position.x, first.y - intersection.position.y)
         last_distance = hypot(last.x - intersection.position.x, last.y - intersection.position.y)
-        endpoint = first if first_distance <= last_distance else last
+        # The lane approach bearing points away from the intersection. The
+        # endpoint nearest the node is the lane's stop line; use the far
+        # endpoint to recover the road's outward direction.
+        endpoint = first if first_distance >= last_distance else last
         outward_bearing = _bearing_from_intersection(
             intersection.position.x, intersection.position.y, endpoint.x, endpoint.y
         )
