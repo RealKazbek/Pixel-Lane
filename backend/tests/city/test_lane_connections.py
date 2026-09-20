@@ -1,3 +1,4 @@
+from dataclasses import replace
 from uuid import UUID
 
 import pytest
@@ -69,6 +70,13 @@ def test_asymmetric_lane_counts_are_explicitly_unsupported() -> None:
     )
     assert result.connections == ()
     assert result.warnings == ("UNSUPPORTED_ASYMMETRIC_LANE_COUNTS",)
+
+
+def test_forbidden_maneuver_is_excluded_by_lane_permission() -> None:
+    incoming = _approaches("from", 1, 270)
+    incoming[0] = replace(incoming[0], allowed_movements=(MovementType.STRAIGHT,))
+    result = match_lane_approaches(INTERSECTION_ID, incoming, _approaches("to", 1, 0))
+    assert result.connections == ()
 
 
 def test_maneuver_classification_and_stable_identity() -> None:

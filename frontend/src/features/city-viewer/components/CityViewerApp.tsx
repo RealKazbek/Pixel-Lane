@@ -14,6 +14,7 @@ import type {
   Point,
   RoadEdgeMarking,
   Road,
+  MovementType,
 } from "../types/city";
 import {
   insertPolylinePoint,
@@ -58,19 +59,42 @@ type RoadChanges = {
   lane_count?: number;
   lane_width_m?: number;
   lane_directions?: LaneDirection[];
+  lane_allowed_movements?: MovementType[][];
   left_edge_marking?: RoadEdgeMarking;
   right_edge_marking?: RoadEdgeMarking;
   lane_boundary_markings?: LaneBoundaryMarking[];
 };
 
 function applyRoadChanges(road: Road, changes: RoadChanges): Road {
-  const { lane_count, lane_width_m, lane_directions, lane_boundary_markings, ...simple } = changes;
+  const { lane_count, lane_width_m, lane_directions, lane_allowed_movements, lane_boundary_markings, ...simple } = changes;
   if (!lane_count || !lane_width_m || !lane_directions) {
-    return { ...road, ...simple, ...(lane_boundary_markings ? { lane_boundary_markings } : {}) };
+    return {
+      ...road,
+      ...simple,
+      ...(lane_allowed_movements
+        ? { lanes: road.lanes.map((lane, index) => ({ ...lane, allowed_movements: lane_allowed_movements[index] ?? lane.allowed_movements })) }
+        : {}),
+      ...(lane_boundary_markings ? { lane_boundary_markings } : {}),
+    };
   }
   const laneConfiguration = buildLaneConfiguration(road, lane_count, lane_width_m, lane_directions);
   return laneConfiguration
-    ? { ...road, ...simple, ...laneConfiguration, lane_boundary_markings: lane_boundary_markings ?? road.lane_boundary_markings }
+    ? {
+        ...road,
+        ...simple,
+        ...laneConfiguration,
+        ...(lane_allowed_movements
+          ? {
+              lanes: laneConfiguration.lanes.map((lane, index) => ({
+                ...lane,
+                allowed_movements:
+                  lane_allowed_movements[index] ?? lane.allowed_movements,
+              })),
+            }
+          : {}),
+        lane_boundary_markings:
+          lane_boundary_markings ?? road.lane_boundary_markings,
+      }
     : road;
 }
 
@@ -171,7 +195,8 @@ export function CityViewerApp() {
       width_m?: number;
       lane_count?: number;
       lane_width_m?: number;
-      lane_directions?: LaneDirection[];
+    lane_directions?: LaneDirection[];
+    lane_allowed_movements?: MovementType[][];
       left_edge_marking?: RoadEdgeMarking;
       right_edge_marking?: RoadEdgeMarking;
       lane_boundary_markings?: LaneBoundaryMarking[];

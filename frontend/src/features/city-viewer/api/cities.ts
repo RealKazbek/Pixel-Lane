@@ -131,6 +131,7 @@ export function updateRoadProperties(
     lane_count: number;
     lane_width_m: number;
     lane_directions: Road["lanes"][number]["direction"][];
+    lane_allowed_movements: Road["lanes"][number]["allowed_movements"][];
     left_edge_marking: RoadEdgeMarking;
     right_edge_marking: RoadEdgeMarking;
     lane_boundary_markings: LaneBoundaryMarking[];
@@ -205,6 +206,7 @@ export function buildRoadPropertiesPayload(road: Road) {
     lane_count: laneCount,
     lane_width_m: laneWidth,
     lane_directions: road.lanes.map((lane) => lane.direction),
+    lane_allowed_movements: road.lanes.map((lane) => lane.allowed_movements),
     left_edge_marking: road.left_edge_marking ?? "SOLID_YELLOW",
     right_edge_marking: road.right_edge_marking ?? "SOLID_YELLOW",
     lane_boundary_markings: road.lane_boundary_markings ?? [],

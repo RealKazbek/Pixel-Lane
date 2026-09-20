@@ -8,6 +8,7 @@ from app.city.domain.enums import (
     LaneCountQuality,
     LaneDirection,
     MedianType,
+    MovementType,
     ParkingLaneOrientation,
     RoadEdgeMarking,
     RoadType,
@@ -115,6 +116,7 @@ class RoadPropertiesUpdate(BaseModel):
     lane_count: int = Field(ge=1, le=12)
     lane_width_m: float = Field(ge=MIN_LANE_WIDTH_M, le=MAX_LANE_WIDTH_M)
     lane_directions: list[LaneDirection] = Field(min_length=1, max_length=12)
+    lane_allowed_movements: list[list[MovementType]] | None = Field(default=None, max_length=12)
     left_edge_marking: RoadEdgeMarking = RoadEdgeMarking.SOLID_YELLOW
     right_edge_marking: RoadEdgeMarking = RoadEdgeMarking.SOLID_YELLOW
     lane_boundary_markings: list[LaneBoundaryMarking] = Field(default_factory=list, max_length=11)
@@ -123,6 +125,11 @@ class RoadPropertiesUpdate(BaseModel):
     def validate_lane_configuration(self) -> "RoadPropertiesUpdate":
         if len(self.lane_directions) != self.lane_count:
             raise ValueError("lane_directions must match lane_count")
+        if self.lane_allowed_movements is not None:
+            if len(self.lane_allowed_movements) != self.lane_count:
+                raise ValueError("lane_allowed_movements must match lane_count")
+            if any(len(movements) > 4 for movements in self.lane_allowed_movements):
+                raise ValueError("lane_allowed_movements contains too many movements")
         expected = self.lane_count * self.lane_width_m
         if abs(self.width_m - expected) > 0.001:
             raise ValueError("width_m must equal lane_count * lane_width_m")

@@ -211,6 +211,34 @@ def test_update_road_properties_persists_name_and_width(client) -> None:
 
 
 @requires_postgres
+def test_update_road_properties_persists_lane_turn_permissions(client) -> None:
+    data = _payload()
+    assert client.post("/api/v1/cities", json=data).status_code == 201
+    road_id = data["roads"][0]["id"]
+    lane_count = len(data["roads"][0]["lanes"])
+
+    response = client.patch(
+        f"/api/v1/cities/{data['id']}/roads/{road_id}/properties",
+        json={
+            "name": "Permission Avenue",
+            "width_m": lane_count * 3.5,
+            "lane_count": lane_count,
+            "lane_width_m": 3.5,
+            "lane_directions": [lane["direction"] for lane in data["roads"][0]["lanes"]],
+            "lane_allowed_movements": [["LEFT"], ["STRAIGHT", "RIGHT"], ["U_TURN"]],
+        },
+    )
+    assert response.status_code == 200
+    refreshed = client.get(f"/api/v1/cities/{data['id']}").json()
+    road = next(item for item in refreshed["roads"] if item["id"] == road_id)
+    assert [lane["allowed_movements"] for lane in road["lanes"]] == [
+        ["LEFT"],
+        ["STRAIGHT", "RIGHT"],
+        ["U_TURN"],
+    ]
+
+
+@requires_postgres
 def test_update_road_properties_rejects_invalid_width(client) -> None:
     data = _payload()
     client.post("/api/v1/cities", json=data)

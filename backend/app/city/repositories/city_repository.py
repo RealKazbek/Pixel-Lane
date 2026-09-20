@@ -210,6 +210,10 @@ def update_road_properties(
             )
         lane.index = index
         lane.direction = direction.value
+        if properties.lane_allowed_movements is not None:
+            lane.allowed_movements = [
+                movement.value for movement in properties.lane_allowed_movements[index]
+            ]
         configured_lanes.append(lane)
     road.lanes = configured_lanes
     db.execute(update(City).where(City.id == city_id).values(updated_at=func.now()))

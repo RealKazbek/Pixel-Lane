@@ -7,6 +7,7 @@ import type {
   LaneDirection,
   Road,
   RoadEdgeMarking,
+  MovementType,
 } from "../types/city";
 import {
   laneWidthMeters,
@@ -35,6 +36,7 @@ interface RoadPropertiesPanelProps {
     lane_count?: number;
     lane_width_m?: number;
     lane_directions?: LaneDirection[];
+    lane_allowed_movements?: MovementType[][];
     left_edge_marking?: RoadEdgeMarking;
     right_edge_marking?: RoadEdgeMarking;
     lane_boundary_markings?: LaneBoundaryMarking[];
@@ -78,6 +80,7 @@ export function RoadPropertiesPanel({
     "DOUBLE_SOLID_WHITE",
     "NONE",
   ];
+  const movementOptions: MovementType[] = ["STRAIGHT", "LEFT", "RIGHT", "U_TURN"];
   const updateLaneModel = (
     count: number,
     widthM: number,
@@ -211,6 +214,35 @@ export function RoadPropertiesPanel({
             </button>
           ))}
         </div>
+      </fieldset>
+      <fieldset className="mt-3">
+        <legend className="mb-1 text-muted-foreground">Turn permissions</legend>
+        {road.lanes.map((lane, laneIndex) => (
+          <div key={lane.id} className="mt-2">
+            <span className="block text-[11px]">{t("laneNumber", { number: laneIndex + 1 })}</span>
+            <div className="mt-1 grid grid-cols-2 gap-1">
+              {movementOptions.map((movement) => {
+                const checked = lane.allowed_movements.includes(movement);
+                return (
+                  <label key={movement} className="flex items-center gap-1 text-[11px]">
+                    <input
+                      type="checkbox"
+                      checked={checked}
+                      onChange={() => {
+                        const next = road.lanes.map((item) => [...item.allowed_movements]);
+                        next[laneIndex] = checked
+                          ? next[laneIndex].filter((item) => item !== movement)
+                          : [...next[laneIndex], movement];
+                        onChange({ lane_allowed_movements: next });
+                      }}
+                    />
+                    {movement.replace("_", " ")}
+                  </label>
+                );
+              })}
+            </div>
+          </div>
+        ))}
       </fieldset>
       <fieldset className="mt-3">
         <legend className="mb-1 text-muted-foreground">{t("markings")}</legend>
