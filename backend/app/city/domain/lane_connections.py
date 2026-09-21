@@ -147,10 +147,14 @@ def generate_intersection_connections(city: CityRead, intersection_id: UUID) -> 
         for to_road_id in road_ids:
             if from_road_id == to_road_id:
                 continue
+            from_lanes = tuple(lane for lane in incoming if lane.road_id == from_road_id)
+            to_lanes = tuple(lane for lane in outgoing if lane.road_id == to_road_id)
+            if not from_lanes or not to_lanes:
+                continue
             result = match_lane_approaches(
                 intersection_id,
-                (lane for lane in incoming if lane.road_id == from_road_id),
-                (lane for lane in outgoing if lane.road_id == to_road_id),
+                from_lanes,
+                to_lanes,
             )
             all_connections.extend(result.connections)
             warnings.extend(result.warnings)
