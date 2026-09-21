@@ -136,6 +136,7 @@
     "deletingRoad": "Deleting…",
     "deleteFailed": "Road deletion failed. The editor was not changed.",
     "workspaceLoadFailed": "The editor workspace could not be loaded. Check the backend and reload.",
+    "topologySaveFailed": "The road topology could not be saved. The editor may differ from the persisted city.",
     "marking": {
       "NONE": "None",
       "DASHED_WHITE": "Dashed",

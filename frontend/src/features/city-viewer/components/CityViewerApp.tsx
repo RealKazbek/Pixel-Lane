@@ -204,11 +204,18 @@ export function CityViewerApp() {
   const persistCityTopology = useCallback(
     (nextCity: City) => {
       if (!hydrated) return;
-      void replaceTopology(nextCity.id, nextCity).catch((error) =>
-        console.error("Failed to persist EditorWorkspace topology", error),
-      );
+      void (async () => {
+        await replaceTopology(nextCity.id, nextCity);
+        await replaceLaneConnections(
+          nextCity.id,
+          nextCity.lane_connections ?? [],
+        );
+      })().catch((error) => {
+        console.error("Failed to persist EditorWorkspace topology", error);
+        setDeleteError(tProperties("topologySaveFailed"));
+      });
     },
-    [hydrated],
+    [hydrated, tProperties],
   );
   const persistCreatedRoadTopology = useCallback(
     (previousCity: City, nextCity: City) => {

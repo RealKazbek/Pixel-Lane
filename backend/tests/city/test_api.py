@@ -91,6 +91,102 @@ def test_lane_connections_persist_and_reload(client) -> None:
 
 
 @requires_postgres
+def test_t_junction_maneuver_enable_disable_survives_reload(client) -> None:
+    city_id = uuid.uuid4()
+    intersection_id = uuid.uuid4()
+    road_a_id, road_b_id, road_c_id = (uuid.uuid4() for _ in range(3))
+    lane_a_id, lane_b_id, lane_c_id = (uuid.uuid4() for _ in range(3))
+
+    def road(road_id, lane_id, name, points, direction):
+        return {
+            "id": str(road_id),
+            "name": name,
+            "road_type": "RESIDENTIAL",
+            "geometry": {"points": points},
+            "default_speed_limit_kmh": 30,
+            "lanes": [
+                {
+                    "id": str(lane_id),
+                    "index": 0,
+                    "direction": direction,
+                    "allowed_movements": [],
+                    "lane_type": "GENERAL",
+                    "speed_limit_kmh": 30,
+                }
+            ],
+        }
+
+    data = {
+        "id": str(city_id),
+        "name": "T-junction persistence test",
+        "description": None,
+        "coordinate_system": "LOCAL_CARTESIAN",
+        "roads": [
+            road(
+                road_a_id,
+                lane_a_id,
+                "Road A",
+                [{"x": -10, "y": 0}, {"x": 0, "y": 0}],
+                "BACKWARD",
+            ),
+            road(
+                road_b_id,
+                lane_b_id,
+                "Road B",
+                [{"x": 0, "y": -10}, {"x": 0, "y": 0}],
+                "FORWARD",
+            ),
+            road(
+                road_c_id,
+                lane_c_id,
+                "Road C",
+                [{"x": 10, "y": 0}, {"x": 0, "y": 0}],
+                "BACKWARD",
+            ),
+        ],
+        "intersections": [
+            {
+                "id": str(intersection_id),
+                "position": {"x": 0, "y": 0},
+                "connected_road_ids": [str(road_a_id), str(road_b_id), str(road_c_id)],
+                "connected_lane_ids": [str(lane_a_id), str(lane_b_id), str(lane_c_id)],
+                "control_type": "UNCONTROLLED",
+                "traffic_light_id": None,
+            }
+        ],
+    }
+    assert client.post("/api/v1/cities", json=data).status_code == 201
+
+    connection = {
+        "id": str(uuid.uuid4()),
+        "intersection_id": str(intersection_id),
+        "from_road_id": str(road_b_id),
+        "from_lane_id": str(lane_b_id),
+        "to_road_id": str(road_a_id),
+        "to_lane_id": str(lane_a_id),
+        "maneuver": "LEFT",
+    }
+    enabled = client.put(
+        f"/api/v1/cities/{city_id}/lane-connections",
+        json={"connections": [connection]},
+    )
+    assert enabled.status_code == 200
+    assert enabled.json() == [{**connection, "city_id": str(city_id)}]
+
+    reloaded = client.get(f"/api/v1/cities/{city_id}")
+    assert reloaded.status_code == 200
+    assert reloaded.json()["lane_connections"] == [{**connection, "city_id": str(city_id)}]
+
+    disabled = client.put(
+        f"/api/v1/cities/{city_id}/lane-connections",
+        json={"connections": []},
+    )
+    assert disabled.status_code == 200
+    assert disabled.json() == []
+    assert client.get(f"/api/v1/cities/{city_id}").json()["lane_connections"] == []
+
+
+@requires_postgres
 def test_auto_lane_connections_is_deterministic(client) -> None:
     data = _payload()
     data["roads"][1]["lanes"][0]["direction"] = "BACKWARD"

@@ -1036,7 +1036,7 @@ export function PixelLaneMap({
   return (
     <div className="city-model-map relative h-full w-full">
       <div ref={containerRef} className="h-full w-full" />
-      <div className="pointer-events-none absolute right-14 top-3 z-10">
+      <div className="pointer-events-none absolute right-16 top-3 z-10">
         <MapCompass
           bearing={mapBearing}
           label={compassLabel}
