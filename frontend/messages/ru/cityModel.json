@@ -89,10 +89,13 @@
     "timeLabel": "Время",
     "weatherLabel": "Погода",
     "dateLabel": "Дата",
+    "simulationTimeLabel": "Время симуляции",
+    "intensityLabel": "Интенсивность",
     "time": {
       "auto": "Авто",
+      "morning": "Утро",
       "day": "День",
-      "sunset": "Закат",
+      "evening": "Вечер",
       "night": "Ночь"
     },
     "weather": {
@@ -100,6 +103,11 @@
       "rain": "Дождь",
       "snow": "Снег",
       "fog": "Туман"
+    },
+    "intensity": {
+      "light": "Слабая",
+      "medium": "Средняя",
+      "heavy": "Сильная"
     }
   },
   "properties": {

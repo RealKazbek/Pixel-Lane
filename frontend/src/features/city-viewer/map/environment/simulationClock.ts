@@ -5,6 +5,11 @@ export interface SimulationClockState {
   time: string;
 }
 
+export function formatSimulationDate(date: string): string {
+  const [year, month, day] = date.split("-");
+  return year && month && day ? `${day}.${month}.${year}` : date;
+}
+
 export type SimulationClockAction =
   { type: "set-date"; date: string } | { type: "set-time"; time: string };
 

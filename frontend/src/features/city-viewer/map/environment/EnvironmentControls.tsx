@@ -1,11 +1,13 @@
 import { useEffect, useRef, useState } from "react";
 import { useTranslations } from "next-intl";
 import type { SimulationClockState } from "./simulationClock";
+import { shouldShowWeatherIntensity } from "./useEnvironment";
 import type {
   EnvironmentState,
   TimeMode,
   TimeOfDay,
   Weather,
+  WeatherIntensity,
 } from "./useEnvironment";
 
 interface EnvironmentControlsProps {
@@ -14,12 +16,24 @@ interface EnvironmentControlsProps {
   simulationClock: SimulationClockState;
   onTimeModeChange: (timeMode: TimeMode) => void;
   onWeatherChange: (weather: Weather) => void;
+  onWeatherIntensityChange: (intensity: WeatherIntensity) => void;
   onDateChange: (date: string) => void;
   onTimeChange: (time: string) => void;
 }
 
-export const TIME_MODE_OPTIONS: TimeMode[] = ["auto", "day", "sunset", "night"];
+export const TIME_MODE_OPTIONS: TimeMode[] = [
+  "auto",
+  "morning",
+  "day",
+  "evening",
+  "night",
+];
 export const WEATHER_OPTIONS: Weather[] = ["clear", "rain", "snow", "fog"];
+export const WEATHER_INTENSITY_OPTIONS: WeatherIntensity[] = [
+  "light",
+  "medium",
+  "heavy",
+];
 
 type OpenMenu = "time" | "weather" | null;
 
@@ -34,6 +48,7 @@ export function EnvironmentControls({
   simulationClock,
   onTimeModeChange,
   onWeatherChange,
+  onWeatherIntensityChange,
   onDateChange,
   onTimeChange,
 }: EnvironmentControlsProps) {
@@ -164,6 +179,34 @@ export function EnvironmentControls({
           )}
         </div>
       </div>
+      {shouldShowWeatherIntensity(value.weather) && (
+        <div className="flex items-center gap-1.5 border-t border-border-subtle px-1 pt-1.5">
+          <span className="shrink-0 text-[10px] font-medium text-muted">
+            {t("intensityLabel")}
+          </span>
+          <div
+            className="flex min-w-0 flex-1 gap-0.5 rounded-md bg-surface-elevated p-0.5"
+            role="group"
+            aria-label={t("intensityLabel")}
+          >
+            {WEATHER_INTENSITY_OPTIONS.map((intensity) => (
+              <button
+                key={intensity}
+                type="button"
+                aria-pressed={value.weatherIntensity === intensity}
+                className={`min-w-0 flex-1 rounded px-1.5 py-1 text-[10px] font-medium transition-colors focus-visible:outline-2 focus-visible:outline-primary ${
+                  value.weatherIntensity === intensity
+                    ? "bg-primary text-primary-foreground"
+                    : "text-muted hover:bg-surface hover:text-foreground"
+                }`}
+                onClick={() => onWeatherIntensityChange(intensity)}
+              >
+                {t(`intensity.${intensity}`)}
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
       <div className="flex items-center gap-1.5 border-t border-border-subtle px-1 pt-1.5">
         <label className="flex min-w-0 flex-1 items-center gap-1 text-[10px] font-medium text-muted">
           <span>{t("dateLabel")}</span>

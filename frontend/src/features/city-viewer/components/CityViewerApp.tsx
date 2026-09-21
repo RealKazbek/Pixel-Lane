@@ -27,6 +27,7 @@ import { RoadPropertiesPanel } from "../map/RoadPropertiesPanel";
 import { IntersectionPropertiesPanel } from "../map/IntersectionPropertiesPanel";
 import { EnvironmentControls } from "../map/environment/EnvironmentControls";
 import { WeatherOverlay } from "../map/environment/WeatherOverlay";
+import { SimulationClockDisplay } from "../map/environment/SimulationClockDisplay";
 import {
   resolveTimeOfDay,
   useEnvironment,
@@ -456,6 +457,7 @@ export function CityViewerApp() {
           <WeatherOverlay
             timeOfDay={timeOfDay}
             weather={environment.weather}
+            intensity={environment.weatherIntensity}
           />
           <div className="pointer-events-none absolute right-3 top-14 z-20">
             <EnvironmentControls
@@ -468,6 +470,9 @@ export function CityViewerApp() {
               onWeatherChange={(weather) =>
                 dispatchEnvironment({ type: "set-weather", weather })
               }
+              onWeatherIntensityChange={(intensity) =>
+                dispatchEnvironment({ type: "set-weather-intensity", intensity })
+              }
               onDateChange={(date) =>
                 dispatchSimulationClock({ type: "set-date", date })
               }
@@ -476,6 +481,7 @@ export function CityViewerApp() {
               }
             />
           </div>
+          <SimulationClockDisplay clock={simulationClock} />
         </div>
         {loadError && (
           <div role="alert" className="absolute left-3 top-3 rounded-md bg-surface p-3 text-sm text-danger shadow">

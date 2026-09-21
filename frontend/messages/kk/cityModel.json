@@ -89,10 +89,13 @@
     "timeLabel": "Уақыт",
     "weatherLabel": "Ауа райы",
     "dateLabel": "Күн",
+    "simulationTimeLabel": "Симуляция уақыты",
+    "intensityLabel": "Қарқындылық",
     "time": {
       "auto": "Авто",
+      "morning": "Таң",
       "day": "Күндіз",
-      "sunset": "Күн батарда",
+      "evening": "Кеш",
       "night": "Түн"
     },
     "weather": {
@@ -100,6 +103,11 @@
       "rain": "Жаңбыр",
       "snow": "Қар",
       "fog": "Тұман"
+    },
+    "intensity": {
+      "light": "Жеңіл",
+      "medium": "Орташа",
+      "heavy": "Қатты"
     }
   },
   "properties": {

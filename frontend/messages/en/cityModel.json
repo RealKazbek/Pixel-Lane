@@ -89,10 +89,13 @@
     "timeLabel": "Time",
     "weatherLabel": "Weather",
     "dateLabel": "Date",
+    "simulationTimeLabel": "Simulation time",
+    "intensityLabel": "Intensity",
     "time": {
       "auto": "Auto",
+      "morning": "Morning",
       "day": "Day",
-      "sunset": "Sunset",
+      "evening": "Evening",
       "night": "Night"
     },
     "weather": {
@@ -100,6 +103,11 @@
       "rain": "Rain",
       "snow": "Snow",
       "fog": "Fog"
+    },
+    "intensity": {
+      "light": "Light",
+      "medium": "Medium",
+      "heavy": "Heavy"
     }
   },
   "properties": {

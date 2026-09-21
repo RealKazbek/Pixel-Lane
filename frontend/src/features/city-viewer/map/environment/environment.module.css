@@ -24,14 +24,26 @@
   background: rgb(255 255 255 / 0.02);
 }
 
-.atmosphere[data-time-of-day="sunset"] {
-  background: rgb(234 88 12 / 0.08);
+.atmosphere[data-time-of-day="morning"] {
+  background: rgb(125 211 252 / 0.06);
 }
 
-.atmosphere[data-time-of-day="sunset"]::before {
+.atmosphere[data-time-of-day="morning"]::before {
   background:
-    linear-gradient(180deg, rgb(251 146 60 / 0.08), transparent 52%),
-    linear-gradient(110deg, rgb(245 158 11 / 0.12), rgb(120 53 15 / 0.1));
+    linear-gradient(180deg, rgb(186 230 253 / 0.14), transparent 55%),
+    linear-gradient(110deg, rgb(253 224 71 / 0.08), rgb(56 189 248 / 0.06));
+  mix-blend-mode: soft-light;
+  transition: opacity 700ms ease;
+}
+
+.atmosphere[data-time-of-day="evening"] {
+  background: rgb(234 88 12 / 0.1);
+}
+
+.atmosphere[data-time-of-day="evening"]::before {
+  background:
+    linear-gradient(180deg, rgb(251 146 60 / 0.12), transparent 52%),
+    linear-gradient(110deg, rgb(245 158 11 / 0.16), rgb(120 53 15 / 0.12));
   mix-blend-mode: multiply;
   transition: opacity 700ms ease;
 }
@@ -65,24 +77,25 @@
 .atmosphere[data-weather="rain"] .weatherEffect::before {
   background-image: repeating-linear-gradient(
     108deg,
-    transparent 0 22px,
-    rgb(191 219 254 / 0.44) 23px 24px,
-    transparent 25px 48px
+    transparent 0 30px,
+    rgb(191 219 254 / 0.32) 30.5px 31.5px,
+    transparent 32px 64px
   );
-  background-size: 86px 132px;
-  animation: rain-near 0.72s linear infinite;
+  background-size: 96px 150px;
+  animation: rain-near 0.9s linear infinite;
+  opacity: 0.68;
 }
 
 .atmosphere[data-weather="rain"] .weatherEffect::after {
   background-image: repeating-linear-gradient(
     108deg,
-    transparent 0 34px,
-    rgb(219 234 254 / 0.24) 35px 36px,
-    transparent 37px 76px
+    transparent 0 42px,
+    rgb(219 234 254 / 0.2) 42.5px 43.5px,
+    transparent 44px 90px
   );
-  background-size: 142px 188px;
-  animation: rain-far 1.2s linear infinite;
-  opacity: 0.85;
+  background-size: 158px 204px;
+  animation: rain-far 1.4s linear infinite;
+  opacity: 0.58;
 }
 
 .atmosphere[data-weather="rain"] .weatherLayer {
@@ -100,18 +113,18 @@
   background-image:
     radial-gradient(
       circle at 14% 18%,
-      rgb(255 255 255 / 0.86) 0 2px,
-      transparent 2.8px
+      rgb(255 255 255 / 0.72) 0 1.5px,
+      transparent 2.3px
     ),
     radial-gradient(
       circle at 72% 32%,
-      rgb(255 255 255 / 0.72) 0 1px,
-      transparent 2px
+      rgb(255 255 255 / 0.62) 0 1px,
+      transparent 1.8px
     ),
     radial-gradient(
       circle at 42% 76%,
-      rgb(255 255 255 / 0.8) 0 1.5px,
-      transparent 2.5px
+      rgb(255 255 255 / 0.68) 0 1.25px,
+      transparent 2.1px
     );
   background-size:
     180px 210px,
@@ -144,7 +157,7 @@
 }
 
 .atmosphere[data-weather="fog"] .weatherEffect {
-  opacity: 0.92;
+  opacity: 0.78;
 }
 
 .atmosphere[data-weather="fog"] .weatherEffect::before {
@@ -176,6 +189,61 @@
   );
   filter: blur(10px);
   animation: fog-pulse 12s ease-in-out infinite alternate;
+}
+
+/* Intensity changes density/opacity while keeping each weather effect lightweight. */
+.atmosphere[data-intensity="light"][data-weather="rain"]
+  .weatherEffect::before {
+  opacity: 0.48;
+  background-size: 128px 180px;
+  animation-duration: 1.15s;
+}
+
+.atmosphere[data-intensity="light"][data-weather="rain"] .weatherEffect::after {
+  opacity: 0.3;
+  background-size: 196px 240px;
+}
+
+.atmosphere[data-intensity="heavy"][data-weather="rain"]
+  .weatherEffect::before {
+  opacity: 0.9;
+  background-size: 68px 108px;
+  animation-duration: 0.72s;
+}
+
+.atmosphere[data-intensity="heavy"][data-weather="rain"] .weatherEffect::after {
+  opacity: 0.76;
+  background-size: 116px 156px;
+}
+
+.atmosphere[data-intensity="light"][data-weather="snow"] .weatherEffect::before,
+.atmosphere[data-intensity="light"][data-weather="snow"] .weatherEffect::after {
+  opacity: 0.48;
+  background-size:
+    280px 300px,
+    360px 340px,
+    420px 380px;
+  animation-duration: 13s;
+}
+
+.atmosphere[data-intensity="heavy"][data-weather="snow"] .weatherEffect::before,
+.atmosphere[data-intensity="heavy"][data-weather="snow"] .weatherEffect::after {
+  opacity: 0.95;
+  background-size:
+    132px 166px,
+    190px 180px,
+    240px 220px;
+  animation-duration: 6s;
+}
+
+.atmosphere[data-intensity="light"][data-weather="fog"] .weatherEffect,
+.atmosphere[data-intensity="light"][data-weather="fog"] .weatherLayer {
+  opacity: 0.48;
+}
+
+.atmosphere[data-intensity="heavy"][data-weather="fog"] .weatherEffect,
+.atmosphere[data-intensity="heavy"][data-weather="fog"] .weatherLayer {
+  opacity: 1;
 }
 
 @keyframes rain-near {
