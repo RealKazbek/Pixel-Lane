@@ -312,7 +312,10 @@ describe("endpoint snap topology", () => {
     expect(result?.roads[1].name).toBe("Main Road");
     expect(result?.roads[0].width_m).toBe(12);
     expect(result?.roads[1].width_m).toBe(12);
-    expect(result?.roads[0].lanes).toEqual(result?.roads[1].lanes);
+    expect(result?.roads[0].lanes.map((lane) => lane.direction)).toEqual(
+      result?.roads[1].lanes.map((lane) => lane.direction),
+    );
+    expect(result?.roads[0].lanes[0].id).not.toBe(result?.roads[1].lanes[0].id);
     expect(
       result?.roads.every((road) =>
         road.geometry.points.every(
@@ -331,6 +334,80 @@ describe("endpoint snap topology", () => {
       "road-a",
       "road-a-split-0",
       "road-b",
+    ]);
+  });
+
+  it("splits once when a new road is attached to an existing road interior", () => {
+    const existing = makeRoad("road-ab", 0, 100);
+    const city = makeCity([existing, makeRoad("road-c", 50, 150)]);
+    const target = buildRoadSegmentSnapTargets(city).find(
+      (candidate) => candidate.roadId === existing.id,
+    );
+    if (!target) throw new Error("Expected segment target");
+
+    const result = addRoadWithEndpointSnaps(
+      makeCity([existing]),
+      makeRoad("road-c", 50, 150),
+      { ...target, point: { x: 50, y: 0 } },
+      null,
+    );
+
+    expect(result?.roads).toHaveLength(3);
+    expect(result?.roads.map((road) => road.geometry.points)).toEqual([
+      [{ x: 0, y: 0 }, { x: 50, y: 0 }],
+      [{ x: 50, y: 0 }, { x: 100, y: 0 }],
+      [{ x: 50, y: 0 }, { x: 150, y: 0 }],
+    ]);
+    expect(result?.intersections).toHaveLength(1);
+    expect(result?.intersections[0].connected_road_ids).toEqual([
+      "road-ab",
+      "road-ab-split-0",
+      "road-c",
+    ]);
+  });
+
+  it("rejects a new road that duplicates an existing physical segment", () => {
+    const existing = makeRoad("road-ab", 0, 100);
+    const duplicate = makeRoad("road-copy", 100, 0);
+    expect(
+      addRoadWithEndpointSnaps(makeCity([existing]), duplicate, null, null),
+    ).toBeNull();
+  });
+
+  it("reuses an existing interior intersection while splitting the road once", () => {
+    const existing = makeRoad("road-ab", 0, 100);
+    const incoming = makeRoad("road-c", 50, 150);
+    const city = makeCity([existing, incoming]);
+    city.intersections = [
+      {
+        id: "junction-j",
+        city_id: city.id,
+        position: { x: 50, y: 0 },
+        connected_road_ids: [existing.id],
+        connected_lane_ids: [],
+        control_type: "UNCONTROLLED",
+        traffic_light_id: null,
+      },
+    ];
+    const target = buildRoadSegmentSnapTargets(city).find(
+      (candidate) => candidate.roadId === existing.id,
+    );
+    if (!target) throw new Error("Expected segment target");
+
+    const result = applyEndpointSnap(
+      city,
+      incoming.id,
+      "start",
+      { ...target, point: { x: 50.5, y: 0 } },
+    );
+
+    expect(result?.intersections).toHaveLength(1);
+    expect(result?.intersections[0].id).toBe("junction-j");
+    expect(result?.roads).toHaveLength(3);
+    expect(result?.intersections[0].connected_road_ids).toEqual([
+      "road-ab",
+      "road-ab-split-0",
+      "road-c",
     ]);
   });
 

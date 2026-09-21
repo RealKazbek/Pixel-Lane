@@ -107,7 +107,13 @@ export function applyRoadPreset(road: Road, preset: RoadPreset): Road | null {
     road,
     preset.laneDirections.length,
     preset.laneWidthM,
-    [...preset.laneDirections],
+    Array.from(
+      { length: preset.laneDirections.length },
+      (_, index) =>
+        road.lanes[index]?.direction ??
+        road.lanes.at(-1)?.direction ??
+        preset.laneDirections[index],
+    ),
   );
   if (!laneConfiguration) return null;
 

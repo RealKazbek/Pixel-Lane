@@ -126,6 +126,34 @@ def test_topology_persists_connected_lane_ids(client) -> None:
 
 
 @requires_postgres
+def test_topology_creates_new_split_roads_atomically(client) -> None:
+    data = _payload()
+    assert client.post("/api/v1/cities", json=data).status_code == 201
+    new_id = str(uuid.uuid4())
+    new_road = {
+        **data["roads"][0],
+        "id": new_id,
+        "geometry": {"points": [{"x": 50.0, "y": 0.0}, {"x": 50.0, "y": 50.0}]},
+        "lanes": [],
+        "lane_boundary_markings": None,
+    }
+    response = client.put(
+        f"/api/v1/cities/{data['id']}/topology",
+        json={
+            "roads": [
+                {"id": road["id"], "geometry": road["geometry"]}
+                for road in [*data["roads"], new_road]
+            ],
+            "intersections": data["intersections"],
+            "new_roads": [new_road],
+        },
+    )
+    assert response.status_code == 204
+    refreshed = client.get(f"/api/v1/cities/{data['id']}").json()
+    assert new_id in {road["id"] for road in refreshed["roads"]}
+
+
+@requires_postgres
 def test_delete_road_reconciles_intersection_and_lane_connections(client) -> None:
     data = _payload()
     data["roads"][1]["lanes"][0]["direction"] = "BACKWARD"

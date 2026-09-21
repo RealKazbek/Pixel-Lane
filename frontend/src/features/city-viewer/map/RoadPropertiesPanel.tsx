@@ -4,7 +4,6 @@ import { useState } from "react";
 import { useTranslations } from "next-intl";
 import type {
   LaneBoundaryMarking,
-  LaneDirection,
   Road,
   RoadEdgeMarking,
   MovementType,
@@ -36,7 +35,6 @@ interface RoadPropertiesPanelProps {
     width_m?: number;
     lane_count?: number;
     lane_width_m?: number;
-    lane_directions?: LaneDirection[];
     lane_allowed_movements?: MovementType[][];
     left_edge_marking?: RoadEdgeMarking;
     right_edge_marking?: RoadEdgeMarking;
@@ -57,7 +55,7 @@ export function RoadPropertiesPanel({
   const laneCount = Math.max(MIN_EDITOR_LANE_COUNT, road.lanes.length);
   const laneWidth = laneWidthMeters(road);
   const width = road.width_m ?? laneCount * laneWidth;
-  const directions: LaneDirection[] = Array.from(
+  const directions = Array.from(
     { length: laneCount },
     (_, index) => road.lanes[index]?.direction ?? "FORWARD",
   );
@@ -86,14 +84,12 @@ export function RoadPropertiesPanel({
   const updateLaneModel = (
     count: number,
     widthM: number,
-    nextDirections = directions,
   ) => {
     if (count * widthM > MAX_EDITOR_ROAD_WIDTH_M) return;
     onChange({
       lane_count: count,
       lane_width_m: widthM,
       width_m: count * widthM,
-      lane_directions: nextDirections.slice(0, count),
       lane_boundary_markings: resizeBoundaryMarkings(road, count),
     });
   };

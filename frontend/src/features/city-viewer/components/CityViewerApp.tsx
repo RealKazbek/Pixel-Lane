@@ -10,7 +10,6 @@ import {
 import type {
   City,
   LaneBoundaryMarking,
-  LaneDirection,
   Point,
   RoadEdgeMarking,
   Road,
@@ -58,9 +57,9 @@ import {
 } from "../map/editor/editorState";
 import {
   buildRoadPropertiesPayload,
-  createRoad,
   deleteRoad,
   getEditorWorkspace,
+  replaceLaneConnections,
   replaceTopology,
   updateRoadGeometry,
   updateRoadProperties,
@@ -71,7 +70,6 @@ type RoadChanges = {
   width_m?: number;
   lane_count?: number;
   lane_width_m?: number;
-  lane_directions?: LaneDirection[];
   lane_allowed_movements?: MovementType[][];
   left_edge_marking?: RoadEdgeMarking;
   right_edge_marking?: RoadEdgeMarking;
@@ -79,8 +77,8 @@ type RoadChanges = {
 };
 
 function applyRoadChanges(road: Road, changes: RoadChanges): Road {
-  const { lane_count, lane_width_m, lane_directions, lane_allowed_movements, lane_boundary_markings, ...simple } = changes;
-  if (!lane_count || !lane_width_m || !lane_directions) {
+  const { lane_count, lane_width_m, lane_allowed_movements, lane_boundary_markings, ...simple } = changes;
+  if (!lane_count || !lane_width_m) {
     return {
       ...road,
       ...simple,
@@ -90,7 +88,17 @@ function applyRoadChanges(road: Road, changes: RoadChanges): Road {
       ...(lane_boundary_markings ? { lane_boundary_markings } : {}),
     };
   }
-  const laneConfiguration = buildLaneConfiguration(road, lane_count, lane_width_m, lane_directions);
+  const laneDirections = Array.from(
+    { length: lane_count },
+    (_, index) =>
+      road.lanes[index]?.direction ?? road.lanes.at(-1)?.direction ?? "FORWARD",
+  );
+  const laneConfiguration = buildLaneConfiguration(
+    road,
+    lane_count,
+    lane_width_m,
+    laneDirections,
+  );
   return laneConfiguration
     ? {
         ...road,
@@ -174,6 +182,24 @@ export function CityViewerApp() {
       console.error("Failed to persist EditorWorkspace topology", error),
     );
   }, [hydrated]);
+  const persistCreatedRoadTopology = useCallback(
+    (previousCity: City, nextCity: City) => {
+      if (!hydrated) return;
+      const previousRoadIds = new Set(previousCity.roads.map((road) => road.id));
+      const createdRoads = nextCity.roads.filter(
+        (road) => !previousRoadIds.has(road.id),
+      );
+      void (async () => {
+        await replaceTopology(nextCity.id, nextCity, createdRoads);
+        if (nextCity.lane_connections) {
+          await replaceLaneConnections(nextCity.id, nextCity.lane_connections);
+        }
+      })().catch((error) =>
+        console.error("Failed to persist created road topology", error),
+      );
+    },
+    [hydrated],
+  );
   const selectedRoad =
     selected?.type === "road"
       ? city.roads.find((road) => road.id === selected.id)
@@ -216,7 +242,6 @@ export function CityViewerApp() {
       width_m?: number;
       lane_count?: number;
       lane_width_m?: number;
-    lane_directions?: LaneDirection[];
     lane_allowed_movements?: MovementType[][];
       left_edge_marking?: RoadEdgeMarking;
       right_edge_marking?: RoadEdgeMarking;
@@ -464,31 +489,21 @@ export function CityViewerApp() {
         `Road ${String.fromCharCode(65 + city.roads.length)}`,
         [drawStartPoint.point, point],
       );
-      setCity((current) => {
-        const next =
-          addRoadWithEndpointSnaps(
-            current,
-            road,
-            drawStartPoint.snapTarget,
-            snapTarget,
-          ) ?? current;
-        if (next !== current) {
-          const created = next.roads.find((candidate) => candidate.id === id);
-          if (created) {
-            void createRoad(next.id, created).catch((error) => {
-              console.error("Failed to persist new EditorWorkspace road", error);
-              setCity(current);
-            });
-          }
-          persistCityTopology(next);
-        }
-        return next;
-      });
+      const previousCity = city;
+      const next = addRoadWithEndpointSnaps(
+        previousCity,
+        road,
+        drawStartPoint.snapTarget,
+        snapTarget,
+      );
+      if (!next) return;
+      setCity(next);
+      persistCreatedRoadTopology(previousCity, next);
       setSelected({ type: "road", id });
       setDrawStartPoint(null);
       dispatch({ type: "set-tool", tool: "select" });
     },
-    [city.roads.length, drawStartPoint, persistCityTopology],
+    [city, drawStartPoint, persistCreatedRoadTopology],
   );
 
   useEffect(() => {

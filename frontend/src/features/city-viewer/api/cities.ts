@@ -179,7 +179,11 @@ export function generateLaneConnections(cityId: string): Promise<{
   );
 }
 
-export function replaceTopology(cityId: string, city: Pick<City, "roads" | "intersections">): Promise<void> {
+export function replaceTopology(
+  cityId: string,
+  city: Pick<City, "roads" | "intersections">,
+  newRoads: Road[] = [],
+): Promise<void> {
   return apiRequest<void>(`/api/v1/cities/${cityId}/topology`, {
     method: "PUT",
     body: JSON.stringify({
@@ -192,6 +196,7 @@ export function replaceTopology(cityId: string, city: Pick<City, "roads" | "inte
         control_type: intersection.control_type,
         traffic_light_id: intersection.traffic_light_id,
       })),
+      new_roads: newRoads.map((road) => ({ ...road, city_id: undefined })),
     }),
   });
 }

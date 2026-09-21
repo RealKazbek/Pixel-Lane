@@ -67,11 +67,11 @@ describe("road presets", () => {
     expect(result?.width_m).toBe(7);
   });
 
-  it("applies the two-way 4-lane preset with inner separators", () => {
+  it("applies the two-way 4-lane styling without changing lane travel direction", () => {
     const result = applyRoadPreset(road, getRoadPreset("two-way-4-lane"));
     expect(result?.lanes.map((lane) => lane.direction)).toEqual([
       "FORWARD",
-      "FORWARD",
+      "BACKWARD",
       "BACKWARD",
       "BACKWARD",
     ]);
@@ -83,12 +83,13 @@ describe("road presets", () => {
   });
 
   it.each(["one-way-2-lane", "one-way-3-lane"] as const)(
-    "%s contains only one travel direction and dashed separators",
+    "%s changes lane styling without editing existing travel direction",
     (presetId) => {
       const result = applyRoadPreset(road, getRoadPreset(presetId));
-      expect(result?.lanes.every((lane) => lane.direction === "FORWARD")).toBe(
-        true,
-      );
+      expect(result?.lanes.slice(0, 2).map((lane) => lane.direction)).toEqual([
+        "FORWARD",
+        "BACKWARD",
+      ]);
       expect(
         result?.lane_boundary_markings?.every(
           (marking) => marking === "DASHED_WHITE",
@@ -114,7 +115,7 @@ describe("road presets", () => {
 
   it("matches exact presets and becomes custom after a manual override", () => {
     const applied = applyRoadPreset(road, getRoadPreset("two-way-4-lane"));
-    expect(applied && matchRoadPreset(applied)?.id).toBe("two-way-4-lane");
+    expect(matchRoadPreset(applied!)).toBeNull();
     if (!applied) throw new Error("Expected a valid preset result");
 
     const manualConfiguration = buildLaneConfiguration(

@@ -231,6 +231,21 @@ def create_road(db: Session, city_id: UUID, payload: RoadCreate) -> Road | None:
     city = db.execute(select(City).where(City.id == city_id)).scalar_one_or_none()
     if city is None:
         return None
+    road = _road_from_create(city_id, payload)
+    db.add(road)
+    db.execute(update(City).where(City.id == city_id).values(updated_at=func.now()))
+    try:
+        db.commit()
+    except Exception:
+        db.rollback()
+        raise
+    loaded = db.execute(
+        select(Road).where(Road.id == payload.id).options(selectinload(Road.lanes))
+    ).scalar_one()
+    return loaded
+
+
+def _road_from_create(city_id: UUID, payload: RoadCreate) -> Road:
     road = Road(
         id=payload.id,
         city_id=city_id,
@@ -264,17 +279,7 @@ def create_road(db: Session, city_id: UUID, payload: RoadCreate) -> Road | None:
         )
         for lane in payload.lanes
     ]
-    db.add(road)
-    db.execute(update(City).where(City.id == city_id).values(updated_at=func.now()))
-    try:
-        db.commit()
-    except Exception:
-        db.rollback()
-        raise
-    loaded = db.execute(
-        select(Road).where(Road.id == payload.id).options(selectinload(Road.lanes))
-    ).scalar_one()
-    return loaded
+    return road
 
 
 def delete_road(db: Session, city_id: UUID, road_id: UUID) -> bool:
@@ -336,7 +341,36 @@ def replace_topology(db: Session, city_id: UUID, payload: TopologyUpdate) -> boo
     if city is None:
         return False
     roads = {road.id: road for road in city.roads}
-    lanes = {lane.id: lane for road in city.roads for lane in road.lanes}
+    submitted_geometries = [road.geometry.points for road in payload.roads]
+    for index, points in enumerate(submitted_geometries):
+        if len(points) < 2 or any(
+            ((left.x - right.x) ** 2 + (left.y - right.y) ** 2) ** 0.5 <= 1e-9
+            for left, right in zip(points, points[1:], strict=False)
+        ):
+            raise ValueError(f"TOPOLOGY_DEGENERATE_ROAD:{index}")
+        for other in submitted_geometries[index + 1 :]:
+            if len(points) != len(other):
+                continue
+            direct = all(
+                ((left.x - right.x) ** 2 + (left.y - right.y) ** 2) ** 0.5
+                <= EDITOR_INTERSECTION_SNAP_TOLERANCE_M
+                for left, right in zip(points, other, strict=True)
+            )
+            reverse = all(
+                ((left.x - right.x) ** 2 + (left.y - right.y) ** 2) ** 0.5
+                <= EDITOR_INTERSECTION_SNAP_TOLERANCE_M
+                for left, right in zip(points, reversed(other), strict=True)
+            )
+            if direct or reverse:
+                raise ValueError("TOPOLOGY_DUPLICATE_ROAD")
+    for road_payload in payload.new_roads:
+        if road_payload.id in roads:
+            continue
+        road = _road_from_create(city_id, road_payload)
+        db.add(road)
+        roads[road.id] = road
+    db.flush()
+    lanes = {lane.id: lane for road in roads.values() for lane in road.lanes}
     items = payload.intersections
     for index, left in enumerate(items):
         for right in items[index + 1 :]:
@@ -347,10 +381,10 @@ def replace_topology(db: Session, city_id: UUID, payload: TopologyUpdate) -> boo
             if distance <= EDITOR_INTERSECTION_SNAP_TOLERANCE_M:
                 raise ValueError("TOPOLOGY_DUPLICATE_INTERSECTION")
     for update_payload in payload.roads:
-        road = roads.get(update_payload.id)
-        if road is None:
+        topology_road = roads.get(update_payload.id)
+        if topology_road is None:
             raise ValueError("TOPOLOGY_ROAD_NOT_FOUND")
-        road.geometry = [point.model_dump() for point in update_payload.geometry.points]
+        topology_road.geometry = [point.model_dump() for point in update_payload.geometry.points]
     for intersection in list(city.intersections):
         db.delete(intersection)
     db.flush()
