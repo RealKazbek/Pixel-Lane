@@ -2,11 +2,22 @@
 
 import { useTranslations } from "next-intl";
 import type { Intersection, Road } from "../types/city";
+import {
+  getLaneDirectionRelativeToIntersection,
+  getRoadEndpointAtIntersection,
+  type LaneRelativeDirection,
+} from "../editor/intersectionLaneDirection";
 
 interface IntersectionPropertiesPanelProps {
   intersection: Intersection;
   roads: Road[];
   onCornerRadiusChange: (radius: number) => void;
+  onLaneDirectionChange: (
+    roadId: string,
+    laneId: string,
+    direction: LaneRelativeDirection,
+  ) => void;
+  validationError?: string | null;
 }
 
 const DEFAULT_RADIUS_M = 6;
@@ -49,6 +60,8 @@ export function IntersectionPropertiesPanel({
   intersection,
   roads,
   onCornerRadiusChange,
+  onLaneDirectionChange,
+  validationError,
 }: IntersectionPropertiesPanelProps) {
   const t = useTranslations("cityModel.intersectionProperties");
   const connectedRoads = intersection.connected_road_ids
@@ -99,18 +112,70 @@ export function IntersectionPropertiesPanel({
           <span className="text-muted-foreground">m</span>
         </div>
       </label>
+      {validationError && (
+        <p role="alert" className="mt-3 rounded border border-danger/40 bg-danger/10 p-2 text-danger">
+          {validationError}
+        </p>
+      )}
       <div className="mt-3 border-t border-border-subtle pt-3">
-        <h3 className="mb-1 text-muted-foreground">{t("connectedRoadList")}</h3>
-        <ul className="space-y-1">
-          {connectedRoads.map((road) => (
-            <li key={road.id} className="truncate">
-              {road.name}{" "}
-              <span className="font-mono text-muted-foreground">
-                ({road.id})
-              </span>
-            </li>
-          ))}
-        </ul>
+        <h3 className="mb-2 text-muted-foreground">{t("connectedRoadList")}</h3>
+        <div className="space-y-2">
+          {connectedRoads.map((road) => {
+            const endpoint = getRoadEndpointAtIntersection(road, intersection);
+            return (
+              <details key={road.id} open className="rounded border border-border-subtle p-2">
+                <summary className="cursor-pointer font-medium">
+                  <span>{road.name}</span>
+                  <span className="ml-1 text-muted-foreground">
+                    ({endpoint ? t("endpoint" + endpoint) : t("endpointUnknown")})
+                  </span>
+                </summary>
+                <div className="mt-2 space-y-1.5">
+                  {road.lanes.map((lane) => {
+                    const direction = getLaneDirectionRelativeToIntersection(
+                      road,
+                      lane,
+                      intersection,
+                    );
+                    return (
+                      <div key={lane.id} className="rounded bg-background/60 p-1.5">
+                        <div className="mb-1 text-[11px] text-muted-foreground">
+                          {t("laneNumber", { number: lane.index + 1 })}
+                        </div>
+                        <div className="grid grid-cols-2 gap-1">
+                          {(["INBOUND", "OUTBOUND"] as const).map((option) => (
+                            <button
+                              key={option}
+                              type="button"
+                              disabled={!endpoint}
+                              aria-pressed={direction === option}
+                              title={t("laneDirection." + option)}
+                              onClick={() =>
+                                onLaneDirectionChange(road.id, lane.id, option)
+                              }
+                              className={
+                                "rounded border px-1 py-1 text-[10px] transition-colors " +
+                                (direction === option
+                                  ? "border-primary bg-primary/15 text-primary"
+                                  : "border-border-subtle text-muted-foreground hover:bg-surface-elevated") +
+                                " disabled:cursor-not-allowed disabled:opacity-50"
+                              }
+                            >
+                              <span aria-hidden="true">
+                                {option === "INBOUND" ? "↓" : "↑"}
+                              </span>{" "}
+                              {t("laneDirection." + option)}
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </details>
+            );
+          })}
+        </div>
       </div>
       <p className="mt-3 text-[11px] leading-snug text-muted-foreground">
         {t("topologySummary", { id: intersection.id })}

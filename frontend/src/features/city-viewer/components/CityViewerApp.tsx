@@ -33,6 +33,11 @@ import { EditorToolbar } from "../map/EditorToolbar";
 import { RoadPropertiesPanel } from "../map/RoadPropertiesPanel";
 import { IntersectionPropertiesPanel } from "../map/IntersectionPropertiesPanel";
 import { buildLaneConfiguration } from "../editor/laneConfiguration";
+import {
+  laneDirectionForIntersectionDirection,
+  isLaneConnectionDirectionallyValid,
+  type LaneRelativeDirection,
+} from "../editor/intersectionLaneDirection";
 import { removeRoadFromCity } from "../editor/roadDeletion";
 import {
   applyRoadPreset,
@@ -114,6 +119,7 @@ export function CityViewerApp() {
   const [hydrated, setHydrated] = useState(false);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [deleteError, setDeleteError] = useState<string | null>(null);
+  const [topologyValidationError, setTopologyValidationError] = useState<string | null>(null);
   const [deleteConfirmationRoad, setDeleteConfirmationRoad] = useState<Road | null>(null);
   const [isDeletingRoad, setIsDeletingRoad] = useState(false);
   const [isFullscreen, setIsFullscreen] = useState(false);
@@ -294,7 +300,52 @@ export function CityViewerApp() {
     setSelected(selection);
     setSelectedVertexIndex(null);
     setDeleteError(null);
+    setTopologyValidationError(null);
   }, []);
+
+  const handleIntersectionLaneDirectionChange = useCallback(
+    (roadId: string, laneId: string, relativeDirection: LaneRelativeDirection) => {
+      if (selected?.type !== "intersection") return;
+      const intersection = city.intersections.find((item) => item.id === selected.id);
+      const road = city.roads.find((item) => item.id === roadId);
+      const lane = road?.lanes.find((item) => item.id === laneId);
+      if (!intersection || !road || !lane) return;
+      const direction = laneDirectionForIntersectionDirection(
+        road,
+        lane,
+        intersection,
+        relativeDirection,
+      );
+      if (!direction) return;
+      const updatedRoad = {
+        ...road,
+        lanes: road.lanes.map((item) =>
+          item.id === laneId ? { ...item, direction } : item,
+        ),
+      };
+      const nextCity = {
+        ...city,
+        roads: city.roads.map((item) => item.id === roadId ? updatedRoad : item),
+      };
+      const invalidConnection = (city.lane_connections ?? []).find(
+        (connection) =>
+          (connection.from_road_id === roadId || connection.to_road_id === roadId) &&
+          !isLaneConnectionDirectionallyValid(
+            nextCity.roads,
+            nextCity.intersections,
+            connection,
+          ),
+      );
+      if (invalidConnection) {
+        setTopologyValidationError(tProperties("directionChangeBreaksConnections"));
+        return;
+      }
+      setTopologyValidationError(null);
+      setCity(nextCity);
+      persistRoad(updatedRoad);
+    },
+    [city, persistRoad, selected, tProperties],
+  );
   const handleToggleLayer = useCallback((layer: LayerGroupId) => {
     setLayerVisibility((current) => ({
       ...current,
@@ -512,6 +563,8 @@ export function CityViewerApp() {
             session.activeTool === "draw-road" ? "draw-road" : "select"
           }
           snapLabel={t("snap")}
+          compassLabel={tMap("compass")}
+          resetNorthLabel={tMap("resetNorth")}
           onDrawPoint={handleDrawPoint}
           editorAction={null}
           onEditorStatusChange={() => undefined}
@@ -545,6 +598,8 @@ export function CityViewerApp() {
             intersection={selectedIntersection}
             roads={city.roads}
             onCornerRadiusChange={handleIntersectionRadiusChange}
+            onLaneDirectionChange={handleIntersectionLaneDirectionChange}
+            validationError={topologyValidationError}
           />
         )}
         {deleteConfirmationRoad && (

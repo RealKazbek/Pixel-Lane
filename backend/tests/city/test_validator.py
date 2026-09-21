@@ -130,6 +130,7 @@ def test_valid_lane_connection_has_no_issues() -> None:
     intersection = data["intersections"][0]
     from_road = data["roads"][0]
     to_road = data["roads"][1]
+    to_road["lanes"][0]["direction"] = "BACKWARD"
     data["lane_connections"] = [
         {
             "id": str(uuid.uuid5(uuid.NAMESPACE_URL, "pixel-lane/test-connection")),

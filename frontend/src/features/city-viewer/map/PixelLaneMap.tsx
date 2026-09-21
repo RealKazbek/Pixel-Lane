@@ -54,6 +54,8 @@ import {
   buildCrosswalkFeatureCollection,
 } from "./adapters/cityAmenitiesToGeoJson";
 import { buildLaneConnectionFeatureCollection } from "./adapters/laneConnectionGeometry";
+import { buildJunctionLaneDirectionFeatureCollection } from "./adapters/junctionLaneDirection";
+import { MapCompass } from "./MapCompass";
 import {
   addPixelLaneSourcesAndLayers,
   setLayerGroupVisibility,
@@ -113,6 +115,8 @@ interface PixelLaneMapProps {
   mode: MapMode;
   activeTool?: "select" | "draw-road";
   snapLabel?: string;
+  compassLabel?: string;
+  resetNorthLabel?: string;
   onDrawPoint?: (point: Point, snapTarget: EndpointSnapTarget | null) => void;
   editorAction: EditorAction | null;
   onEditorStatusChange: (
@@ -150,6 +154,8 @@ export function PixelLaneMap({
   mode,
   activeTool = "select",
   snapLabel = "Snap",
+  compassLabel = "Map compass",
+  resetNorthLabel = "Reset map bearing to north",
   onDrawPoint,
   editorAction,
   onEditorStatusChange,
@@ -185,6 +191,7 @@ export function PixelLaneMap({
   const [draggingEndpoint, setDraggingEndpoint] = useState<string | null>(null);
   const [snapCandidate, setSnapCandidate] =
     useState<EndpointSnapCandidate | null>(null);
+  const [mapBearing, setMapBearing] = useState(0);
 
   const projectSnapTargets = useCallback(
     (
@@ -278,6 +285,19 @@ export function PixelLaneMap({
     zoom: 13,
   });
 
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map || !isLoaded) return;
+    const updateBearing = () => setMapBearing(map.getBearing());
+    updateBearing();
+    map.on("rotate", updateBearing);
+    map.on("move", updateBearing);
+    return () => {
+      map.off("rotate", updateBearing);
+      map.off("move", updateBearing);
+    };
+  }, [isLoaded, mapRef]);
+
   // Rendered map data is viewport-scoped (see map/README.md), not the
   // whole `city` -- `city` itself stays the full City Model, still used
   // for selection/details/editor lookups below, which must keep working
@@ -300,6 +320,8 @@ export function PixelLaneMap({
     selected?.type === "road"
       ? city.roads.find((candidate) => candidate.id === selected.id)
       : null;
+  const selectedIntersectionId =
+    selected?.type === "intersection" ? selected.id : null;
 
   useEffect(() => {
     onViewportStatusChange?.(viewport.status);
@@ -367,6 +389,13 @@ export function PixelLaneMap({
         },
         city.coordinate_system,
       ),
+      junctionLaneDirections: buildJunctionLaneDirectionFeatureCollection(
+        city.coordinate_system === "LOCAL_CARTESIAN" ? city.roads : [],
+        selectedIntersectionId
+          ? visibleIntersections.find((item) => item.id === selectedIntersectionId) ?? null
+          : null,
+        city.coordinate_system,
+      ),
       laneUseMarkings: buildLaneUseMarkingFeatureCollection(
         visibleRoads,
         city.coordinate_system,
@@ -402,6 +431,7 @@ export function PixelLaneMap({
     city.lane_connections,
     editorWorld,
     gridZoom,
+    selectedIntersectionId,
   ]);
 
   useEffect(() => {
@@ -814,6 +844,34 @@ export function PixelLaneMap({
       previousIntersectionId,
       nextIntersectionId,
     );
+    const connectedRoadIds = new Set<string>([
+      ...(previousIntersectionId
+        ? city.intersections.find((i) => i.id === previousIntersectionId)
+            ?.connected_road_ids ?? []
+        : []),
+      ...(nextIntersectionId
+        ? city.intersections.find((i) => i.id === nextIntersectionId)
+            ?.connected_road_ids ?? []
+        : []),
+    ]);
+    for (const roadId of connectedRoadIds) {
+      const wasConnected = previousIntersectionId
+        ? city.intersections
+            .find((i) => i.id === previousIntersectionId)
+            ?.connected_road_ids.includes(roadId) ?? false
+        : false;
+      const isConnected = nextIntersectionId
+        ? city.intersections
+            .find((i) => i.id === nextIntersectionId)
+            ?.connected_road_ids.includes(roadId) ?? false
+        : false;
+      setSelectedFeature(
+        map,
+        SOURCE_IDS.roads,
+        wasConnected ? roadId : null,
+        isConnected ? roadId : null,
+      );
+    }
 
     const previousLightId = previousIntersectionId
       ? (city.intersections.find((i) => i.id === previousIntersectionId)
@@ -970,6 +1028,14 @@ export function PixelLaneMap({
   return (
     <div className="city-model-map relative h-full w-full">
       <div ref={containerRef} className="h-full w-full" />
+      <div className="pointer-events-none absolute right-14 top-3 z-10">
+        <MapCompass
+          bearing={mapBearing}
+          label={compassLabel}
+          resetLabel={resetNorthLabel}
+          onReset={() => mapRef.current?.easeTo({ bearing: 0, duration: 200 })}
+        />
+      </div>
       <div className="pointer-events-none absolute inset-0" aria-hidden="true">
         {snapCandidate && (activeTool === "draw-road" || draggingEndpoint) && (
           <span

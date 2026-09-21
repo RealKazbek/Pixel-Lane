@@ -116,6 +116,13 @@ class LaneDirection(StrEnum):
     BACKWARD = "BACKWARD"
 
 
+class LaneRelativeDirection(StrEnum):
+    """Travel direction at a selected intersection."""
+
+    INBOUND = "INBOUND"
+    OUTBOUND = "OUTBOUND"
+
+
 class LaneBoundaryMarking(StrEnum):
     NONE = "NONE"
     DASHED_WHITE = "DASHED_WHITE"

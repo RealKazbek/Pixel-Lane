@@ -24,6 +24,7 @@ import { buildRoadLayers } from "./roadLayers";
 import { buildRoadSurfaceLayers } from "./roadSurfaceLayers";
 import { buildLaneDetailLayers } from "./laneDetailLayers";
 import { buildLaneConnectionLayers } from "./laneConnectionLayers";
+import { buildJunctionLaneDirectionLayers } from "./junctionLaneDirectionLayers";
 import { buildAmenityLayers } from "./amenityLayers";
 import { ensurePixelLaneIcons } from "./icons";
 import {
@@ -47,6 +48,7 @@ import type {
   TurnArrowFeatureCollection,
 } from "../adapters/laneGeometry";
 import type { LaneConnectionFeatureCollection } from "../adapters/laneConnectionGeometry";
+import type { JunctionLaneDirectionFeatureCollection } from "../adapters/junctionLaneDirection";
 import type { RoadSurfaceFeatureCollection } from "../adapters/roadSurfaceGeometry";
 import type {
   BusStopFeatureCollection,
@@ -63,6 +65,7 @@ export interface PixelLaneGeoJson {
   laneBoundaries: LaneBoundaryFeatureCollection;
   turnArrows: TurnArrowFeatureCollection;
   laneConnections: LaneConnectionFeatureCollection;
+  junctionLaneDirections: JunctionLaneDirectionFeatureCollection;
   laneUseMarkings: LaneUseMarkingFeatureCollection;
   roadSurfaces: RoadSurfaceFeatureCollection;
   busStops: BusStopFeatureCollection;
@@ -92,6 +95,7 @@ function buildAllLayers(
     ...buildRoadSurfaceLayers(theme),
     ...buildLaneDetailLayers(theme),
     ...buildLaneConnectionLayers(theme),
+    ...buildJunctionLaneDirectionLayers(theme),
     ...buildAmenityLayers(theme),
     ...buildIntersectionLayers(theme),
     buildTrafficLightLayer(theme),
@@ -152,6 +156,12 @@ export function addPixelLaneSourcesAndLayers(
     map.addSource(SOURCE_IDS.laneConnections, {
       type: "geojson",
       data: data.laneConnections,
+    });
+  }
+  if (!map.getSource(SOURCE_IDS.junctionLaneDirections)) {
+    map.addSource(SOURCE_IDS.junctionLaneDirections, {
+      type: "geojson",
+      data: data.junctionLaneDirections,
     });
   }
   if (!map.getSource(SOURCE_IDS.laneUseMarkings)) {
@@ -257,6 +267,9 @@ export function updatePixelLaneData(
   const laneConnectionsSource = map.getSource(SOURCE_IDS.laneConnections);
   if (laneConnectionsSource instanceof GeoJSONSource)
     laneConnectionsSource.setData(data.laneConnections);
+  const junctionLaneDirectionsSource = map.getSource(SOURCE_IDS.junctionLaneDirections);
+  if (junctionLaneDirectionsSource instanceof GeoJSONSource)
+    junctionLaneDirectionsSource.setData(data.junctionLaneDirections);
 
   const laneUseMarkingsSource = map.getSource(SOURCE_IDS.laneUseMarkings);
   if (laneUseMarkingsSource instanceof GeoJSONSource)

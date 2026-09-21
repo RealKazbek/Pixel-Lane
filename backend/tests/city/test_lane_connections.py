@@ -3,13 +3,16 @@ from uuid import UUID
 
 import pytest
 
-from app.city.domain.enums import LaneDirection, MovementType
+from app.city.domain.enums import LaneDirection, LaneRelativeDirection, MovementType
 from app.city.domain.lane_connections import (
     LaneApproach,
     classify_maneuver,
+    lane_direction_relative_to_intersection,
     match_lane_approaches,
     stable_lane_connection_id,
 )
+from app.city.examples import load_four_way_intersection
+from app.city.schemas.city import CityCreate
 
 INTERSECTION_ID = UUID("00000000-0000-0000-0000-000000000001")
 
@@ -87,3 +90,29 @@ def test_maneuver_classification_and_stable_identity() -> None:
     assert stable_lane_connection_id(
         INTERSECTION_ID, UUID(int=1), UUID(int=2), MovementType.RIGHT
     ) == stable_lane_connection_id(INTERSECTION_ID, UUID(int=1), UUID(int=2), MovementType.RIGHT)
+
+
+def test_lane_direction_is_relative_to_the_connected_endpoint() -> None:
+    city = CityCreate.model_validate(load_four_way_intersection())
+    road = city.roads[0]
+    intersection_at_a = city.intersections[0].model_copy(
+        update={
+            "id": UUID(int=99),
+            "position": road.geometry.points[0],
+            "connected_road_ids": [road.id],
+        }
+    )
+    city = city.model_copy(update={"intersections": [*city.intersections, intersection_at_a]})
+
+    assert (
+        lane_direction_relative_to_intersection(
+            city, city.intersections[0].id, road.id, LaneDirection.FORWARD
+        )
+        == LaneRelativeDirection.INBOUND
+    )
+    assert (
+        lane_direction_relative_to_intersection(
+            city, intersection_at_a.id, road.id, LaneDirection.FORWARD
+        )
+        == LaneRelativeDirection.OUTBOUND
+    )

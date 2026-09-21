@@ -10,7 +10,7 @@ from dataclasses import dataclass
 from math import atan2, degrees, hypot
 from uuid import UUID, uuid5
 
-from app.city.domain.enums import LaneDirection, MovementType
+from app.city.domain.enums import LaneDirection, LaneRelativeDirection, MovementType
 from app.city.schemas.city import CityRead
 from app.city.schemas.lane_connection import LaneConnectionCreate
 
@@ -165,10 +165,44 @@ def generate_intersection_connections(city: CityRead, intersection_id: UUID) -> 
 
 
 def _is_incoming(city: CityRead, intersection_id: UUID, approach: LaneApproach) -> bool:
-    intersection = next(item for item in city.intersections if item.id == intersection_id)
-    road = next(item for item in city.roads if item.id == approach.road_id)
-    first, last = road.geometry.points[0], road.geometry.points[-1]
-    at_first = hypot(first.x - intersection.position.x, first.y - intersection.position.y) <= hypot(
-        last.x - intersection.position.x, last.y - intersection.position.y
+    return (
+        lane_direction_relative_to_intersection(
+            city,
+            intersection_id,
+            approach.road_id,
+            approach.direction,
+        )
+        == LaneRelativeDirection.INBOUND
     )
-    return approach.direction == (LaneDirection.BACKWARD if at_first else LaneDirection.FORWARD)
+
+
+def lane_direction_relative_to_intersection(
+    city: CityRead,
+    intersection_id: UUID,
+    road_id: UUID,
+    direction: LaneDirection,
+) -> LaneRelativeDirection | None:
+    """Resolve a road-relative lane direction at one intersection.
+
+    ``FORWARD`` always means the road's first point toward its last point;
+    whether that is inbound or outbound depends on which endpoint touches the
+    selected intersection.
+    """
+    intersection = next((item for item in city.intersections if item.id == intersection_id), None)
+    road = next((item for item in city.roads if item.id == road_id), None)
+    if intersection is None or road is None or len(road.geometry.points) < 2:
+        return None
+    first, last = road.geometry.points[0], road.geometry.points[-1]
+    first_distance = hypot(
+        first.x - intersection.position.x,
+        first.y - intersection.position.y,
+    )
+    last_distance = hypot(
+        last.x - intersection.position.x,
+        last.y - intersection.position.y,
+    )
+    if road_id not in intersection.connected_road_ids:
+        return None
+    at_first = first_distance < last_distance
+    inbound = direction == (LaneDirection.BACKWARD if at_first else LaneDirection.FORWARD)
+    return LaneRelativeDirection.INBOUND if inbound else LaneRelativeDirection.OUTBOUND

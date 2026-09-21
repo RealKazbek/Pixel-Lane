@@ -2,6 +2,8 @@
 
 from uuid import UUID
 
+from app.city.domain.enums import LaneRelativeDirection
+from app.city.domain.lane_connections import lane_direction_relative_to_intersection
 from app.city.schemas.city import CityRead, ValidationIssue
 from app.city.schemas.lane_connection import LaneConnectionCreate
 
@@ -101,6 +103,62 @@ def validate_lane_connections(
                     )
                 )
 
+        from_road = next((road for road in city.roads if road.id == connection.from_road_id), None)
+        from_lane_model = next(
+            (
+                lane
+                for road in city.roads
+                if road.id == connection.from_road_id
+                for lane in road.lanes
+                if lane.id == connection.from_lane_id
+            ),
+            None,
+        )
+        to_lane_model = next(
+            (
+                lane
+                for road in city.roads
+                if road.id == connection.to_road_id
+                for lane in road.lanes
+                if lane.id == connection.to_lane_id
+            ),
+            None,
+        )
+        if from_road is not None and from_lane_model is not None:
+            if (
+                lane_direction_relative_to_intersection(
+                    city,
+                    connection.intersection_id,
+                    connection.from_road_id,
+                    from_lane_model.direction,
+                )
+                != LaneRelativeDirection.INBOUND
+            ):
+                issues.append(
+                    ValidationIssue(
+                        code="CONNECTION_SOURCE_NOT_INBOUND",
+                        message="Connection source lane must enter the intersection",
+                        path=f"{path}.from_lane_id",
+                    )
+                )
+        if to_lane_model is not None:
+            if (
+                lane_direction_relative_to_intersection(
+                    city,
+                    connection.intersection_id,
+                    connection.to_road_id,
+                    to_lane_model.direction,
+                )
+                != LaneRelativeDirection.OUTBOUND
+            ):
+                issues.append(
+                    ValidationIssue(
+                        code="CONNECTION_TARGET_NOT_OUTBOUND",
+                        message="Connection target lane must leave the intersection",
+                        path=f"{path}.to_lane_id",
+                    )
+                )
+
         if connection.from_road_id not in intersection.connected_road_ids:
             issues.append(
                 ValidationIssue(
@@ -118,4 +176,66 @@ def validate_lane_connections(
                 )
             )
 
+    return issues
+
+
+def validate_road_direction_changes(city: CityRead, road_id: UUID) -> list[ValidationIssue]:
+    """Validate only persisted movements affected by a road direction edit."""
+    issues: list[ValidationIssue] = []
+    for index, connection in enumerate(city.lane_connections):
+        if connection.from_road_id != road_id and connection.to_road_id != road_id:
+            continue
+        intersection = next(
+            (item for item in city.intersections if item.id == connection.intersection_id),
+            None,
+        )
+        from_road = next((road for road in city.roads if road.id == connection.from_road_id), None)
+        to_road = next((road for road in city.roads if road.id == connection.to_road_id), None)
+        from_lane = next(
+            (
+                lane
+                for road in city.roads
+                for lane in road.lanes
+                if lane.id == connection.from_lane_id
+            ),
+            None,
+        )
+        to_lane = next(
+            (
+                lane
+                for road in city.roads
+                for lane in road.lanes
+                if lane.id == connection.to_lane_id
+            ),
+            None,
+        )
+        if not intersection or not from_road or not to_road or not from_lane or not to_lane:
+            continue
+        path = f"connections[{index}]"
+        if (
+            lane_direction_relative_to_intersection(
+                city, intersection.id, from_road.id, from_lane.direction
+            )
+            != LaneRelativeDirection.INBOUND
+        ):
+            issues.append(
+                ValidationIssue(
+                    code="CONNECTION_SOURCE_NOT_INBOUND",
+                    message="Connection source lane must enter the intersection",
+                    path=f"{path}.from_lane_id",
+                )
+            )
+        if (
+            lane_direction_relative_to_intersection(
+                city, intersection.id, to_road.id, to_lane.direction
+            )
+            != LaneRelativeDirection.OUTBOUND
+        ):
+            issues.append(
+                ValidationIssue(
+                    code="CONNECTION_TARGET_NOT_OUTBOUND",
+                    message="Connection target lane must leave the intersection",
+                    path=f"{path}.to_lane_id",
+                )
+            )
     return issues

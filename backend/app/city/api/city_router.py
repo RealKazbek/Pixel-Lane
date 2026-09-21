@@ -207,8 +207,13 @@ def update_road_properties(
 ) -> RoadRead:
     try:
         road = city_service.update_road_properties(db, city_id, road_id, payload)
+    except CityValidationError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
+            detail={"issues": [issue.model_dump() for issue in exc.issues]},
+        ) from exc
     except ValueError as exc:
-        raise HTTPException(status_code=422, detail="ROAD_NAME_EMPTY") from exc
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
     if road is None:
         raise HTTPException(status_code=404, detail="Road not found")
     return road

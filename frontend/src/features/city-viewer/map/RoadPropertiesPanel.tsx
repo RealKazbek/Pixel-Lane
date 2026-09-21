@@ -195,30 +195,6 @@ export function RoadPropertiesPanel({
       </label>
       <fieldset className="mt-3">
         <legend className="mb-1 text-muted-foreground">
-          {t("directions")}
-        </legend>
-        <div className="space-y-1">
-          {directions.map((direction, index) => (
-            <button
-              key={index}
-              type="button"
-              onClick={() => {
-                const next = [...directions];
-                next[index] = direction === "FORWARD" ? "BACKWARD" : "FORWARD";
-                updateLaneModel(laneCount, laneWidth, next);
-              }}
-              className="flex w-full items-center justify-between rounded border border-border-subtle px-2 py-1 hover:bg-surface-elevated"
-            >
-              <span>{t("laneNumber", { number: index + 1 })}</span>
-              <span aria-label={direction}>
-                {direction === "FORWARD" ? "→" : "←"}
-              </span>
-            </button>
-          ))}
-        </div>
-      </fieldset>
-      <fieldset className="mt-3">
-        <legend className="mb-1 text-muted-foreground">
           {t("turnPermissions")}
         </legend>
         {road.lanes.map((lane, laneIndex) => (

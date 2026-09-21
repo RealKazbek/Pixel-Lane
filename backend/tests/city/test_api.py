@@ -59,6 +59,7 @@ def test_create_and_retrieve_city(client) -> None:
 @requires_postgres
 def test_lane_connections_persist_and_reload(client) -> None:
     data = _payload()
+    data["roads"][1]["lanes"][0]["direction"] = "BACKWARD"
     client.post("/api/v1/cities", json=data)
     intersection = data["intersections"][0]
     from_road = data["roads"][0]
@@ -92,6 +93,7 @@ def test_lane_connections_persist_and_reload(client) -> None:
 @requires_postgres
 def test_auto_lane_connections_is_deterministic(client) -> None:
     data = _payload()
+    data["roads"][1]["lanes"][0]["direction"] = "BACKWARD"
     assert client.post("/api/v1/cities", json=data).status_code == 201
 
     first = client.post(f"/api/v1/cities/{data['id']}/lane-connections/auto")
@@ -126,6 +128,7 @@ def test_topology_persists_connected_lane_ids(client) -> None:
 @requires_postgres
 def test_delete_road_reconciles_intersection_and_lane_connections(client) -> None:
     data = _payload()
+    data["roads"][1]["lanes"][0]["direction"] = "BACKWARD"
     assert client.post("/api/v1/cities", json=data).status_code == 201
     road = data["roads"][0]
     intersection = data["intersections"][0]

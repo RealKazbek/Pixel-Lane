@@ -26,7 +26,9 @@
     "selectCityPrompt": "Select a city from the sidebar to view its road network.",
     "cityHasNoRoadData": "This city has no road network data yet. Import the demo dataset to populate it.",
     "loadingViewportData": "Loading roads for this view…",
-    "viewportDataFailed": "Couldn't load roads for this view. Pan or zoom to retry."
+    "viewportDataFailed": "Couldn't load roads for this view. Pan or zoom to retry.",
+    "compass": "Map compass",
+    "resetNorth": "Reset map bearing to north"
   },
   "details": {
     "unknown": "Unknown",
@@ -151,7 +153,13 @@
     "typeFourWay": "Four-way",
     "typeY": "Y / angled",
     "typeMultiLeg": "Generic multi-leg",
-    "typeGeneric": "Generic"
+    "typeGeneric": "Generic",
+    "endpointA": "endpoint A",
+    "endpointB": "endpoint B",
+    "endpointUnknown": "endpoint unavailable",
+    "laneNumber": "Lane {number}",
+    "laneDirection": {"INBOUND": "Into intersection", "OUTBOUND": "Out of intersection"},
+    "directionChangeBreaksConnections": "This change would make an existing lane connection invalid."
   },
   "fullscreen": {
     "smoothing": "Smoothing",

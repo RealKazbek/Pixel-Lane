@@ -36,7 +36,10 @@ from app.city.schemas.spatial import BBox, MapLaneSummary, MapRoad
 from app.city.schemas.topology import TopologyUpdate
 from app.city.services.city_mapper import to_city_read, to_intersection_read, to_road_read
 from app.city.validators.city_validator import validate_city
-from app.city.validators.lane_connection_validator import validate_lane_connections
+from app.city.validators.lane_connection_validator import (
+    validate_lane_connections,
+    validate_road_direction_changes,
+)
 
 
 def find_map_roads(db: Session, city_id: UUID, bbox: BBox, zoom: float) -> list[MapRoad] | None:
@@ -231,6 +234,28 @@ def update_road_properties(
 ) -> RoadRead | None:
     if not properties.name.strip():
         raise ValueError("ROAD_NAME_EMPTY")
+    city = get_city(db, city_id)
+    if city is None:
+        return None
+    candidate_roads = [
+        road.model_copy(
+            update={
+                "lanes": [
+                    lane.model_copy(update={"direction": properties.lane_directions[index]})
+                    if index < len(properties.lane_directions)
+                    else lane
+                    for index, lane in enumerate(road.lanes)
+                ]
+            }
+        )
+        if road.id == road_id
+        else road
+        for road in city.roads
+    ]
+    candidate = city.model_copy(update={"roads": candidate_roads})
+    issues = validate_road_direction_changes(candidate, road_id)
+    if issues:
+        raise CityValidationError(issues)
     road = city_repository.update_road_properties(db, city_id, road_id, properties)
     return to_road_read(road) if road is not None else None
 
