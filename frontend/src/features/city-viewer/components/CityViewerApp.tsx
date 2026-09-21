@@ -29,6 +29,7 @@ import { EnvironmentControls } from "../map/environment/EnvironmentControls";
 import { WeatherOverlay } from "../map/environment/WeatherOverlay";
 import { SimulationClockDisplay } from "../map/environment/SimulationClockDisplay";
 import {
+  defaultTimeForMode,
   resolveTimeOfDay,
   useEnvironment,
 } from "../map/environment/useEnvironment";
@@ -464,9 +465,15 @@ export function CityViewerApp() {
               value={environment}
               timeOfDay={timeOfDay}
               simulationClock={simulationClock}
-              onTimeModeChange={(timeMode) =>
-                dispatchEnvironment({ type: "set-time-mode", timeMode })
-              }
+              onTimeModeChange={(timeMode) => {
+                dispatchEnvironment({ type: "set-time-mode", timeMode });
+                if (timeMode !== "auto") {
+                  dispatchSimulationClock({
+                    type: "set-time",
+                    time: defaultTimeForMode(timeMode),
+                  });
+                }
+              }}
               onWeatherChange={(weather) =>
                 dispatchEnvironment({ type: "set-weather", weather })
               }
@@ -476,9 +483,13 @@ export function CityViewerApp() {
               onDateChange={(date) =>
                 dispatchSimulationClock({ type: "set-date", date })
               }
-              onTimeChange={(time) =>
-                dispatchSimulationClock({ type: "set-time", time })
-              }
+              onTimeChange={(time) => {
+                dispatchSimulationClock({ type: "set-time", time });
+                dispatchEnvironment({
+                  type: "set-time-mode",
+                  timeMode: "auto",
+                });
+              }}
             />
           </div>
           <SimulationClockDisplay clock={simulationClock} />

@@ -5,6 +5,20 @@ export type TimeOfDay = "morning" | "day" | "evening" | "night";
 export type Weather = "clear" | "rain" | "snow" | "fog";
 export type WeatherIntensity = "light" | "medium" | "heavy";
 
+export const TIME_MODE_OPTIONS: TimeMode[] = [
+  "auto",
+  "morning",
+  "day",
+  "evening",
+  "night",
+];
+export const WEATHER_OPTIONS: Weather[] = ["clear", "rain", "snow", "fog"];
+export const WEATHER_INTENSITY_OPTIONS: WeatherIntensity[] = [
+  "light",
+  "medium",
+  "heavy",
+];
+
 export interface EnvironmentState {
   timeMode: TimeMode;
   weather: Weather;
@@ -24,6 +38,17 @@ export const INITIAL_ENVIRONMENT: EnvironmentState = {
 
 export function shouldShowWeatherIntensity(weather: Weather): boolean {
   return weather !== "clear";
+}
+
+export function defaultTimeForMode(
+  timeMode: Exclude<TimeMode, "auto">,
+): string {
+  return {
+    morning: "08:00",
+    day: "13:00",
+    evening: "19:00",
+    night: "23:00",
+  }[timeMode];
 }
 
 export function reduceEnvironment(

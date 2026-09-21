@@ -1,7 +1,12 @@
 import { useEffect, useRef, useState } from "react";
 import { useTranslations } from "next-intl";
 import type { SimulationClockState } from "./simulationClock";
-import { shouldShowWeatherIntensity } from "./useEnvironment";
+import {
+  shouldShowWeatherIntensity,
+  TIME_MODE_OPTIONS,
+  WEATHER_INTENSITY_OPTIONS,
+  WEATHER_OPTIONS,
+} from "./useEnvironment";
 import type {
   EnvironmentState,
   TimeMode,
@@ -20,20 +25,6 @@ interface EnvironmentControlsProps {
   onDateChange: (date: string) => void;
   onTimeChange: (time: string) => void;
 }
-
-export const TIME_MODE_OPTIONS: TimeMode[] = [
-  "auto",
-  "morning",
-  "day",
-  "evening",
-  "night",
-];
-export const WEATHER_OPTIONS: Weather[] = ["clear", "rain", "snow", "fog"];
-export const WEATHER_INTENSITY_OPTIONS: WeatherIntensity[] = [
-  "light",
-  "medium",
-  "heavy",
-];
 
 type OpenMenu = "time" | "weather" | null;
 

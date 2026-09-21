@@ -1,9 +1,13 @@
 import { describe, expect, it } from "vitest";
 import {
   INITIAL_ENVIRONMENT,
+  defaultTimeForMode,
   reduceEnvironment,
   resolveTimeOfDay,
   shouldShowWeatherIntensity,
+  TIME_MODE_OPTIONS,
+  WEATHER_INTENSITY_OPTIONS,
+  WEATHER_OPTIONS,
   type EnvironmentState,
 } from "./useEnvironment";
 import {
@@ -13,6 +17,18 @@ import {
 } from "./simulationClock";
 
 describe("environment state", () => {
+  it("exposes exactly the final time and weather option sets", () => {
+    expect(TIME_MODE_OPTIONS).toEqual([
+      "auto",
+      "morning",
+      "day",
+      "evening",
+      "night",
+    ]);
+    expect(WEATHER_OPTIONS).toEqual(["clear", "rain", "snow", "fog"]);
+    expect(WEATHER_INTENSITY_OPTIONS).toEqual(["light", "medium", "heavy"]);
+  });
+
   it("defaults to auto time and clear weather", () => {
     expect(INITIAL_ENVIRONMENT).toEqual({
       timeMode: "auto",
@@ -44,6 +60,15 @@ describe("environment state", () => {
       timeMode: "morning",
     });
     expect(resolveTimeOfDay(state.timeMode, "12:00")).toBe("morning");
+  });
+
+  it.each([
+    ["morning", "08:00"],
+    ["day", "13:00"],
+    ["evening", "19:00"],
+    ["night", "23:00"],
+  ] as const)("uses %s representative time", (mode, time) => {
+    expect(defaultTimeForMode(mode)).toBe(time);
   });
 
   it("keeps unrelated editor state outside the environment contract", () => {
