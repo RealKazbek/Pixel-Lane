@@ -88,7 +88,9 @@
   "environment": {
     "timeLabel": "Time",
     "weatherLabel": "Weather",
+    "dateLabel": "Date",
     "time": {
+      "auto": "Auto",
       "day": "Day",
       "sunset": "Sunset",
       "night": "Night"

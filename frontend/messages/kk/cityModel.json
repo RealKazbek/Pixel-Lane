@@ -88,7 +88,9 @@
   "environment": {
     "timeLabel": "Уақыт",
     "weatherLabel": "Ауа райы",
+    "dateLabel": "Күн",
     "time": {
+      "auto": "Авто",
       "day": "Күндіз",
       "sunset": "Күн батарда",
       "night": "Түн"

@@ -14,7 +14,11 @@ export function WeatherOverlay({ timeOfDay, weather }: WeatherOverlayProps) {
       data-weather={weather}
       aria-hidden="true"
     >
-      {weather !== "clear" && <div className={styles.weatherEffect} />}
+      {weather !== "clear" && (
+        <div className={styles.weatherEffect}>
+          <div className={styles.weatherLayer} />
+        </div>
+      )}
     </div>
   );
 }

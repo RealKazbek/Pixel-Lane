@@ -2,115 +2,271 @@
   position: absolute;
   inset: 0;
   z-index: 10;
-  pointer-events: none;
   overflow: hidden;
+  pointer-events: none;
+  isolation: isolate;
+  transition: background-color 700ms ease;
 }
 
 .atmosphere::before,
 .atmosphere::after,
-.weatherEffect {
+.weatherEffect,
+.weatherEffect::before,
+.weatherEffect::after,
+.weatherLayer {
   position: absolute;
   inset: 0;
   pointer-events: none;
   content: "";
 }
 
+.atmosphere[data-time-of-day="day"] {
+  background: rgb(255 255 255 / 0.02);
+}
+
+.atmosphere[data-time-of-day="sunset"] {
+  background: rgb(234 88 12 / 0.08);
+}
+
 .atmosphere[data-time-of-day="sunset"]::before {
-  background: linear-gradient(
-    135deg,
-    rgb(251 146 60 / 0.1),
-    rgb(120 53 15 / 0.14)
-  );
+  background:
+    linear-gradient(180deg, rgb(251 146 60 / 0.08), transparent 52%),
+    linear-gradient(110deg, rgb(245 158 11 / 0.12), rgb(120 53 15 / 0.1));
   mix-blend-mode: multiply;
+  transition: opacity 700ms ease;
+}
+
+.atmosphere[data-time-of-day="night"] {
+  background: rgb(15 23 42 / 0.18);
 }
 
 .atmosphere[data-time-of-day="night"]::before {
-  background: linear-gradient(
-    135deg,
-    rgb(15 23 42 / 0.3),
-    rgb(30 41 59 / 0.38)
-  );
+  background:
+    radial-gradient(
+      ellipse at 50% -10%,
+      rgb(71 85 105 / 0.15),
+      transparent 62%
+    ),
+    linear-gradient(135deg, rgb(15 23 42 / 0.52), rgb(30 41 59 / 0.66));
   mix-blend-mode: multiply;
 }
 
-.atmosphere[data-weather="rain"] .weatherEffect {
-  background-image: repeating-linear-gradient(
-    110deg,
-    transparent 0 18px,
-    rgb(191 219 254 / 0.25) 19px 20px,
-    transparent 21px 38px
-  );
-  background-size: 42px 42px;
-  animation: rain 0.55s linear infinite;
+.atmosphere[data-time-of-day="night"]::after {
+  background: linear-gradient(180deg, transparent 45%, rgb(2 6 23 / 0.15));
 }
 
-.atmosphere[data-weather="snow"] .weatherEffect {
+.atmosphere[data-weather="rain"] .weatherEffect::before,
+.atmosphere[data-weather="rain"] .weatherEffect::after,
+.atmosphere[data-weather="rain"] .weatherLayer {
+  background-repeat: repeat;
+  transform: skewX(-10deg);
+}
+
+.atmosphere[data-weather="rain"] .weatherEffect::before {
+  background-image: repeating-linear-gradient(
+    108deg,
+    transparent 0 22px,
+    rgb(191 219 254 / 0.44) 23px 24px,
+    transparent 25px 48px
+  );
+  background-size: 86px 132px;
+  animation: rain-near 0.72s linear infinite;
+}
+
+.atmosphere[data-weather="rain"] .weatherEffect::after {
+  background-image: repeating-linear-gradient(
+    108deg,
+    transparent 0 34px,
+    rgb(219 234 254 / 0.24) 35px 36px,
+    transparent 37px 76px
+  );
+  background-size: 142px 188px;
+  animation: rain-far 1.2s linear infinite;
+  opacity: 0.85;
+}
+
+.atmosphere[data-weather="rain"] .weatherLayer {
+  background: linear-gradient(180deg, rgb(148 163 184 / 0.05), transparent 70%);
+  animation: rain-wash 2.4s ease-in-out infinite alternate;
+}
+
+.atmosphere[data-weather="snow"] .weatherEffect::before,
+.atmosphere[data-weather="snow"] .weatherEffect::after,
+.atmosphere[data-weather="snow"] .weatherLayer {
+  background-repeat: repeat;
+}
+
+.atmosphere[data-weather="snow"] .weatherEffect::before {
   background-image:
     radial-gradient(
-      circle at 18% 22%,
-      rgb(255 255 255 / 0.65) 0 2px,
-      transparent 2.5px
+      circle at 14% 18%,
+      rgb(255 255 255 / 0.86) 0 2px,
+      transparent 2.8px
     ),
     radial-gradient(
-      circle at 70% 12%,
-      rgb(255 255 255 / 0.55) 0 1.5px,
+      circle at 72% 32%,
+      rgb(255 255 255 / 0.72) 0 1px,
       transparent 2px
     ),
     radial-gradient(
-      circle at 42% 72%,
-      rgb(255 255 255 / 0.5) 0 2px,
+      circle at 42% 76%,
+      rgb(255 255 255 / 0.8) 0 1.5px,
       transparent 2.5px
-    ),
-    radial-gradient(
-      circle at 88% 82%,
-      rgb(255 255 255 / 0.6) 0 1.5px,
-      transparent 2px
     );
   background-size:
-    150px 150px,
-    190px 190px,
-    220px 220px,
-    170px 170px;
-  animation: snow 9s linear infinite;
+    180px 210px,
+    250px 230px,
+    310px 280px;
+  animation: snow-near 8s linear infinite;
+}
+
+.atmosphere[data-weather="snow"] .weatherEffect::after {
+  background-image:
+    radial-gradient(
+      circle at 30% 12%,
+      rgb(255 255 255 / 0.54) 0 3px,
+      transparent 4px
+    ),
+    radial-gradient(
+      circle at 82% 64%,
+      rgb(255 255 255 / 0.48) 0 2px,
+      transparent 3.5px
+    );
+  background-size:
+    360px 340px,
+    430px 390px;
+  animation: snow-far 15s linear infinite;
+}
+
+.atmosphere[data-weather="snow"] .weatherLayer {
+  background: linear-gradient(180deg, rgb(255 255 255 / 0.08), transparent 70%);
+  animation: snow-drift 10s ease-in-out infinite alternate;
 }
 
 .atmosphere[data-weather="fog"] .weatherEffect {
+  opacity: 0.92;
+}
+
+.atmosphere[data-weather="fog"] .weatherEffect::before {
   background: radial-gradient(
-    ellipse at 50% 45%,
-    rgb(226 232 240 / 0.15),
-    rgb(226 232 240 / 0.28)
+    ellipse at 22% 38%,
+    rgb(226 232 240 / 0.26),
+    transparent 58%
   );
-  backdrop-filter: blur(0.6px);
+  filter: blur(18px);
+  animation: fog-drift 22s ease-in-out infinite alternate;
 }
 
-@keyframes rain {
-  from {
-    background-position: 0 0;
-  }
-  to {
-    background-position: -42px 84px;
-  }
+.atmosphere[data-weather="fog"] .weatherEffect::after {
+  background: radial-gradient(
+    ellipse at 76% 62%,
+    rgb(203 213 225 / 0.24),
+    transparent 62%
+  );
+  filter: blur(26px);
+  animation: fog-drift-reverse 28s ease-in-out infinite alternate;
 }
 
-@keyframes snow {
+.atmosphere[data-weather="fog"] .weatherLayer {
+  background: linear-gradient(
+    105deg,
+    rgb(226 232 240 / 0.12),
+    transparent 42%,
+    rgb(203 213 225 / 0.14)
+  );
+  filter: blur(10px);
+  animation: fog-pulse 12s ease-in-out infinite alternate;
+}
+
+@keyframes rain-near {
+  from {
+    background-position: 0 -132px;
+  }
+  to {
+    background-position: -86px 132px;
+  }
+}
+@keyframes rain-far {
+  from {
+    background-position: 18px -188px;
+  }
+  to {
+    background-position: -124px 188px;
+  }
+}
+@keyframes rain-wash {
+  from {
+    opacity: 0.35;
+  }
+  to {
+    opacity: 0.85;
+  }
+}
+@keyframes snow-near {
   from {
     background-position:
-      0 -150px,
-      30px -190px,
-      -20px -220px,
-      15px -170px;
+      0 -210px,
+      24px -230px,
+      -36px -280px;
   }
   to {
     background-position:
-      35px 150px,
-      -20px 190px,
-      30px 220px,
-      -15px 170px;
+      42px 210px,
+      -28px 230px,
+      38px 280px;
+  }
+}
+@keyframes snow-far {
+  from {
+    background-position:
+      -22px -340px,
+      38px -390px;
+  }
+  to {
+    background-position:
+      54px 340px,
+      -34px 390px;
+  }
+}
+@keyframes snow-drift {
+  from {
+    transform: translateX(-1.5%);
+  }
+  to {
+    transform: translateX(1.5%);
+  }
+}
+@keyframes fog-drift {
+  from {
+    transform: translate3d(-5%, 1%, 0) scale(1.06);
+  }
+  to {
+    transform: translate3d(5%, -1%, 0) scale(1.12);
+  }
+}
+@keyframes fog-drift-reverse {
+  from {
+    transform: translate3d(4%, -1%, 0) scale(1.1);
+  }
+  to {
+    transform: translate3d(-4%, 2%, 0) scale(1.04);
+  }
+}
+@keyframes fog-pulse {
+  from {
+    opacity: 0.55;
+  }
+  to {
+    opacity: 1;
   }
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .weatherEffect {
+  .atmosphere,
+  .weatherEffect::before,
+  .weatherEffect::after,
+  .weatherLayer {
     animation: none !important;
+    transition: none !important;
   }
 }

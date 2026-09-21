@@ -88,7 +88,9 @@
   "environment": {
     "timeLabel": "Время",
     "weatherLabel": "Погода",
+    "dateLabel": "Дата",
     "time": {
+      "auto": "Авто",
       "day": "День",
       "sunset": "Закат",
       "night": "Ночь"

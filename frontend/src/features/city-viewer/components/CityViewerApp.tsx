@@ -27,7 +27,11 @@ import { RoadPropertiesPanel } from "../map/RoadPropertiesPanel";
 import { IntersectionPropertiesPanel } from "../map/IntersectionPropertiesPanel";
 import { EnvironmentControls } from "../map/environment/EnvironmentControls";
 import { WeatherOverlay } from "../map/environment/WeatherOverlay";
-import { useEnvironment } from "../map/environment/useEnvironment";
+import {
+  resolveTimeOfDay,
+  useEnvironment,
+} from "../map/environment/useEnvironment";
+import { useSimulationClock } from "../map/environment/simulationClock";
 import { buildLaneConfiguration } from "../editor/laneConfiguration";
 import {
   applyRoadPreset,
@@ -101,6 +105,11 @@ export function CityViewerApp() {
     null,
   );
   const [environment, dispatchEnvironment] = useEnvironment();
+  const [simulationClock, dispatchSimulationClock] = useSimulationClock();
+  const timeOfDay = resolveTimeOfDay(
+    environment.timeMode,
+    simulationClock.time,
+  );
 
   useEffect(() => {
     let cancelled = false;
@@ -445,17 +454,25 @@ export function CityViewerApp() {
             onRoadGeometryChange={handleRoadGeometryChange}
           />
           <WeatherOverlay
-            timeOfDay={environment.timeOfDay}
+            timeOfDay={timeOfDay}
             weather={environment.weather}
           />
           <div className="pointer-events-none absolute right-3 top-14 z-20">
             <EnvironmentControls
               value={environment}
-              onTimeOfDayChange={(timeOfDay) =>
-                dispatchEnvironment({ type: "set-time-of-day", timeOfDay })
+              timeOfDay={timeOfDay}
+              simulationClock={simulationClock}
+              onTimeModeChange={(timeMode) =>
+                dispatchEnvironment({ type: "set-time-mode", timeMode })
               }
               onWeatherChange={(weather) =>
                 dispatchEnvironment({ type: "set-weather", weather })
+              }
+              onDateChange={(date) =>
+                dispatchSimulationClock({ type: "set-date", date })
+              }
+              onTimeChange={(time) =>
+                dispatchSimulationClock({ type: "set-time", time })
               }
             />
           </div>
