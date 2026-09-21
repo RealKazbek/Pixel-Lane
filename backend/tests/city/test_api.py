@@ -124,6 +124,58 @@ def test_topology_persists_connected_lane_ids(client) -> None:
 
 
 @requires_postgres
+def test_delete_road_reconciles_intersection_and_lane_connections(client) -> None:
+    data = _payload()
+    assert client.post("/api/v1/cities", json=data).status_code == 201
+    road = data["roads"][0]
+    intersection = data["intersections"][0]
+    connection = {
+        "id": str(uuid.uuid5(uuid.NAMESPACE_URL, "pixel-lane/test-delete-connection")),
+        "intersection_id": intersection["id"],
+        "from_road_id": road["id"],
+        "from_lane_id": road["lanes"][0]["id"],
+        "to_road_id": data["roads"][1]["id"],
+        "to_lane_id": data["roads"][1]["lanes"][0]["id"],
+        "maneuver": "STRAIGHT",
+    }
+    assert (
+        client.put(
+            f"/api/v1/cities/{data['id']}/lane-connections",
+            json={"connections": [connection]},
+        ).status_code
+        == 200
+    )
+
+    assert client.delete(f"/api/v1/cities/{data['id']}/roads/{road['id']}").status_code == 204
+    refreshed = client.get(f"/api/v1/cities/{data['id']}").json()
+    assert all(item["id"] != road["id"] for item in refreshed["roads"])
+    assert refreshed["intersections"][0]["connected_road_ids"] == [
+        item["id"] for item in data["roads"][1:]
+    ]
+    remaining_lane_ids = {lane["id"] for item in data["roads"][1:] for lane in item["lanes"]}
+    assert set(refreshed["intersections"][0]["connected_lane_ids"]) <= remaining_lane_ids
+    assert refreshed["lane_connections"] == []
+
+
+@requires_postgres
+def test_topology_rejects_near_duplicate_intersections(client) -> None:
+    data = _payload()
+    assert client.post("/api/v1/cities", json=data).status_code == 201
+    duplicate = copy.deepcopy(data["intersections"][0])
+    duplicate["id"] = str(uuid.uuid4())
+    duplicate["position"]["x"] += 1
+    response = client.put(
+        f"/api/v1/cities/{data['id']}/topology",
+        json={
+            "roads": [{"id": road["id"], "geometry": road["geometry"]} for road in data["roads"]],
+            "intersections": [data["intersections"][0], duplicate],
+        },
+    )
+    assert response.status_code == 422
+    assert response.json()["detail"] == "TOPOLOGY_DUPLICATE_INTERSECTION"
+
+
+@requires_postgres
 def test_get_unknown_city_returns_404(client) -> None:
     response = client.get(f"/api/v1/cities/{uuid.uuid4()}")
     assert response.status_code == 404

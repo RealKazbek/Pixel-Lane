@@ -2,6 +2,7 @@ import type { City, Intersection, Point, Road } from "../types/city";
 import { updatePolylineVertex } from "../map/editor/polylineEditing";
 
 export const ENDPOINT_SNAP_TOLERANCE_PX = 18;
+export const INTERSECTION_SNAP_TOLERANCE_M = 1.5;
 
 function persistedId(value: string, seed: string): string {
   if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(seed)) {
@@ -60,6 +61,29 @@ function samePoint(left: Point, right: Point): boolean {
   return (
     Math.abs(left.x - right.x) <= POINT_EPSILON &&
     Math.abs(left.y - right.y) <= POINT_EPSILON
+  );
+}
+
+function distanceMeters(left: Point, right: Point): number {
+  return Math.hypot(left.x - right.x, left.y - right.y);
+}
+
+function nearestIntersectionWithinTolerance(
+  intersections: readonly Intersection[],
+  point: Point,
+): Intersection | null {
+  return (
+    intersections
+      .map((intersection) => ({
+        intersection,
+        distance: distanceMeters(intersection.position, point),
+      }))
+      .filter(({ distance }) => distance <= INTERSECTION_SNAP_TOLERANCE_M)
+      .sort(
+        (left, right) =>
+          left.distance - right.distance ||
+          left.intersection.id.localeCompare(right.intersection.id),
+      )[0]?.intersection ?? null
   );
 }
 
@@ -174,6 +198,7 @@ export function findEndpointSnapCandidate(
   targets: readonly ScreenEndpointSnapTarget[],
   movingRoadId: string | null,
   tolerancePx = ENDPOINT_SNAP_TOLERANCE_PX,
+  pointerWorld?: Point,
 ): EndpointSnapCandidate | null {
   if (!Number.isFinite(pointer.x) || !Number.isFinite(pointer.y)) return null;
 
@@ -196,7 +221,13 @@ export function findEndpointSnapCandidate(
           target.screenY - pointer.y,
         ),
       }))
-      .filter((target) => target.distancePx <= tolerancePx)
+      .filter(
+        (target) =>
+          target.distancePx <= tolerancePx ||
+          (pointerWorld !== undefined &&
+            distanceMeters(target.point, pointerWorld) <=
+              INTERSECTION_SNAP_TOLERANCE_M),
+      )
       .sort(
         (left, right) =>
           left.distancePx - right.distancePx ||
@@ -373,12 +404,15 @@ export function applyEndpointSnap(
     return null;
   }
 
+  const nearbyIntersection = nearestIntersectionWithinTolerance(
+    city.intersections,
+    target.point,
+  );
   const targetNodeId =
-    target.kind === "road-segment" ? segmentNodeId(target) : target.nodeId;
+    nearbyIntersection?.id ??
+    (target.kind === "road-segment" ? segmentNodeId(target) : target.nodeId);
   const existingNode = targetNodeId
-    ? city.intersections.find(
-        (intersection) => intersection.id === targetNodeId,
-      )
+    ? city.intersections.find((intersection) => intersection.id === targetNodeId)
     : null;
   if (targetNodeId && !existingNode && target.kind === "road-endpoint") {
     return null;
@@ -393,13 +427,6 @@ export function applyEndpointSnap(
         ? segmentNodeId(target)
         : target.nodeId);
   const canonicalPoint = existingNode?.position ?? target.point;
-  if (
-    target.kind === "road-endpoint" &&
-    targetRoad &&
-    !samePoint(endpointPoint(targetRoad, target.endpoint), canonicalPoint)
-  ) {
-    return null;
-  }
   const connectedRoadIds = [
     ...new Set([
       ...(existingNode?.connected_road_ids ?? []),
@@ -437,9 +464,13 @@ export function applyEndpointSnap(
   let nextRoads = city.roads.map((road) =>
     road.id === movingRoadId
       ? setRoadEndpoint(road, movingEndpoint, canonicalPoint)
-      : road,
+      : target.kind === "road-endpoint" && road.id === targetRoad?.id
+        ? samePoint(endpointPoint(road, target.endpoint), canonicalPoint)
+          ? road
+          : setRoadEndpoint(road, target.endpoint, canonicalPoint)
+        : road,
   );
-  if (segmentTarget && segmentRoad && !existingNode) {
+  if (segmentTarget && segmentRoad) {
     const split = splitRoadAtPoint(
       segmentRoad,
       segmentTarget.segmentIndex,

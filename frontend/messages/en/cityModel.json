@@ -122,6 +122,9 @@
     "startNode": "Start node",
     "endNode": "End node",
     "notConnected": "Not connected",
+    "deleteRoad": "Delete road",
+    "deleteConfirm": "Delete this road? Connected topology will be updated.",
+    "deleteFailed": "Road deletion failed. The editor was not changed.",
     "marking": {
       "NONE": "None",
       "DASHED_WHITE": "Dashed",

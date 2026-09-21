@@ -22,6 +22,11 @@ MAX_LANES_PER_SIGNAL_GROUP = 50
 MAX_ROADS_PER_INTERSECTION = 16
 MAX_LANES_PER_INTERSECTION = 64
 
+# Editor topology uses this bounded tolerance to reject accidental duplicate
+# nodes. It is deliberately small and only applies to a submitted topology
+# mutation, not to unrelated imported-city nodes.
+EDITOR_INTERSECTION_SNAP_TOLERANCE_M = 1.5
+
 NAME_MAX_LENGTH = 200
 DESCRIPTION_MAX_LENGTH = 2000
 TIME_INTERVAL_MAX_LENGTH = 50

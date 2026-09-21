@@ -419,6 +419,60 @@ describe("endpoint snap topology", () => {
     ]);
   });
 
+  it.each([0, 0.5, 1])(
+    "reuses an existing intersection %s m away instead of creating a duplicate",
+    (offset) => {
+      const first = makeRoad("road-a", 0, 10);
+      const second = makeRoad("road-b", 20, 30);
+      const city = makeCity([first, second]);
+      city.intersections = [
+        {
+          id: "canonical-node",
+          city_id: city.id,
+          position: { x: 10 + offset, y: 0 },
+          connected_road_ids: [first.id],
+          connected_lane_ids: first.lanes.map((lane) => lane.id),
+          control_type: "UNCONTROLLED",
+          traffic_light_id: null,
+        },
+      ];
+      const result = applyEndpointSnap(
+        city,
+        second.id,
+        "start",
+        endpointTarget(first.id, "end", { x: 10, y: 0 }),
+      );
+
+      expect(result?.intersections).toHaveLength(1);
+      expect(result?.intersections[0].id).toBe("canonical-node");
+    },
+  );
+
+  it("allows a new intersection outside the canonical snap tolerance", () => {
+    const first = makeRoad("road-a", 0, 10);
+    const second = makeRoad("road-b", 20, 30);
+    const city = makeCity([first, second]);
+    city.intersections = [
+      {
+        id: "canonical-node",
+        city_id: city.id,
+        position: { x: 12, y: 0 },
+        connected_road_ids: [first.id],
+        connected_lane_ids: first.lanes.map((lane) => lane.id),
+        control_type: "UNCONTROLLED",
+        traffic_light_id: null,
+      },
+    ];
+    const result = applyEndpointSnap(
+      city,
+      second.id,
+      "start",
+      endpointTarget(first.id, "end", { x: 10, y: 0 }),
+    );
+
+    expect(result?.intersections).toHaveLength(2);
+  });
+
   it("does not infer topology from identical coordinates", () => {
     const city = makeCity([
       makeRoad("road-a", 0, 10),

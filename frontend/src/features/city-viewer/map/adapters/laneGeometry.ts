@@ -41,8 +41,9 @@
 
 import along from "@turf/along";
 import bearing from "@turf/bearing";
+import distance from "@turf/distance";
+import { point as turfPoint } from "@turf/helpers";
 import lineOffset from "@turf/line-offset";
-import { roadLengthMeters } from "./geometryLength";
 import { toLngLat } from "./coordinates";
 import { toRoadLineString, type AnyRoad } from "./roadLineString";
 import { roadLaneCount, roadWidthMeters } from "../styles/roadStyle";
@@ -156,8 +157,6 @@ const LANE_USE_GAP_M = 0.3;
  * near-but-not-at the end, evoking an intersection approach without
  * assuming real stop-line/intersection geometry (see Part 1's rule
  * against deriving intersections from geometry). */
-const TURN_ARROW_POSITION_FRACTION = 0.85;
-
 const toLineStringFeature = toRoadLineString;
 
 /** Offsets `line` by `distanceMeters` (positive = left, per
@@ -471,12 +470,39 @@ export function buildTurnArrowFeatureCollection(
     if (laneCount < 1) continue;
     const line = renderingLines.get(road.id);
     if (!line) continue;
-    const lengthM = roadLengthMeters(road, coordinateSystem);
-    if (lengthM <= 0) continue;
     const roadWidthM = roadWidthMeters(road);
     const laneWidthM = roadWidthM / laneCount;
     const coords = line.geometry.coordinates;
-    const roadBearing = bearing(coords[0], coords[coords.length - 1]);
+    const lineLengthM = coords
+      .slice(0, -1)
+      .reduce(
+        (total, coordinate, index) =>
+          total +
+          distance(turfPoint(coordinate), turfPoint(coords[index + 1]), {
+            units: "meters",
+          }),
+        0,
+      );
+    if (lineLengthM <= 0) continue;
+    const connectedIntersection = intersections.find((intersection) => {
+      if (!intersection.connected_road_ids.includes(road.id)) return false;
+      const first = road.geometry.points[0];
+      const last = road.geometry.points.at(-1)!;
+      return Math.min(
+        Math.hypot(first.x - intersection.position.x, first.y - intersection.position.y),
+        Math.hypot(last.x - intersection.position.x, last.y - intersection.position.y),
+      ) <= 1.5;
+    });
+    const roadStart = road.geometry.points[0];
+    const roadEnd = road.geometry.points.at(-1)!;
+    const intersectionAtEnd = connectedIntersection
+      ? Math.hypot(roadEnd.x - connectedIntersection.position.x, roadEnd.y - connectedIntersection.position.y) <=
+        Math.hypot(roadStart.x - connectedIntersection.position.x, roadStart.y - connectedIntersection.position.y)
+      : null;
+    const approachOffsetM = Math.min(
+      Math.max(4, laneWidthM * 1.5),
+      lineLengthM * 0.4,
+    );
     for (const lane of lanes) {
       // Imported turn:lanes data remains the most specific source when it is
       // present. Editor-authored semantic permissions are the fallback; the
@@ -490,19 +516,29 @@ export function buildTurnArrowFeatureCollection(
           (semanticMovements.length > 0 ? semanticMovements : null),
       );
       if (!arrow) continue;
+      const laneDirection = "direction" in lane ? lane.direction : "FORWARD";
       const offset = safeOffset(
         line,
         laneCenterOffsetM(roadWidthM, laneWidthM, lane.index),
       );
       if (!offset) continue;
+      const travelEndsAtIntersection =
+        intersectionAtEnd === null
+          ? null
+          : laneDirection === "FORWARD"
+            ? intersectionAtEnd
+            : !intersectionAtEnd;
+      const arrowDistanceM =
+        travelEndsAtIntersection === null
+          ? lineLengthM * 0.7
+          : travelEndsAtIntersection
+            ? lineLengthM - approachOffsetM
+            : approachOffsetM;
       let point: GeoJSON.Feature<GeoJSON.Point>;
       try {
         point = along(
           offset,
-          lengthM *
-            ("direction" in lane && lane.direction === "BACKWARD"
-              ? 1 - TURN_ARROW_POSITION_FRACTION
-              : TURN_ARROW_POSITION_FRACTION),
+          Math.max(0, Math.min(lineLengthM, arrowDistanceM)),
           {
             units: "meters",
           },
@@ -519,10 +555,18 @@ export function buildTurnArrowFeatureCollection(
           arrow,
           // MapLibre `text-rotate` is clockwise from north; `@turf/bearing`
           // already returns that convention (-180..180, 0 = north).
-          bearing:
-            "direction" in lane && lane.direction === "BACKWARD"
-              ? (roadBearing + 180) % 360
-              : roadBearing,
+          bearing: (() => {
+            const before = along(offset, Math.max(0, arrowDistanceM - 1), {
+              units: "meters",
+            }).geometry.coordinates;
+            const after = along(
+              offset,
+              Math.min(lineLengthM, arrowDistanceM + 1),
+              { units: "meters" },
+            ).geometry.coordinates;
+            const direction = bearing(before, after);
+            return laneDirection === "BACKWARD" ? (direction + 180) % 360 : direction;
+          })(),
         },
       });
     }

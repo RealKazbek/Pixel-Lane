@@ -30,6 +30,7 @@ interface RoadPropertiesPanelProps {
   road: Road;
   endpointNodeIds: { start: string | null; end: string | null };
   onApplyPreset: (presetId: RoadPresetId) => void;
+  onDelete: () => void;
   onChange: (changes: {
     name?: string;
     width_m?: number;
@@ -47,6 +48,7 @@ export function RoadPropertiesPanel({
   road,
   endpointNodeIds,
   onApplyPreset,
+  onDelete,
   onChange,
 }: RoadPropertiesPanelProps) {
   const t = useTranslations("cityModel.properties");
@@ -332,6 +334,13 @@ export function RoadPropertiesPanel({
           </dd>
         </dl>
       </details>
+      <button
+        type="button"
+        onClick={onDelete}
+        className="mt-3 w-full rounded-md border border-danger/50 px-2 py-1.5 text-danger transition-colors hover:bg-danger/10 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-danger"
+      >
+        {t("deleteRoad")}
+      </button>
     </section>
   );
 }

@@ -581,6 +581,8 @@ export function PixelLaneMap({
         event.point,
         projectSnapTargets(map, event.point),
         null,
+        undefined,
+        fromLngLat(city.coordinate_system, [event.lngLat.lng, event.lngLat.lat]),
       );
       const point = candidate
         ? candidate.point
@@ -689,6 +691,8 @@ export function PixelLaneMap({
           event.point,
           projectSnapTargets(map, event.point),
           null,
+          undefined,
+          fromLngLat(city.coordinate_system, [event.lngLat.lng, event.lngLat.lat]),
         ),
       );
     };
@@ -1017,6 +1021,11 @@ export function PixelLaneMap({
                       screenPoint,
                       projectSnapTargets(map, screenPoint),
                       selectedRoad?.id ?? null,
+                      undefined,
+                      fromLngLat(city.coordinate_system, [
+                        map.unproject([screenPoint.x, screenPoint.y]).lng,
+                        map.unproject([screenPoint.x, screenPoint.y]).lat,
+                      ]),
                     )
                   : null;
                 activeSnapTarget = candidate;

@@ -13,6 +13,7 @@ from sqlalchemy import exists, func, select, update
 from sqlalchemy.orm import Session, selectinload
 
 from app.city.domain.geometry import WGS84_SRID, Polyline, polyline_to_wkt
+from app.city.domain.limits import EDITOR_INTERSECTION_SNAP_TOLERANCE_M
 from app.city.models.city import City
 from app.city.models.intersection import Intersection
 from app.city.models.lane import Lane
@@ -281,6 +282,20 @@ def delete_road(db: Session, city_id: UUID, road_id: UUID) -> bool:
     ).scalar_one_or_none()
     if road is None:
         return False
+    road_lanes = set(road.lanes)
+    for intersection in list(road.city.intersections):
+        if road not in intersection.connected_roads:
+            continue
+        intersection.connected_roads = [
+            connected for connected in intersection.connected_roads if connected.id != road_id
+        ]
+        intersection.connected_lanes = [
+            lane for lane in intersection.connected_lanes if lane not in road_lanes
+        ]
+        # An intersection is derived from shared topology and is not useful
+        # with fewer than two incident roads. Preserve it otherwise.
+        if len(intersection.connected_roads) < 2:
+            db.delete(intersection)
     db.delete(road)
     db.execute(update(City).where(City.id == city_id).values(updated_at=func.now()))
     try:
@@ -297,6 +312,15 @@ def replace_topology(db: Session, city_id: UUID, payload: TopologyUpdate) -> boo
         return False
     roads = {road.id: road for road in city.roads}
     lanes = {lane.id: lane for road in city.roads for lane in road.lanes}
+    items = payload.intersections
+    for index, left in enumerate(items):
+        for right in items[index + 1 :]:
+            distance = (
+                (left.position.x - right.position.x) ** 2
+                + (left.position.y - right.position.y) ** 2
+            ) ** 0.5
+            if distance <= EDITOR_INTERSECTION_SNAP_TOLERANCE_M:
+                raise ValueError("TOPOLOGY_DUPLICATE_INTERSECTION")
     for update_payload in payload.roads:
         road = roads.get(update_payload.id)
         if road is None:
@@ -305,7 +329,7 @@ def replace_topology(db: Session, city_id: UUID, payload: TopologyUpdate) -> boo
     for intersection in list(city.intersections):
         db.delete(intersection)
     db.flush()
-    for item in payload.intersections:
+    for item in items:
         intersection = Intersection(
             id=item.id,
             city_id=city_id,

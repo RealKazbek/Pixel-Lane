@@ -53,6 +53,7 @@ import {
 import {
   buildRoadPropertiesPayload,
   createRoad,
+  deleteRoad,
   getEditorWorkspace,
   replaceTopology,
   updateRoadGeometry,
@@ -108,6 +109,7 @@ function applyRoadChanges(road: Road, changes: RoadChanges): Road {
 export function CityViewerApp() {
   const t = useTranslations("cityModel.fullscreen");
   const tMap = useTranslations("cityModel.map");
+  const tProperties = useTranslations("cityModel.properties");
   const [city, setCity] = useState(buildEditorWorkspace);
   const [hydrated, setHydrated] = useState(false);
   const [loadError, setLoadError] = useState<string | null>(null);
@@ -246,6 +248,42 @@ export function CityViewerApp() {
     },
     [persistRoad, selected],
   );
+  const handleDeleteRoad = useCallback(async () => {
+    if (selected?.type !== "road") return;
+    const road = city.roads.find((candidate) => candidate.id === selected.id);
+    if (!road || !window.confirm(tProperties("deleteConfirm"))) return;
+    try {
+      await deleteRoad(city.id, road.id);
+      const laneIds = new Set(road.lanes.map((lane) => lane.id));
+      setCity((current) => ({
+        ...current,
+        roads: current.roads.filter((candidate) => candidate.id !== road.id),
+        intersections: current.intersections
+          .map((intersection) => ({
+            ...intersection,
+            connected_road_ids: intersection.connected_road_ids.filter(
+              (roadId) => roadId !== road.id,
+            ),
+            connected_lane_ids: intersection.connected_lane_ids.filter(
+              (laneId) => !laneIds.has(laneId),
+            ),
+          }))
+          .filter((intersection) => intersection.connected_road_ids.length >= 2),
+        lane_connections: (current.lane_connections ?? []).filter(
+          (connection) =>
+            connection.from_road_id !== road.id &&
+            connection.to_road_id !== road.id &&
+            !laneIds.has(connection.from_lane_id) &&
+            !laneIds.has(connection.to_lane_id),
+        ),
+      }));
+      setSelected(null);
+      setSelectedVertexIndex(null);
+    } catch (error) {
+      console.error("Failed to delete EditorWorkspace road", error);
+      setLoadError(tProperties("deleteFailed"));
+    }
+  }, [city.id, city.roads, selected, tProperties]);
   const handleIntersectionRadiusChange = useCallback(
     (radius: number) => {
       if (selected?.type !== "intersection") return;
@@ -500,6 +538,7 @@ export function CityViewerApp() {
             road={selectedRoad}
             endpointNodeIds={selectedRoadNodeIds ?? { start: null, end: null }}
             onApplyPreset={handleApplyRoadPreset}
+            onDelete={handleDeleteRoad}
             onChange={handleRoadPropertiesChange}
           />
         )}
