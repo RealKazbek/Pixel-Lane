@@ -182,24 +182,26 @@ export function IntersectionPropertiesPanel({
                         {isIncoming ? (
                           <div className="mt-1 grid grid-cols-2 gap-1">
                             {maneuvers.map((movement) => (
-                              <label
+                              <button
+                                type="button"
                                 key={movement}
-                                className="flex items-center gap-1 text-[10px]"
+                                aria-pressed={enabled.has(movement)}
+                                className={`rounded border px-1.5 py-1 text-[10px] transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary ${
+                                  enabled.has(movement)
+                                    ? "border-primary bg-primary/15 text-primary"
+                                    : "border-border-subtle bg-background text-muted-foreground hover:border-primary/60 hover:text-foreground"
+                                }`}
+                                onClick={() =>
+                                  onManeuverChange(
+                                    road.id,
+                                    lane.id,
+                                    movement,
+                                    !enabled.has(movement),
+                                  )
+                                }
                               >
-                                <input
-                                  type="checkbox"
-                                  checked={enabled.has(movement)}
-                                  onChange={(event) =>
-                                    onManeuverChange(
-                                      road.id,
-                                      lane.id,
-                                      movement,
-                                      event.target.checked,
-                                    )
-                                  }
-                                />
                                 {t(`maneuver.${movement}`)}
-                              </label>
+                              </button>
                             ))}
                           </div>
                         ) : (

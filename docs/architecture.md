@@ -24,8 +24,9 @@ UI, simulation, and hardware concerns.
   separate Road Geometry Lab remains the engineering surface for fixtures.
   PL-005.15–PL-005.18 derived junction geometry is implemented for connected
   T/Y, four-way, and arbitrary-angle nodes with bounded corner radii. No full
-  persisted lane/intersection editor exists; lane-to-lane turn geometry is
-  intentionally a later stage.
+  persisted lane/intersection editing now includes explicit lane-to-lane
+  maneuver connections; turn geometry and arrows are derived from those
+  persisted City Model records.
 - `backend/` — FastAPI + Pydantic + SQLAlchemy + Alembic, PostgreSQL.
   App wiring (settings, DB session/engine, error handling, a body-size
   safeguard) plus two real domain modules: **City Model v1** (`app/city/`)

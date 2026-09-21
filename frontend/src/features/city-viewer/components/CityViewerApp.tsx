@@ -157,7 +157,12 @@ export function CityViewerApp() {
   const [crosshair, setCrosshair] = useState<{ x: number; y: number } | null>(
     null,
   );
+  const cityRef = useRef(city);
   const maneuverRequestRef = useRef(0);
+
+  useEffect(() => {
+    cityRef.current = city;
+  }, [city]);
 
   useEffect(() => {
     let cancelled = false;
@@ -371,9 +376,10 @@ export function CityViewerApp() {
     ) => {
       if (selected?.type !== "intersection") return;
       const intersectionId = selected.id;
-      const previousConnections = city.lane_connections ?? [];
+      const currentCity = cityRef.current;
+      const previousConnections = currentCity.lane_connections ?? [];
       const nextCity = updateIntersectionManeuver(
-        city,
+        currentCity,
         intersectionId,
         roadId,
         laneId,
@@ -381,17 +387,19 @@ export function CityViewerApp() {
         enabled,
       );
       const requestId = ++maneuverRequestRef.current;
+      cityRef.current = nextCity;
       setCity(nextCity);
       try {
         const saved = await replaceLaneConnections(
-          city.id,
+          currentCity.id,
           nextCity.lane_connections ?? [],
         );
         if (requestId === maneuverRequestRef.current) {
-          setCity((currentCity) => ({
-            ...currentCity,
-            lane_connections: saved,
-          }));
+          setCity((latestCity) => {
+            const savedCity = { ...latestCity, lane_connections: saved };
+            cityRef.current = savedCity;
+            return savedCity;
+          });
         }
       } catch (error) {
         console.error("Failed to persist intersection maneuver", {
@@ -402,15 +410,19 @@ export function CityViewerApp() {
           movement,
         });
         if (requestId === maneuverRequestRef.current) {
-          setCity((currentCity) => ({
-            ...currentCity,
-            lane_connections: previousConnections,
-          }));
+          setCity((latestCity) => {
+            const rolledBackCity = {
+              ...latestCity,
+              lane_connections: previousConnections,
+            };
+            cityRef.current = rolledBackCity;
+            return rolledBackCity;
+          });
           setDeleteError(tProperties("maneuverSaveFailed"));
         }
       }
     },
-    [city, selected, tProperties],
+    [selected, tProperties],
   );
 
   const handleToggleLayer = useCallback((layer: LayerGroupId) => {
