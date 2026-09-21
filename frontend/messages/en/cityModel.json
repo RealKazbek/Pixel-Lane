@@ -108,6 +108,10 @@
     "lanes": "Lanes",
     "laneWidth": "Lane width",
     "directions": "Directions",
+    "directionHelp": "Physical travel direction along the road from endpoint A to endpoint B.",
+    "directionForward": "A → B",
+    "directionBackward": "B → A",
+    "laneDirectionAria": "Direction for lane {number}",
     "turnPermissions": "Turn permissions",
     "movement": {
       "STRAIGHT": "Straight",
@@ -158,8 +162,18 @@
     "endpointB": "endpoint B",
     "endpointUnknown": "endpoint unavailable",
     "laneNumber": "Lane {number}",
-    "laneDirection": {"INBOUND": "Into intersection", "OUTBOUND": "Out of intersection"},
-    "directionChangeBreaksConnections": "This change would make an existing lane connection invalid."
+    "laneDirection": {
+      "INBOUND": "Into intersection",
+      "OUTBOUND": "Out of intersection"
+    },
+    "maneuver": {
+      "LEFT": "Left",
+      "STRAIGHT": "Straight",
+      "RIGHT": "Right",
+      "U_TURN": "U-turn"
+    },
+    "outgoingContext": "Destination lane; no maneuver is configured here.",
+    "maneuverSaveFailed": "The maneuver could not be saved. The intersection was not changed."
   },
   "fullscreen": {
     "smoothing": "Smoothing",

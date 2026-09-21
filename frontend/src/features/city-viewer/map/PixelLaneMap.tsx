@@ -375,12 +375,16 @@ export function PixelLaneMap({
       turnArrows: buildTurnArrowFeatureCollection(
         visibleRoads,
         city.coordinate_system,
-        visibleIntersections,
+        selectedIntersectionId
+          ? visibleIntersections.filter(
+              (item) => item.id === selectedIntersectionId,
+            )
+          : [],
+        city.lane_connections ?? [],
       ),
       laneConnections: buildLaneConnectionFeatureCollection(
         {
-          roads:
-            city.coordinate_system === "LOCAL_CARTESIAN" ? city.roads : [],
+          roads: city.coordinate_system === "LOCAL_CARTESIAN" ? city.roads : [],
           intersections:
             city.coordinate_system === "LOCAL_CARTESIAN"
               ? city.intersections
@@ -391,9 +395,7 @@ export function PixelLaneMap({
       ),
       junctionLaneDirections: buildJunctionLaneDirectionFeatureCollection(
         city.coordinate_system === "LOCAL_CARTESIAN" ? city.roads : [],
-        selectedIntersectionId
-          ? visibleIntersections.find((item) => item.id === selectedIntersectionId) ?? null
-          : null,
+        null,
         city.coordinate_system,
       ),
       laneUseMarkings: buildLaneUseMarkingFeatureCollection(
@@ -612,7 +614,10 @@ export function PixelLaneMap({
         projectSnapTargets(map, event.point),
         null,
         undefined,
-        fromLngLat(city.coordinate_system, [event.lngLat.lng, event.lngLat.lat]),
+        fromLngLat(city.coordinate_system, [
+          event.lngLat.lng,
+          event.lngLat.lat,
+        ]),
       );
       const point = candidate
         ? candidate.point
@@ -722,7 +727,10 @@ export function PixelLaneMap({
           projectSnapTargets(map, event.point),
           null,
           undefined,
-          fromLngLat(city.coordinate_system, [event.lngLat.lng, event.lngLat.lat]),
+          fromLngLat(city.coordinate_system, [
+            event.lngLat.lng,
+            event.lngLat.lat,
+          ]),
         ),
       );
     };
@@ -846,24 +854,24 @@ export function PixelLaneMap({
     );
     const connectedRoadIds = new Set<string>([
       ...(previousIntersectionId
-        ? city.intersections.find((i) => i.id === previousIntersectionId)
-            ?.connected_road_ids ?? []
+        ? (city.intersections.find((i) => i.id === previousIntersectionId)
+            ?.connected_road_ids ?? [])
         : []),
       ...(nextIntersectionId
-        ? city.intersections.find((i) => i.id === nextIntersectionId)
-            ?.connected_road_ids ?? []
+        ? (city.intersections.find((i) => i.id === nextIntersectionId)
+            ?.connected_road_ids ?? [])
         : []),
     ]);
     for (const roadId of connectedRoadIds) {
       const wasConnected = previousIntersectionId
-        ? city.intersections
+        ? (city.intersections
             .find((i) => i.id === previousIntersectionId)
-            ?.connected_road_ids.includes(roadId) ?? false
+            ?.connected_road_ids.includes(roadId) ?? false)
         : false;
       const isConnected = nextIntersectionId
-        ? city.intersections
+        ? (city.intersections
             .find((i) => i.id === nextIntersectionId)
-            ?.connected_road_ids.includes(roadId) ?? false
+            ?.connected_road_ids.includes(roadId) ?? false)
         : false;
       setSelectedFeature(
         map,

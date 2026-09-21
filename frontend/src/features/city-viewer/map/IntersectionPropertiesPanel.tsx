@@ -1,23 +1,30 @@
 "use client";
 
 import { useTranslations } from "next-intl";
-import type { Intersection, Road } from "../types/city";
+import type {
+  Intersection,
+  LaneConnection,
+  MovementType,
+  Road,
+} from "../types/city";
 import {
   getLaneDirectionRelativeToIntersection,
   getRoadEndpointAtIntersection,
   type LaneRelativeDirection,
 } from "../editor/intersectionLaneDirection";
+import { getAvailableManeuvers } from "../editor/intersectionManeuvers";
 
 interface IntersectionPropertiesPanelProps {
   intersection: Intersection;
   roads: Road[];
   onCornerRadiusChange: (radius: number) => void;
-  onLaneDirectionChange: (
+  laneConnections: LaneConnection[];
+  onManeuverChange: (
     roadId: string,
     laneId: string,
-    direction: LaneRelativeDirection,
+    movement: MovementType,
+    enabled: boolean,
   ) => void;
-  validationError?: string | null;
 }
 
 const DEFAULT_RADIUS_M = 6;
@@ -60,8 +67,8 @@ export function IntersectionPropertiesPanel({
   intersection,
   roads,
   onCornerRadiusChange,
-  onLaneDirectionChange,
-  validationError,
+  laneConnections,
+  onManeuverChange,
 }: IntersectionPropertiesPanelProps) {
   const t = useTranslations("cityModel.intersectionProperties");
   const connectedRoads = intersection.connected_road_ids
@@ -112,22 +119,23 @@ export function IntersectionPropertiesPanel({
           <span className="text-muted-foreground">m</span>
         </div>
       </label>
-      {validationError && (
-        <p role="alert" className="mt-3 rounded border border-danger/40 bg-danger/10 p-2 text-danger">
-          {validationError}
-        </p>
-      )}
       <div className="mt-3 border-t border-border-subtle pt-3">
         <h3 className="mb-2 text-muted-foreground">{t("connectedRoadList")}</h3>
         <div className="space-y-2">
           {connectedRoads.map((road) => {
             const endpoint = getRoadEndpointAtIntersection(road, intersection);
             return (
-              <details key={road.id} open className="rounded border border-border-subtle p-2">
+              <details
+                key={road.id}
+                open
+                className="rounded border border-border-subtle p-2"
+              >
                 <summary className="cursor-pointer font-medium">
                   <span>{road.name}</span>
                   <span className="ml-1 text-muted-foreground">
-                    ({endpoint ? t("endpoint" + endpoint) : t("endpointUnknown")})
+                    (
+                    {endpoint ? t("endpoint" + endpoint) : t("endpointUnknown")}
+                    )
                   </span>
                 </summary>
                 <div className="mt-2 space-y-1.5">
@@ -137,37 +145,64 @@ export function IntersectionPropertiesPanel({
                       lane,
                       intersection,
                     );
+                    const isIncoming = direction === "INBOUND";
+                    const maneuvers = isIncoming
+                      ? getAvailableManeuvers(
+                          road,
+                          intersection,
+                          connectedRoads,
+                        )
+                      : [];
+                    const enabled = new Set(
+                      laneConnections
+                        .filter(
+                          (connection) =>
+                            connection.intersection_id === intersection.id &&
+                            connection.from_lane_id === lane.id,
+                        )
+                        .map((connection) => connection.maneuver),
+                    );
                     return (
-                      <div key={lane.id} className="rounded bg-background/60 p-1.5">
+                      <div
+                        key={lane.id}
+                        className="rounded bg-background/60 p-1.5"
+                      >
                         <div className="mb-1 text-[11px] text-muted-foreground">
                           {t("laneNumber", { number: lane.index + 1 })}
                         </div>
-                        <div className="grid grid-cols-2 gap-1">
-                          {(["INBOUND", "OUTBOUND"] as const).map((option) => (
-                            <button
-                              key={option}
-                              type="button"
-                              disabled={!endpoint}
-                              aria-pressed={direction === option}
-                              title={t("laneDirection." + option)}
-                              onClick={() =>
-                                onLaneDirectionChange(road.id, lane.id, option)
-                              }
-                              className={
-                                "rounded border px-1 py-1 text-[10px] transition-colors " +
-                                (direction === option
-                                  ? "border-primary bg-primary/15 text-primary"
-                                  : "border-border-subtle text-muted-foreground hover:bg-surface-elevated") +
-                                " disabled:cursor-not-allowed disabled:opacity-50"
-                              }
-                            >
-                              <span aria-hidden="true">
-                                {option === "INBOUND" ? "↓" : "↑"}
-                              </span>{" "}
-                              {t("laneDirection." + option)}
-                            </button>
-                          ))}
-                        </div>
+                        <p className="text-[11px] font-medium text-foreground">
+                          {t(
+                            `laneDirection.${direction as LaneRelativeDirection}`,
+                          )}
+                        </p>
+                        {isIncoming ? (
+                          <div className="mt-1 grid grid-cols-2 gap-1">
+                            {maneuvers.map((movement) => (
+                              <label
+                                key={movement}
+                                className="flex items-center gap-1 text-[10px]"
+                              >
+                                <input
+                                  type="checkbox"
+                                  checked={enabled.has(movement)}
+                                  onChange={(event) =>
+                                    onManeuverChange(
+                                      road.id,
+                                      lane.id,
+                                      movement,
+                                      event.target.checked,
+                                    )
+                                  }
+                                />
+                                {t(`maneuver.${movement}`)}
+                              </label>
+                            ))}
+                          </div>
+                        ) : (
+                          <p className="mt-1 text-[10px] text-muted-foreground">
+                            {t("outgoingContext")}
+                          </p>
+                        )}
                       </div>
                     );
                   })}

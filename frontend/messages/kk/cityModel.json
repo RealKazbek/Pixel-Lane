@@ -108,6 +108,10 @@
     "lanes": "Жолақтар",
     "laneWidth": "Жолақ ені",
     "directions": "Бағыттар",
+    "directionHelp": "A нүктесінен B нүктесіне дейінгі жолдағы физикалық қозғалыс бағыты.",
+    "directionForward": "A → B",
+    "directionBackward": "B → A",
+    "laneDirectionAria": "{number} жолақ бағыты",
     "turnPermissions": "Бұрылу рұқсаттары",
     "movement": {
       "STRAIGHT": "Тура",
@@ -158,8 +162,18 @@
     "endpointB": "B нүктесі",
     "endpointUnknown": "нүкте анықталмады",
     "laneNumber": "Жолақ {number}",
-    "laneDirection": {"INBOUND": "Қиылысқа қарай", "OUTBOUND": "Қиылыстан шығу"},
-    "directionChangeBreaksConnections": "Бұл өзгеріс бар жолақ қосылымын жарамсыз етеді."
+    "laneDirection": {
+      "INBOUND": "Қиылысқа қарай",
+      "OUTBOUND": "Қиылыстан шығу"
+    },
+    "maneuver": {
+      "LEFT": "Солға",
+      "STRAIGHT": "Тура",
+      "RIGHT": "Оңға",
+      "U_TURN": "Кері бұрылу"
+    },
+    "outgoingContext": "Шығу жолағы; маневр мұнда бапталмайды.",
+    "maneuverSaveFailed": "Маневрді сақтау мүмкін болмады. Қиылыс өзгертілмеді."
   },
   "fullscreen": {
     "smoothing": "Тегістеу",

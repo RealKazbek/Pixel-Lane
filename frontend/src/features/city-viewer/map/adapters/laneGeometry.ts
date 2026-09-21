@@ -65,14 +65,18 @@ import type {
   MovementType,
   LaneBoundaryMarking,
   RoadEdgeMarking,
+  LaneConnection,
+  Road,
+  Lane,
 } from "../../types/city";
+import { getLaneDirectionRelativeToIntersection } from "../../editor/intersectionLaneDirection";
 
 /** Roads' Intersections, restricted to the fields this module needs --
  * matches what `roadSurfaceGeometry.ts` requires so both adapters can be
  * fed the same `City`/viewport intersection list. */
 export type LaneJunctionIntersection = Pick<
   Intersection,
-  "position" | "connected_road_ids"
+  "id" | "position" | "connected_road_ids"
 >;
 
 export interface LaneSurfaceProperties {
@@ -453,6 +457,7 @@ export function buildTurnArrowFeatureCollection(
   roads: AnyRoad[],
   coordinateSystem: CoordinateSystem,
   intersections: LaneJunctionIntersection[] = [],
+  laneConnections?: LaneConnection[],
 ): TurnArrowFeatureCollection {
   if (!supportsLaneDetailRendering(coordinateSystem)) {
     return { type: "FeatureCollection", features: [] };
@@ -473,44 +478,79 @@ export function buildTurnArrowFeatureCollection(
     const roadWidthM = roadWidthMeters(road);
     const laneWidthM = roadWidthM / laneCount;
     const coords = line.geometry.coordinates;
-    const lineLengthM = coords
-      .slice(0, -1)
-      .reduce(
-        (total, coordinate, index) =>
-          total +
-          distance(turfPoint(coordinate), turfPoint(coords[index + 1]), {
-            units: "meters",
-          }),
-        0,
-      );
+    const lineLengthM = coords.slice(0, -1).reduce(
+      (total, coordinate, index) =>
+        total +
+        distance(turfPoint(coordinate), turfPoint(coords[index + 1]), {
+          units: "meters",
+        }),
+      0,
+    );
     if (lineLengthM <= 0) continue;
     const connectedIntersection = intersections.find((intersection) => {
       if (!intersection.connected_road_ids.includes(road.id)) return false;
       const first = road.geometry.points[0];
       const last = road.geometry.points.at(-1)!;
-      return Math.min(
-        Math.hypot(first.x - intersection.position.x, first.y - intersection.position.y),
-        Math.hypot(last.x - intersection.position.x, last.y - intersection.position.y),
-      ) <= 1.5;
+      return (
+        Math.min(
+          Math.hypot(
+            first.x - intersection.position.x,
+            first.y - intersection.position.y,
+          ),
+          Math.hypot(
+            last.x - intersection.position.x,
+            last.y - intersection.position.y,
+          ),
+        ) <= 1.5
+      );
     });
+    if (laneConnections && !connectedIntersection) continue;
     const roadStart = road.geometry.points[0];
     const roadEnd = road.geometry.points.at(-1)!;
     const intersectionAtEnd = connectedIntersection
-      ? Math.hypot(roadEnd.x - connectedIntersection.position.x, roadEnd.y - connectedIntersection.position.y) <=
-        Math.hypot(roadStart.x - connectedIntersection.position.x, roadStart.y - connectedIntersection.position.y)
+      ? Math.hypot(
+          roadEnd.x - connectedIntersection.position.x,
+          roadEnd.y - connectedIntersection.position.y,
+        ) <=
+        Math.hypot(
+          roadStart.x - connectedIntersection.position.x,
+          roadStart.y - connectedIntersection.position.y,
+        )
       : null;
     const approachOffsetM = Math.min(
       Math.max(4, laneWidthM * 1.5),
       lineLengthM * 0.4,
     );
     for (const lane of lanes) {
+      if (
+        laneConnections &&
+        connectedIntersection &&
+        "id" in lane &&
+        "lanes" in road
+      ) {
+        const fullLane = lane as Lane;
+        const relative = getLaneDirectionRelativeToIntersection(
+          road as Road,
+          fullLane,
+          connectedIntersection as Intersection,
+        );
+        if (relative !== "INBOUND") continue;
+      }
       // Imported turn:lanes data remains the most specific source when it is
       // present. Editor-authored semantic permissions are the fallback; the
       // arrow is never the source of truth for either representation.
       const semanticMovements: MovementType[] =
-        "allowed_movements" in lane
-          ? (lane as { allowed_movements: MovementType[] }).allowed_movements
-          : [];
+        laneConnections && connectedIntersection && "id" in lane
+          ? laneConnections
+              .filter(
+                (connection) =>
+                  connection.intersection_id === connectedIntersection.id &&
+                  connection.from_lane_id === (lane as Lane).id,
+              )
+              .map((connection) => connection.maneuver)
+          : "allowed_movements" in lane
+            ? (lane as { allowed_movements: MovementType[] }).allowed_movements
+            : [];
       const arrow = turnArrowGlyph(
         lane.allowed_turns ??
           (semanticMovements.length > 0 ? semanticMovements : null),
@@ -565,7 +605,9 @@ export function buildTurnArrowFeatureCollection(
               { units: "meters" },
             ).geometry.coordinates;
             const direction = bearing(before, after);
-            return laneDirection === "BACKWARD" ? (direction + 180) % 360 : direction;
+            return laneDirection === "BACKWARD"
+              ? (direction + 180) % 360
+              : direction;
           })(),
         },
       });

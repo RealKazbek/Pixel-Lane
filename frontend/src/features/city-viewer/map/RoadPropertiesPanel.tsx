@@ -6,7 +6,7 @@ import type {
   LaneBoundaryMarking,
   Road,
   RoadEdgeMarking,
-  MovementType,
+  LaneDirection,
 } from "../types/city";
 import {
   laneWidthMeters,
@@ -35,7 +35,7 @@ interface RoadPropertiesPanelProps {
     width_m?: number;
     lane_count?: number;
     lane_width_m?: number;
-    lane_allowed_movements?: MovementType[][];
+    lane_directions?: LaneDirection[];
     left_edge_marking?: RoadEdgeMarking;
     right_edge_marking?: RoadEdgeMarking;
     lane_boundary_markings?: LaneBoundaryMarking[];
@@ -80,11 +80,7 @@ export function RoadPropertiesPanel({
     "DOUBLE_SOLID_WHITE",
     "NONE",
   ];
-  const movementOptions: MovementType[] = ["STRAIGHT", "LEFT", "RIGHT", "U_TURN"];
-  const updateLaneModel = (
-    count: number,
-    widthM: number,
-  ) => {
+  const updateLaneModel = (count: number, widthM: number) => {
     if (count * widthM > MAX_EDITOR_ROAD_WIDTH_M) return;
     onChange({
       lane_count: count,
@@ -191,33 +187,31 @@ export function RoadPropertiesPanel({
       </label>
       <fieldset className="mt-3">
         <legend className="mb-1 text-muted-foreground">
-          {t("turnPermissions")}
+          {t("directions")}
         </legend>
+        <p className="mb-2 text-[11px] leading-snug text-muted-foreground">
+          {t("directionHelp")}
+        </p>
         {road.lanes.map((lane, laneIndex) => (
-          <div key={lane.id} className="mt-2">
-            <span className="block text-[11px]">{t("laneNumber", { number: laneIndex + 1 })}</span>
-            <div className="mt-1 grid grid-cols-2 gap-1">
-              {movementOptions.map((movement) => {
-                const checked = lane.allowed_movements.includes(movement);
-                return (
-                  <label key={movement} className="flex items-center gap-1 text-[11px]">
-                    <input
-                      type="checkbox"
-                      checked={checked}
-                      onChange={() => {
-                        const next = road.lanes.map((item) => [...item.allowed_movements]);
-                        next[laneIndex] = checked
-                          ? next[laneIndex].filter((item) => item !== movement)
-                          : [...next[laneIndex], movement];
-                        onChange({ lane_allowed_movements: next });
-                      }}
-                    />
-                    {t(`movement.${movement}`)}
-                  </label>
-                );
-              })}
-            </div>
-          </div>
+          <label
+            key={lane.id}
+            className="mt-2 flex items-center justify-between gap-2"
+          >
+            <span>{t("laneNumber", { number: laneIndex + 1 })}</span>
+            <select
+              value={lane.direction}
+              onChange={(event) => {
+                const next = road.lanes.map((item) => item.direction);
+                next[laneIndex] = event.target.value as LaneDirection;
+                onChange({ lane_directions: next });
+              }}
+              className="min-w-0 rounded border border-border-subtle bg-background px-1 py-1 text-foreground"
+              aria-label={t("laneDirectionAria", { number: laneIndex + 1 })}
+            >
+              <option value="FORWARD">{t("directionForward")}</option>
+              <option value="BACKWARD">{t("directionBackward")}</option>
+            </select>
+          </label>
         ))}
       </fieldset>
       <fieldset className="mt-3">

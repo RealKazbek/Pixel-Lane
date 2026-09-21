@@ -108,6 +108,10 @@
     "lanes": "Полосы",
     "laneWidth": "Ширина полосы",
     "directions": "Направления",
+    "directionHelp": "Физическое направление движения по дороге от точки A к точке B.",
+    "directionForward": "A → B",
+    "directionBackward": "B → A",
+    "laneDirectionAria": "Направление полосы {number}",
     "turnPermissions": "Разрешённые манёвры",
     "movement": {
       "STRAIGHT": "Прямо",
@@ -158,8 +162,18 @@
     "endpointB": "точка B",
     "endpointUnknown": "точка не определена",
     "laneNumber": "Полоса {number}",
-    "laneDirection": {"INBOUND": "В перекрёсток", "OUTBOUND": "Из перекрёстка"},
-    "directionChangeBreaksConnections": "Изменение сделает существующее соединение полос недействительным."
+    "laneDirection": {
+      "INBOUND": "В перекрёсток",
+      "OUTBOUND": "Из перекрёстка"
+    },
+    "maneuver": {
+      "LEFT": "Налево",
+      "STRAIGHT": "Прямо",
+      "RIGHT": "Направо",
+      "U_TURN": "Разворот"
+    },
+    "outgoingContext": "Полоса назначения; манёвр здесь не настраивается.",
+    "maneuverSaveFailed": "Не удалось сохранить манёвр. Перекрёсток не изменён."
   },
   "fullscreen": {
     "smoothing": "Сглаживание",
