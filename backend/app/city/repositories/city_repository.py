@@ -9,7 +9,7 @@ import uuid
 from uuid import UUID
 
 from geoalchemy2 import WKTElement
-from sqlalchemy import exists, func, select, update
+from sqlalchemy import and_, delete, exists, func, or_, select, update
 from sqlalchemy.orm import Session, selectinload
 
 from app.city.domain.geometry import WGS84_SRID, Polyline, polyline_to_wkt
@@ -20,6 +20,7 @@ from app.city.models.lane import Lane
 from app.city.models.lane_connection import LaneConnection
 from app.city.models.road import Road
 from app.city.models.traffic_light import TrafficLight
+from app.city.models.traffic_rule import TrafficRule
 from app.city.repositories.city_builder import build_city
 from app.city.schemas.city import CityCreate
 from app.city.schemas.lane_connection import LaneConnectionCreate
@@ -282,7 +283,8 @@ def delete_road(db: Session, city_id: UUID, road_id: UUID) -> bool:
     ).scalar_one_or_none()
     if road is None:
         return False
-    road_lanes = set(road.lanes)
+    road_lane_ids = {lane.id for lane in road.lanes}
+    removed_intersection_ids: set[UUID] = set()
     for intersection in list(road.city.intersections):
         if road not in intersection.connected_roads:
             continue
@@ -290,12 +292,35 @@ def delete_road(db: Session, city_id: UUID, road_id: UUID) -> bool:
             connected for connected in intersection.connected_roads if connected.id != road_id
         ]
         intersection.connected_lanes = [
-            lane for lane in intersection.connected_lanes if lane not in road_lanes
+            lane for lane in intersection.connected_lanes if lane.id not in road_lane_ids
         ]
         # An intersection is derived from shared topology and is not useful
         # with fewer than two incident roads. Preserve it otherwise.
         if len(intersection.connected_roads) < 2:
+            removed_intersection_ids.add(intersection.id)
             db.delete(intersection)
+
+    # Most road-owned entities are protected by database ON DELETE CASCADE:
+    # lanes, lane connections, markings/amenities, and signal associations.
+    # TrafficRule targets are intentionally polymorphic and therefore have no
+    # FK; remove rules targeting the road/its lanes, plus rules targeting an
+    # intersection that topology cleanup removes.
+    db.execute(
+        delete(TrafficRule).where(
+            TrafficRule.city_id == city_id,
+            or_(
+                and_(TrafficRule.target_type == "ROAD", TrafficRule.target_id == road_id),
+                and_(
+                    TrafficRule.target_type == "LANE",
+                    TrafficRule.target_id.in_(road_lane_ids),
+                ),
+                and_(
+                    TrafficRule.target_type.in_(["INTERSECTION", "MOVEMENT"]),
+                    TrafficRule.target_id.in_(removed_intersection_ids),
+                ),
+            ),
+        )
+    )
     db.delete(road)
     db.execute(update(City).where(City.id == city_id).values(updated_at=func.now()))
     try:

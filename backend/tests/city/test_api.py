@@ -158,6 +158,34 @@ def test_delete_road_reconciles_intersection_and_lane_connections(client) -> Non
 
 
 @requires_postgres
+def test_delete_road_cleans_road_owned_dependencies(client) -> None:
+    data = _payload()
+    assert client.post("/api/v1/cities", json=data).status_code == 201
+    road = data["roads"][3]
+
+    assert client.delete(f"/api/v1/cities/{data['id']}/roads/{road['id']}").status_code == 204
+    refreshed = client.get(f"/api/v1/cities/{data['id']}").json()
+
+    assert all(item["id"] != road["id"] for item in refreshed["roads"])
+    assert all(item["road_id"] != road["id"] for item in refreshed["parking_zones"])
+    assert all(item["target_id"] != road["id"] for item in refreshed["traffic_rules"])
+    assert all(road["id"] not in item["connected_road_ids"] for item in refreshed["intersections"])
+
+
+@requires_postgres
+def test_delete_unknown_or_wrong_city_road_returns_404(client) -> None:
+    data = _payload()
+    assert client.post("/api/v1/cities", json=data).status_code == 201
+
+    unknown = client.delete(f"/api/v1/cities/{data['id']}/roads/{uuid.uuid4()}")
+    wrong_city = client.delete(f"/api/v1/cities/{uuid.uuid4()}/roads/{data['roads'][0]['id']}")
+
+    assert unknown.status_code == 404
+    assert wrong_city.status_code == 404
+    assert client.get(f"/api/v1/cities/{data['id']}").json()["roads"]
+
+
+@requires_postgres
 def test_topology_rejects_near_duplicate_intersections(client) -> None:
     data = _payload()
     assert client.post("/api/v1/cities", json=data).status_code == 201

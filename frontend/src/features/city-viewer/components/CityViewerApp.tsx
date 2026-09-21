@@ -33,6 +33,7 @@ import { EditorToolbar } from "../map/EditorToolbar";
 import { RoadPropertiesPanel } from "../map/RoadPropertiesPanel";
 import { IntersectionPropertiesPanel } from "../map/IntersectionPropertiesPanel";
 import { buildLaneConfiguration } from "../editor/laneConfiguration";
+import { removeRoadFromCity } from "../editor/roadDeletion";
 import {
   applyRoadPreset,
   getRoadPreset,
@@ -104,7 +105,6 @@ function applyRoadChanges(road: Road, changes: RoadChanges): Road {
       }
     : road;
 }
-
 /** City Model is currently an editor document, not a city picker/viewer. */
 export function CityViewerApp() {
   const t = useTranslations("cityModel.fullscreen");
@@ -113,6 +113,9 @@ export function CityViewerApp() {
   const [city, setCity] = useState(buildEditorWorkspace);
   const [hydrated, setHydrated] = useState(false);
   const [loadError, setLoadError] = useState<string | null>(null);
+  const [deleteError, setDeleteError] = useState<string | null>(null);
+  const [deleteConfirmationRoad, setDeleteConfirmationRoad] = useState<Road | null>(null);
+  const [isDeletingRoad, setIsDeletingRoad] = useState(false);
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [layerVisibility, setLayerVisibility] = useState<LayerVisibility>(
     DEFAULT_LAYER_VISIBILITY,
@@ -248,42 +251,31 @@ export function CityViewerApp() {
     },
     [persistRoad, selected],
   );
-  const handleDeleteRoad = useCallback(async () => {
+  const handleDeleteRoad = useCallback(() => {
     if (selected?.type !== "road") return;
     const road = city.roads.find((candidate) => candidate.id === selected.id);
-    if (!road || !window.confirm(tProperties("deleteConfirm"))) return;
+    if (!road) return;
+    setDeleteError(null);
+    setDeleteConfirmationRoad(road);
+  }, [city.roads, selected]);
+
+  const confirmDeleteRoad = useCallback(async () => {
+    if (!deleteConfirmationRoad) return;
+    setIsDeletingRoad(true);
+    setDeleteError(null);
     try {
-      await deleteRoad(city.id, road.id);
-      const laneIds = new Set(road.lanes.map((lane) => lane.id));
-      setCity((current) => ({
-        ...current,
-        roads: current.roads.filter((candidate) => candidate.id !== road.id),
-        intersections: current.intersections
-          .map((intersection) => ({
-            ...intersection,
-            connected_road_ids: intersection.connected_road_ids.filter(
-              (roadId) => roadId !== road.id,
-            ),
-            connected_lane_ids: intersection.connected_lane_ids.filter(
-              (laneId) => !laneIds.has(laneId),
-            ),
-          }))
-          .filter((intersection) => intersection.connected_road_ids.length >= 2),
-        lane_connections: (current.lane_connections ?? []).filter(
-          (connection) =>
-            connection.from_road_id !== road.id &&
-            connection.to_road_id !== road.id &&
-            !laneIds.has(connection.from_lane_id) &&
-            !laneIds.has(connection.to_lane_id),
-        ),
-      }));
+      await deleteRoad(city.id, deleteConfirmationRoad.id);
+      setCity((current) => removeRoadFromCity(current, deleteConfirmationRoad.id));
       setSelected(null);
       setSelectedVertexIndex(null);
+      setDeleteConfirmationRoad(null);
     } catch (error) {
       console.error("Failed to delete EditorWorkspace road", error);
-      setLoadError(tProperties("deleteFailed"));
+      setDeleteError(tProperties("deleteFailed"));
+    } finally {
+      setIsDeletingRoad(false);
     }
-  }, [city.id, city.roads, selected, tProperties]);
+  }, [city.id, deleteConfirmationRoad, tProperties]);
   const handleIntersectionRadiusChange = useCallback(
     (radius: number) => {
       if (selected?.type !== "intersection") return;
@@ -301,6 +293,7 @@ export function CityViewerApp() {
   const handleSelect = useCallback((selection: MapSelection | null) => {
     setSelected(selection);
     setSelectedVertexIndex(null);
+    setDeleteError(null);
   }, []);
   const handleToggleLayer = useCallback((layer: LayerGroupId) => {
     setLayerVisibility((current) => ({
@@ -529,7 +522,12 @@ export function CityViewerApp() {
         )}
         {loadError && (
           <div role="alert" className="absolute left-3 top-3 rounded-md bg-surface p-3 text-sm text-danger shadow">
-            Failed to load the EditorWorkspace. Check the backend and reload.
+            {tProperties("workspaceLoadFailed")}
+          </div>
+        )}
+        {deleteError && (
+          <div role="alert" className="absolute left-3 top-14 rounded-md bg-surface p-3 text-sm text-danger shadow">
+            {deleteError}
           </div>
         )}
         {selectedRoad && (
@@ -548,6 +546,51 @@ export function CityViewerApp() {
             roads={city.roads}
             onCornerRadiusChange={handleIntersectionRadiusChange}
           />
+        )}
+        {deleteConfirmationRoad && (
+          <div
+            className="absolute inset-0 z-20 flex items-center justify-center bg-black/20 p-4"
+            role="presentation"
+            onMouseDown={(event) => {
+              if (event.target === event.currentTarget && !isDeletingRoad) {
+                setDeleteConfirmationRoad(null);
+              }
+            }}
+          >
+            <section
+              role="dialog"
+              aria-modal="true"
+              aria-labelledby="delete-road-title"
+              className="w-full max-w-sm rounded-lg border border-border-subtle bg-surface p-5 shadow-xl"
+            >
+              <h2 id="delete-road-title" className="text-base font-semibold text-foreground">
+                {tProperties("deleteConfirmTitle")}
+              </h2>
+              <p className="mt-2 text-sm text-muted-foreground">
+                {tProperties("deleteConfirm", { name: deleteConfirmationRoad.name })}
+              </p>
+              <div className="mt-5 flex justify-end gap-2">
+                <button
+                  type="button"
+                  disabled={isDeletingRoad}
+                  onClick={() => setDeleteConfirmationRoad(null)}
+                  className="rounded-md border border-border-subtle px-3 py-1.5 text-sm text-foreground hover:bg-surface-elevated disabled:opacity-50"
+                >
+                  {tProperties("cancelDelete")}
+                </button>
+                <button
+                  type="button"
+                  disabled={isDeletingRoad}
+                  onClick={() => void confirmDeleteRoad()}
+                  className="rounded-md bg-danger px-3 py-1.5 text-sm text-white hover:opacity-90 disabled:opacity-50"
+                >
+                  {isDeletingRoad
+                    ? tProperties("deletingRoad")
+                    : tProperties("confirmDelete")}
+                </button>
+              </div>
+            </section>
+          </div>
         )}
         <div className="pointer-events-none absolute inset-x-3 top-3 flex justify-end">
           <button

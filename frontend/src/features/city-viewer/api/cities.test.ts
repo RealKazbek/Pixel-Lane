@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
 import { apiRequest } from "./client";
-import { getCityForMap, getRoadsInBbox } from "./cities";
+import { deleteRoad, getCityForMap, getRoadsInBbox } from "./cities";
 
 vi.mock("./client", () => ({ apiRequest: vi.fn() }));
 
@@ -20,5 +20,17 @@ describe("geographic map requests", () => {
     const controller = new AbortController();
     await getRoadsInBbox("city", {minLon: 76, minLat: 43, maxLon: 77, maxLat: 44}, controller.signal, 11);
     expect(apiRequest).toHaveBeenCalledWith("/api/v1/cities/city/map-roads?bbox=76,43,77,44&zoom=11", {signal: controller.signal});
+  });
+
+  it("deletes the selected road through the City Model API", async () => {
+    vi.mocked(apiRequest).mockReset();
+    vi.mocked(apiRequest).mockResolvedValue(undefined);
+
+    await deleteRoad("city", "road");
+
+    expect(apiRequest).toHaveBeenCalledExactlyOnceWith(
+      "/api/v1/cities/city/roads/road",
+      { method: "DELETE" },
+    );
   });
 });

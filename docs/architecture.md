@@ -311,7 +311,8 @@ a road's existing vertices).
 Frontend 2D Map/Editor
       |
 City Model API      (GET /api/v1/cities, GET /api/v1/cities/{id},
-      |               PATCH /api/v1/cities/{id}/roads/{id}/geometry)
+      |               PATCH /api/v1/cities/{id}/roads/{id}/geometry,
+      |               DELETE /api/v1/cities/{id}/roads/{id})
 Traffic Analysis API (POST /api/v1/cities/{id}/traffic-analysis)
 ```
 
