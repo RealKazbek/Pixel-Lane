@@ -85,6 +85,21 @@
     "cancel": "Cancel",
     "fitToView": "Fit to view"
   },
+  "environment": {
+    "timeLabel": "Time",
+    "weatherLabel": "Weather",
+    "time": {
+      "day": "Day",
+      "sunset": "Sunset",
+      "night": "Night"
+    },
+    "weather": {
+      "clear": "Clear",
+      "rain": "Rain",
+      "snow": "Snow",
+      "fog": "Fog"
+    }
+  },
   "properties": {
     "title": "Selected road",
     "preset": "Road preset",

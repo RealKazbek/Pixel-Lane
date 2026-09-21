@@ -85,6 +85,21 @@
     "cancel": "Бас тарту",
     "fitToView": "Экранға сыйдыру"
   },
+  "environment": {
+    "timeLabel": "Уақыт",
+    "weatherLabel": "Ауа райы",
+    "time": {
+      "day": "Күндіз",
+      "sunset": "Күн батарда",
+      "night": "Түн"
+    },
+    "weather": {
+      "clear": "Ашық",
+      "rain": "Жаңбыр",
+      "snow": "Қар",
+      "fog": "Тұман"
+    }
+  },
   "properties": {
     "title": "Таңдалған жол",
     "preset": "Жол үлгісі",

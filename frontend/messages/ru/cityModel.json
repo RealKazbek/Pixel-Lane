@@ -85,6 +85,21 @@
     "cancel": "Отмена",
     "fitToView": "Вписать в экран"
   },
+  "environment": {
+    "timeLabel": "Время",
+    "weatherLabel": "Погода",
+    "time": {
+      "day": "День",
+      "sunset": "Закат",
+      "night": "Ночь"
+    },
+    "weather": {
+      "clear": "Ясно",
+      "rain": "Дождь",
+      "snow": "Снег",
+      "fog": "Туман"
+    }
+  },
   "properties": {
     "title": "Выбранная дорога",
     "preset": "Шаблон дороги",

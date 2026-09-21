@@ -1,0 +1,116 @@
+.atmosphere {
+  position: absolute;
+  inset: 0;
+  z-index: 10;
+  pointer-events: none;
+  overflow: hidden;
+}
+
+.atmosphere::before,
+.atmosphere::after,
+.weatherEffect {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  content: "";
+}
+
+.atmosphere[data-time-of-day="sunset"]::before {
+  background: linear-gradient(
+    135deg,
+    rgb(251 146 60 / 0.1),
+    rgb(120 53 15 / 0.14)
+  );
+  mix-blend-mode: multiply;
+}
+
+.atmosphere[data-time-of-day="night"]::before {
+  background: linear-gradient(
+    135deg,
+    rgb(15 23 42 / 0.3),
+    rgb(30 41 59 / 0.38)
+  );
+  mix-blend-mode: multiply;
+}
+
+.atmosphere[data-weather="rain"] .weatherEffect {
+  background-image: repeating-linear-gradient(
+    110deg,
+    transparent 0 18px,
+    rgb(191 219 254 / 0.25) 19px 20px,
+    transparent 21px 38px
+  );
+  background-size: 42px 42px;
+  animation: rain 0.55s linear infinite;
+}
+
+.atmosphere[data-weather="snow"] .weatherEffect {
+  background-image:
+    radial-gradient(
+      circle at 18% 22%,
+      rgb(255 255 255 / 0.65) 0 2px,
+      transparent 2.5px
+    ),
+    radial-gradient(
+      circle at 70% 12%,
+      rgb(255 255 255 / 0.55) 0 1.5px,
+      transparent 2px
+    ),
+    radial-gradient(
+      circle at 42% 72%,
+      rgb(255 255 255 / 0.5) 0 2px,
+      transparent 2.5px
+    ),
+    radial-gradient(
+      circle at 88% 82%,
+      rgb(255 255 255 / 0.6) 0 1.5px,
+      transparent 2px
+    );
+  background-size:
+    150px 150px,
+    190px 190px,
+    220px 220px,
+    170px 170px;
+  animation: snow 9s linear infinite;
+}
+
+.atmosphere[data-weather="fog"] .weatherEffect {
+  background: radial-gradient(
+    ellipse at 50% 45%,
+    rgb(226 232 240 / 0.15),
+    rgb(226 232 240 / 0.28)
+  );
+  backdrop-filter: blur(0.6px);
+}
+
+@keyframes rain {
+  from {
+    background-position: 0 0;
+  }
+  to {
+    background-position: -42px 84px;
+  }
+}
+
+@keyframes snow {
+  from {
+    background-position:
+      0 -150px,
+      30px -190px,
+      -20px -220px,
+      15px -170px;
+  }
+  to {
+    background-position:
+      35px 150px,
+      -20px 190px,
+      30px 220px,
+      -15px 170px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .weatherEffect {
+    animation: none !important;
+  }
+}

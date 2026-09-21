@@ -25,6 +25,9 @@ import { DEFAULT_LAYER_VISIBILITY, type MapSelection } from "../map/types";
 import { EditorToolbar } from "../map/EditorToolbar";
 import { RoadPropertiesPanel } from "../map/RoadPropertiesPanel";
 import { IntersectionPropertiesPanel } from "../map/IntersectionPropertiesPanel";
+import { EnvironmentControls } from "../map/environment/EnvironmentControls";
+import { WeatherOverlay } from "../map/environment/WeatherOverlay";
+import { useEnvironment } from "../map/environment/useEnvironment";
 import { buildLaneConfiguration } from "../editor/laneConfiguration";
 import {
   applyRoadPreset,
@@ -97,6 +100,7 @@ export function CityViewerApp() {
   const [crosshair, setCrosshair] = useState<{ x: number; y: number } | null>(
     null,
   );
+  const [environment, dispatchEnvironment] = useEnvironment();
 
   useEffect(() => {
     let cancelled = false;
@@ -405,40 +409,57 @@ export function CityViewerApp() {
         }}
         onPointerLeave={() => setCrosshair(null)}
       >
-        <PixelLaneMap
-          city={city}
-          selected={selected}
-          onSelect={handleSelect}
-          selectedVertexIndex={selectedVertexIndex}
-          onVertexSelect={setSelectedVertexIndex}
-          onVertexDrag={handleEndpointDrag}
-          onVertexDragEnd={handleEndpointDragEnd}
-          onInsertPoint={handleInsertPoint}
-          basemapEnabled={false}
-          mapStyleUrl={mapStyleUrl}
-          overlayVisible
-          layerVisibility={DEFAULT_LAYER_VISIBILITY}
-          // The empty editor workspace uses a fixed world. Persisted cities
-          // must fit to their loaded geometry once, otherwise the initial
-          // pre-hydration camera can leave the real network off-screen.
-          fitSignal={hydrated ? 1 : 0}
-          editorWorld={city.coordinate_system === "LOCAL_CARTESIAN" ? EDITOR_WORLD_BOUNDS : undefined}
-          mode={
-            session.mode === "edit" && session.activeTool === "select"
-              ? "edit-geometry"
-              : "view"
-          }
-          activeTool={
-            session.activeTool === "draw-road" ? "draw-road" : "select"
-          }
-          snapLabel={t("snap")}
-          onDrawPoint={handleDrawPoint}
-          editorAction={null}
-          onEditorStatusChange={() => undefined}
-          onRoadSaved={() => undefined}
-          onScaleChange={setScale}
-          onRoadGeometryChange={handleRoadGeometryChange}
-        />
+        <div className="relative flex h-full min-w-0 flex-1">
+          <PixelLaneMap
+            city={city}
+            selected={selected}
+            onSelect={handleSelect}
+            selectedVertexIndex={selectedVertexIndex}
+            onVertexSelect={setSelectedVertexIndex}
+            onVertexDrag={handleEndpointDrag}
+            onVertexDragEnd={handleEndpointDragEnd}
+            onInsertPoint={handleInsertPoint}
+            basemapEnabled={false}
+            mapStyleUrl={mapStyleUrl}
+            overlayVisible
+            layerVisibility={DEFAULT_LAYER_VISIBILITY}
+            // The empty editor workspace uses a fixed world. Persisted cities
+            // must fit to their loaded geometry once, otherwise the initial
+            // pre-hydration camera can leave the real network off-screen.
+            fitSignal={hydrated ? 1 : 0}
+            editorWorld={city.coordinate_system === "LOCAL_CARTESIAN" ? EDITOR_WORLD_BOUNDS : undefined}
+            mode={
+              session.mode === "edit" && session.activeTool === "select"
+                ? "edit-geometry"
+                : "view"
+            }
+            activeTool={
+              session.activeTool === "draw-road" ? "draw-road" : "select"
+            }
+            snapLabel={t("snap")}
+            onDrawPoint={handleDrawPoint}
+            editorAction={null}
+            onEditorStatusChange={() => undefined}
+            onRoadSaved={() => undefined}
+            onScaleChange={setScale}
+            onRoadGeometryChange={handleRoadGeometryChange}
+          />
+          <WeatherOverlay
+            timeOfDay={environment.timeOfDay}
+            weather={environment.weather}
+          />
+          <div className="pointer-events-none absolute right-3 top-14 z-20">
+            <EnvironmentControls
+              value={environment}
+              onTimeOfDayChange={(timeOfDay) =>
+                dispatchEnvironment({ type: "set-time-of-day", timeOfDay })
+              }
+              onWeatherChange={(weather) =>
+                dispatchEnvironment({ type: "set-weather", weather })
+              }
+            />
+          </div>
+        </div>
         {loadError && (
           <div role="alert" className="absolute left-3 top-3 rounded-md bg-surface p-3 text-sm text-danger shadow">
             Failed to load the EditorWorkspace. Check the backend and reload.
