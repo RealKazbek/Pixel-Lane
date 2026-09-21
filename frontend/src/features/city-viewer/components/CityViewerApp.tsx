@@ -417,7 +417,6 @@ export function CityViewerApp() {
                         intersection,
                       ) === "OUTBOUND",
                   )
-                  .slice(0, 1)
                   .map((lane): LaneConnection => ({
                     id: crypto.randomUUID(),
                     city_id: city.id,
