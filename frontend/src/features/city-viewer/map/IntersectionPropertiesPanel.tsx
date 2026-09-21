@@ -77,7 +77,11 @@ export function IntersectionPropertiesPanel({
   const radius = intersection.junction_corner_radius_m ?? DEFAULT_RADIUS_M;
 
   return (
-    <section className="pointer-events-auto absolute right-3 top-16 z-20 max-h-[calc(100%-5rem)] w-60 overflow-y-auto rounded-lg border border-border-subtle bg-surface/95 p-3 text-xs text-foreground shadow-lg backdrop-blur">
+    <section
+      className="pointer-events-auto absolute right-3 top-16 z-20 max-h-[calc(100%-5rem)] w-60 overflow-y-auto rounded-lg border border-border-subtle bg-surface/95 p-3 text-xs text-foreground shadow-lg backdrop-blur"
+      onPointerDown={(event) => event.stopPropagation()}
+      onClick={(event) => event.stopPropagation()}
+    >
       <h2 className="mb-3 text-sm font-semibold">{t("title")}</h2>
       <dl className="space-y-2">
         <div>

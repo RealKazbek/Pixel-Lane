@@ -9,4 +9,8 @@ describe("compassRoseRotation", () => {
   it("counter-rotates the rose when the map rotates clockwise", () => {
     expect(compassRoseRotation(30)).toBe(-30);
   });
+
+  it.each([45, 180, 270, 359])("supports arbitrary bearing %s", (bearing) => {
+    expect(compassRoseRotation(bearing)).toBe(-bearing);
+  });
 });

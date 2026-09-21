@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useReducer, useState } from "react";
+import { useCallback, useEffect, useReducer, useRef, useState } from "react";
 import { useTranslations } from "next-intl";
 import { mapStyleUrl } from "@/lib/config";
 import {
@@ -15,7 +15,6 @@ import type {
   Road,
   MovementType,
   LaneDirection,
-  LaneConnection,
 } from "../types/city";
 import {
   insertPolylinePoint,
@@ -35,8 +34,7 @@ import { RoadPropertiesPanel } from "../map/RoadPropertiesPanel";
 import { IntersectionPropertiesPanel } from "../map/IntersectionPropertiesPanel";
 import { buildLaneConfiguration } from "../editor/laneConfiguration";
 import { removeRoadFromCity } from "../editor/roadDeletion";
-import { getLaneDirectionRelativeToIntersection } from "../editor/intersectionLaneDirection";
-import { getAvailableManeuvers } from "../editor/intersectionManeuvers";
+import { updateIntersectionManeuver } from "../editor/intersectionManeuverState";
 import {
   applyRoadPreset,
   getRoadPreset,
@@ -159,6 +157,7 @@ export function CityViewerApp() {
   const [crosshair, setCrosshair] = useState<{ x: number; y: number } | null>(
     null,
   );
+  const maneuverRequestRef = useRef(0);
 
   useEffect(() => {
     let cancelled = false;
@@ -372,74 +371,28 @@ export function CityViewerApp() {
     ) => {
       if (selected?.type !== "intersection") return;
       const intersectionId = selected.id;
-      const intersection = city.intersections.find(
-        (item) => item.id === intersectionId,
+      const previousConnections = city.lane_connections ?? [];
+      const nextCity = updateIntersectionManeuver(
+        city,
+        intersectionId,
+        roadId,
+        laneId,
+        movement,
+        enabled,
       );
-      const sourceRoad = city.roads.find((road) => road.id === roadId);
-      if (!intersection || !sourceRoad) return;
-      const current = city.lane_connections ?? [];
-      const targetRoads = city.roads.filter(
-        (road) =>
-          road.id !== roadId &&
-          intersection.connected_road_ids.includes(road.id) &&
-          road.lanes.some(
-            (lane) =>
-              getLaneDirectionRelativeToIntersection(
-                road,
-                lane,
-                intersection,
-              ) === "OUTBOUND",
-          ),
-      );
-      const next = enabled
-        ? [
-            ...current.filter(
-              (connection) =>
-                !(
-                  connection.intersection_id === intersectionId &&
-                  connection.from_lane_id === laneId &&
-                  connection.maneuver === movement
-                ),
-            ),
-            ...targetRoads
-              .filter((road) =>
-                getAvailableManeuvers(sourceRoad, intersection, [
-                  road,
-                ]).includes(movement),
-              )
-              .flatMap((road) =>
-                road.lanes
-                  .filter(
-                    (lane) =>
-                      getLaneDirectionRelativeToIntersection(
-                        road,
-                        lane,
-                        intersection,
-                      ) === "OUTBOUND",
-                  )
-                  .map((lane): LaneConnection => ({
-                    id: crypto.randomUUID(),
-                    city_id: city.id,
-                    intersection_id: intersectionId,
-                    from_road_id: roadId,
-                    from_lane_id: laneId,
-                    to_road_id: road.id,
-                    to_lane_id: lane.id,
-                    maneuver: movement,
-                  })),
-              ),
-          ]
-        : current.filter(
-            (connection) =>
-              !(
-                connection.intersection_id === intersectionId &&
-                connection.from_lane_id === laneId &&
-                connection.maneuver === movement
-              ),
-          );
+      const requestId = ++maneuverRequestRef.current;
+      setCity(nextCity);
       try {
-        const saved = await replaceLaneConnections(city.id, next);
-        setCity((currentCity) => ({ ...currentCity, lane_connections: saved }));
+        const saved = await replaceLaneConnections(
+          city.id,
+          nextCity.lane_connections ?? [],
+        );
+        if (requestId === maneuverRequestRef.current) {
+          setCity((currentCity) => ({
+            ...currentCity,
+            lane_connections: saved,
+          }));
+        }
       } catch (error) {
         console.error("Failed to persist intersection maneuver", {
           error,
@@ -448,7 +401,13 @@ export function CityViewerApp() {
           laneId,
           movement,
         });
-        setDeleteError(tProperties("maneuverSaveFailed"));
+        if (requestId === maneuverRequestRef.current) {
+          setCity((currentCity) => ({
+            ...currentCity,
+            lane_connections: previousConnections,
+          }));
+          setDeleteError(tProperties("maneuverSaveFailed"));
+        }
       }
     },
     [city, selected, tProperties],
