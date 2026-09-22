@@ -608,7 +608,13 @@ export function PixelLaneMap({
     const map = mapRef.current;
     if (!map || !isLoaded) return;
 
+    // One DOM click can hit several stacked road/intersection layers. Treat it
+    // as one draw point, or a snap at their shared endpoint creates multiple
+    // roads and starts overlapping topology writes.
+    const handledDrawClicks = new WeakSet<MouseEvent>();
     const resolveDrawPoint = (event: MapMouseEvent) => {
+      if (handledDrawClicks.has(event.originalEvent)) return;
+      handledDrawClicks.add(event.originalEvent);
       const candidate = findEndpointSnapCandidate(
         event.point,
         projectSnapTargets(map, event.point),
@@ -1042,6 +1048,7 @@ export function PixelLaneMap({
           label={compassLabel}
           resetLabel={resetNorthLabel}
           onReset={() => mapRef.current?.easeTo({ bearing: 0, duration: 200 })}
+          onRotate={(bearing) => mapRef.current?.setBearing(bearing)}
         />
       </div>
       <div className="pointer-events-none absolute inset-0" aria-hidden="true">

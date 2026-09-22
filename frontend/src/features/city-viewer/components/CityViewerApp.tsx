@@ -15,6 +15,7 @@ import type {
   Road,
   MovementType,
   LaneDirection,
+  LaneConnection,
 } from "../types/city";
 import {
   insertPolylinePoint,
@@ -145,6 +146,7 @@ export function CityViewerApp() {
   const [pendingRoadSaves, setPendingRoadSaves] = useState(0);
   const [isSavingManeuver, setIsSavingManeuver] = useState(false);
   const roadSaveQueue = useRef<Promise<void>>(Promise.resolve());
+  const cityWriteQueue = useRef<Promise<void>>(Promise.resolve());
   const [city, setCity] = useState(buildEditorWorkspace);
   const [hydrated, setHydrated] = useState(false);
   const [loadError, setLoadError] = useState<string | null>(null);
@@ -184,6 +186,12 @@ export function CityViewerApp() {
   useEffect(() => {
     cityRef.current = city;
   }, [city]);
+
+  const enqueueCityWrite = useCallback((write: () => Promise<void>) => {
+    const pending = cityWriteQueue.current.then(write);
+    cityWriteQueue.current = pending.catch(() => {});
+    return pending;
+  }, []);
 
   useEffect(() => {
     let cancelled = false;
@@ -237,18 +245,18 @@ export function CityViewerApp() {
   const persistCityTopology = useCallback(
     (nextCity: City) => {
       if (!hydrated) return;
-      void (async () => {
+      void enqueueCityWrite(async () => {
         await replaceTopology(nextCity.id, nextCity);
         await replaceLaneConnections(
           nextCity.id,
-          nextCity.lane_connections ?? [],
+          cityRef.current.lane_connections ?? [],
         );
-      })().catch((error) => {
+      }).catch((error) => {
         console.error("Failed to persist EditorWorkspace topology", error);
         setDeleteError(tProperties("topologySaveFailed"));
       });
     },
-    [hydrated, tProperties],
+    [enqueueCityWrite, hydrated, tProperties],
   );
   const persistCreatedRoadTopology = useCallback(
     (previousCity: City, nextCity: City) => {
@@ -259,16 +267,19 @@ export function CityViewerApp() {
       const createdRoads = nextCity.roads.filter(
         (road) => !previousRoadIds.has(road.id),
       );
-      void (async () => {
+      void enqueueCityWrite(async () => {
         await replaceTopology(nextCity.id, nextCity, createdRoads);
-        if (nextCity.lane_connections) {
-          await replaceLaneConnections(nextCity.id, nextCity.lane_connections);
+        if (cityRef.current.lane_connections) {
+          await replaceLaneConnections(
+            nextCity.id,
+            cityRef.current.lane_connections,
+          );
         }
-      })().catch((error) =>
+      }).catch((error) =>
         console.error("Failed to persist created road topology", error),
       );
     },
-    [hydrated],
+    [enqueueCityWrite, hydrated],
   );
   const selectedRoad =
     selected?.type === "road"
@@ -436,10 +447,13 @@ export function CityViewerApp() {
       cityRef.current = nextCity;
       setCity(nextCity);
       try {
-        const saved = await replaceLaneConnections(
-          currentCity.id,
-          nextCity.lane_connections ?? [],
-        );
+        let saved: LaneConnection[] = [];
+        await enqueueCityWrite(async () => {
+          saved = await replaceLaneConnections(
+            currentCity.id,
+            cityRef.current.lane_connections ?? [],
+          );
+        });
         if (requestId === maneuverRequestRef.current) {
           setCity((latestCity) => {
             const savedCity = { ...latestCity, lane_connections: saved };
@@ -470,7 +484,7 @@ export function CityViewerApp() {
         setIsSavingManeuver(false);
       }
     },
-    [selected, tIntersection],
+    [enqueueCityWrite, selected, tIntersection],
   );
 
   const handleToggleLayer = useCallback((layer: LayerGroupId) => {

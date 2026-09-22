@@ -223,6 +223,38 @@ describe("endpoint snap detection", () => {
 });
 
 describe("endpoint snap topology", () => {
+  it("generates a valid stable UUID for a junction in a persisted city", () => {
+    const first = "6ac0bae9-548e-4de7-becc-b58342c780fb";
+    const second = "d0d12181-f2bf-4ae9-bade-a52935d5e12d";
+    const city = makeCity([makeRoad(first, 0, 10), makeRoad(second, 20, 30)]);
+    const target = endpointTarget(first, "end", { x: 10, y: 0 });
+    const connect = () => applyEndpointSnap(city, second, "start", target);
+    const id = connect()?.intersections[0]?.id;
+
+    expect(id).toMatch(
+      /^[0-9a-f]{8}-[0-9a-f]{4}-5[0-9a-f]{3}-8[0-9a-f]{3}-[0-9a-f]{12}$/,
+    );
+    expect(connect()?.intersections[0]?.id).toBe(id);
+  });
+
+  it("joins every road endpoint already at the snapped T junction", () => {
+    const left = makeRoad("left", 0, 10);
+    const right = makeRoad("right", 10, 20);
+    const incoming = makeRoad("incoming", 30, 40);
+    const connected = applyEndpointSnap(
+      makeCity([left, right, incoming]),
+      incoming.id,
+      "start",
+      endpointTarget(left.id, "end", { x: 10, y: 0 }),
+    );
+
+    expect(connected?.intersections[0].connected_road_ids).toEqual([
+      "incoming",
+      "left",
+      "right",
+    ]);
+  });
+
   it("moves every road connected to one shared node", () => {
     const city = makeCity([
       makeRoad("road-ab", 0, 100),

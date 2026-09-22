@@ -168,6 +168,9 @@ test(
       await button.waitFor();
       await button.scrollIntoViewIfNeeded();
       assert.equal(await button.getAttribute("aria-pressed"), "false");
+      await panel.evaluate((element) => {
+        window.__intersectionPanel = element;
+      });
       const before = await button.evaluate((el) => {
         const r = el.getBoundingClientRect();
         return {
@@ -199,12 +202,20 @@ test(
       });
       await page.screenshot({ path: "/tmp/pixel-lane-before-maneuver.png" });
       async function toggle(value) {
+        await button.scrollIntoViewIfNeeded();
+        const panelState = await panel.evaluate((element) => ({
+          scrollTop: element.scrollTop,
+          expanded: [...element.querySelectorAll("details")].map(
+            (detail) => detail.open,
+          ),
+        }));
         const pending = page.waitForResponse(
           (r) =>
             r.url().endsWith("/lane-connections") &&
             r.request().method() === "PUT",
         );
         await button.click();
+        assert.equal(await button.getAttribute("aria-pressed"), value);
         const response = await pending;
         const payload = response.request().postDataJSON();
         const body = await response.json();
@@ -226,7 +237,27 @@ test(
             ),
           );
         await waitPressed(button, value);
+        for (const delay of [250, 1000, 2000]) {
+          await page.waitForTimeout(delay);
+          assert.equal(await button.getAttribute("aria-pressed"), value);
+        }
         assert.ok((await panel.innerText()).includes(junction.id));
+        assert.equal(
+          await panel.evaluate(
+            (element) =>
+              element === window.__intersectionPanel && element.isConnected,
+          ),
+          true,
+        );
+        assert.deepEqual(
+          await panel.evaluate((element) => ({
+            scrollTop: element.scrollTop,
+            expanded: [...element.querySelectorAll("details")].map(
+              (detail) => detail.open,
+            ),
+          })),
+          panelState,
+        );
       }
       await toggle("true");
       await page.screenshot({ path: "/tmp/pixel-lane-after-maneuver.png" });
@@ -237,6 +268,9 @@ test(
       await page.waitForTimeout(1000);
       await mapAction(page, "center", lngLat(600, 0));
       await selectAt(page, lngLat(600, 0));
+      await panel.evaluate((element) => {
+        window.__intersectionPanel = element;
+      });
       assert.equal(await button.getAttribute("aria-pressed"), "false");
       // Also verify enabled persistence: a false-only reload could mask a no-save bug.
       await toggle("true");
@@ -245,6 +279,9 @@ test(
       await page.waitForTimeout(1000);
       await mapAction(page, "center", lngLat(600, 0));
       await selectAt(page, lngLat(600, 0));
+      await panel.evaluate((element) => {
+        window.__intersectionPanel = element;
+      });
       assert.equal(await button.getAttribute("aria-pressed"), "true");
       await toggle("false");
       const compass = page.getByRole("button", { name: /север/i });
@@ -252,13 +289,42 @@ test(
       console.log("COMPASS BOX", box);
       assert.ok(box.width >= 56 && box.height >= 56);
       const beforeRotation = await compass.locator("svg").getAttribute("style");
-      const rotated = await mapAction(page, "rotate");
-      await page.waitForTimeout(250);
+      const pointOnDial = (degrees) => ({
+        x: box.x + box.width / 2 + Math.sin((degrees * Math.PI) / 180) * 23,
+        y: box.y + box.height / 2 - Math.cos((degrees * Math.PI) / 180) * 23,
+      });
+      const north = pointOnDial(0);
+      await page.mouse.move(north.x, north.y);
+      await page.mouse.down();
+      for (let angle = 15; angle <= 90; angle += 15) {
+        const point = pointOnDial(angle);
+        await page.mouse.move(point.x, point.y);
+      }
+      await page.mouse.up();
+      const rotated = await mapAction(page, "read");
+      assert.ok(Math.abs(rotated.bearing - 90) < 8, rotated.bearing);
       assert.notEqual(
         await compass.locator("svg").getAttribute("style"),
         beforeRotation,
       );
-      assert.equal(rotated.bearing, 90);
+      await page.mouse.move(north.x, north.y);
+      await page.mouse.down();
+      for (let angle = 15; angle <= 360; angle += 15) {
+        const point = pointOnDial(angle);
+        await page.mouse.move(point.x, point.y);
+        if (angle % 90 === 0) {
+          const camera = await mapAction(page, "read");
+          const actual = ((camera.bearing % 360) + 360) % 360;
+          const expected = (90 + angle) % 360;
+          assert.ok(
+            Math.abs(((actual - expected + 540) % 360) - 180) < 8,
+            `${angle}° drag produced ${camera.bearing}° bearing`,
+          );
+        }
+      }
+      await page.mouse.up();
+      const fullTurn = await mapAction(page, "read");
+      assert.ok(Math.abs(fullTurn.bearing - 90) < 8, fullTurn.bearing);
       await compass.screenshot({ path: "/tmp/pixel-lane-compass.png" });
       await compass.click();
       await page.waitForTimeout(350);
@@ -371,6 +437,162 @@ test(
           [204, 404].includes(response.status()),
           await response.text(),
         );
+      }
+      await api.dispose();
+    }
+  },
+);
+
+test(
+  "real editor: a maneuver waits for a pending T-junction topology save",
+  { timeout: 120000 },
+  async () => {
+    const api = await request.newContext({ baseURL: apiURL });
+    const original = await (
+      await api.get("/api/v1/cities/editor-workspace")
+    ).json();
+    const root = `/api/v1/cities/${original.id}`;
+    const roads = [
+      {
+        name: "Pending A",
+        points: [
+          [470, 0],
+          [600, 0],
+        ],
+      },
+      {
+        name: "Pending C",
+        points: [
+          [600, 0],
+          [730, 0],
+        ],
+      },
+    ].map(({ name, points }) => ({
+      id: randomUUID(),
+      name,
+      road_type: "RESIDENTIAL",
+      geometry: { points: points.map(([x, y]) => ({ x, y })) },
+      width_m: 8,
+      is_width_estimated: false,
+      lanes: ["FORWARD", "BACKWARD"].map((direction, index) => ({
+        id: randomUUID(),
+        index,
+        direction,
+        lane_type: "GENERAL",
+      })),
+    }));
+    let browser;
+    let createdRoadId;
+    try {
+      const seeded = await api.put(`${root}/topology`, {
+        data: {
+          roads: [...original.roads, ...roads].map(({ id, geometry }) => ({
+            id,
+            geometry,
+          })),
+          intersections: original.intersections,
+          new_roads: roads,
+        },
+      });
+      assert.equal(seeded.status(), 204, await seeded.text());
+      browser = await chromium.launch({ headless: true });
+      const page = await browser.newPage({
+        viewport: { width: 1440, height: 1000 },
+      });
+      const writes = [];
+      page.on("response", (response) => {
+        if (
+          response.request().method() === "PUT" &&
+          (response.url().endsWith("/topology") ||
+            response.url().endsWith("/lane-connections"))
+        ) {
+          writes.push({
+            path: new URL(response.url()).pathname,
+            status: response.status(),
+            payload: response.request().postDataJSON(),
+          });
+        }
+      });
+      await page.goto(`${baseURL}/ru/app/city-model`);
+      await page.locator(".maplibregl-canvas").waitFor();
+      await page.waitForTimeout(850);
+      await mapAction(page, "center", lngLat(600, 0));
+      await page
+        .getByRole("button", { name: "Редактировать", exact: true })
+        .click();
+      await page.getByRole("button", { name: /Нарисовать дорогу/ }).click();
+      await page.route("**/api/v1/cities/*/topology", async (route) => {
+        createdRoadId = route.request().postDataJSON().new_roads[0].id;
+        await new Promise((resolve) => setTimeout(resolve, 2000));
+        await route.continue();
+      });
+      await selectAt(page, lngLat(600, -130));
+      await selectAt(page, lngLat(600, 0));
+      await page.waitForTimeout(600);
+      await page.getByRole("button", { name: "Готово", exact: true }).click();
+      await page.waitForTimeout(100);
+      await selectAt(page, lngLat(600, 0));
+      const panel = page.locator("section").filter({
+        has: page.getByRole("heading", { name: "Выбранный перекрёсток" }),
+      });
+      const button = panel
+        .locator("details")
+        .filter({ hasText: "Pending A" })
+        .getByRole("button", { name: "Направо", exact: true });
+      await button.scrollIntoViewIfNeeded();
+      assert.equal(await button.getAttribute("aria-pressed"), "false");
+      await button.click();
+      assert.equal(await button.getAttribute("aria-pressed"), "true");
+      for (const delay of [250, 1000, 2000]) {
+        await page.waitForTimeout(delay);
+        assert.equal(await button.getAttribute("aria-pressed"), "true");
+      }
+      assert.ok((await panel.innerText()).includes("Подходы\n3"));
+      assert.ok(
+        writes.some(
+          (write) => write.path.endsWith("/topology") && write.status === 204,
+        ),
+      );
+      assert.ok(
+        writes.some(
+          (write) =>
+            write.path.endsWith("/lane-connections") &&
+            write.status === 200 &&
+            write.payload.connections.length > 0,
+        ),
+      );
+      await page.reload();
+      await page.locator(".maplibregl-canvas").waitFor();
+      await page.waitForTimeout(1000);
+      await mapAction(page, "center", lngLat(600, 0));
+      await selectAt(page, lngLat(600, 0));
+      assert.equal(await button.getAttribute("aria-pressed"), "true");
+      await button.click();
+      await page.waitForTimeout(2000);
+      assert.equal(await button.getAttribute("aria-pressed"), "false");
+      await page.reload();
+      await page.locator(".maplibregl-canvas").waitFor();
+      await page.waitForTimeout(1000);
+      await mapAction(page, "center", lngLat(600, 0));
+      await selectAt(page, lngLat(600, 0));
+      assert.equal(await button.getAttribute("aria-pressed"), "false");
+      console.log(
+        "PENDING TOPOLOGY",
+        JSON.stringify(
+          writes.map(({ path, status, payload }) => ({
+            path,
+            status,
+            connections: payload?.connections?.length,
+          })),
+        ),
+      );
+    } finally {
+      if (browser) await browser.close();
+      for (const id of [createdRoadId, ...roads.map((road) => road.id)].filter(
+        Boolean,
+      )) {
+        const deleted = await api.delete(`${root}/roads/${id}`);
+        assert.ok([204, 404].includes(deleted.status()), await deleted.text());
       }
       await api.dispose();
     }

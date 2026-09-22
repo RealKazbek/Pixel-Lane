@@ -5,13 +5,21 @@ export const ENDPOINT_SNAP_TOLERANCE_PX = 18;
 export const INTERSECTION_SNAP_TOLERANCE_M = 1.5;
 
 function persistedId(value: string, seed: string): string {
-  if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(seed)) {
+  if (
+    !/^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(
+      seed,
+    )
+  ) {
     return value;
   }
-  let hash = 2166136261;
-  for (const character of value) hash = Math.imul(hash ^ character.charCodeAt(0), 16777619);
-  const hex = (hash >>> 0).toString(16).padStart(8, "0");
-  return `${hex}${hex}${hex.slice(0, 8)}-${hex.slice(0, 4)}-5${hex.slice(1, 4)}-8${hex.slice(1, 4)}-${hex}${hex.slice(0, 4)}`;
+  const hashPart = (salt: number) => {
+    let hash = 2166136261;
+    for (const character of `${salt}:${value}`)
+      hash = Math.imul(hash ^ character.charCodeAt(0), 16777619);
+    return (hash >>> 0).toString(16).padStart(8, "0");
+  };
+  const hex = [0, 1, 2, 3].map(hashPart).join("");
+  return `${hex.slice(0, 8)}-${hex.slice(8, 12)}-5${hex.slice(13, 16)}-8${hex.slice(17, 20)}-${hex.slice(20, 32)}`;
 }
 
 export type RoadEndpoint = "start" | "end";
@@ -459,9 +467,20 @@ export function applyEndpointSnap(
         ? segmentNodeId(target)
         : target.nodeId);
   const canonicalPoint = existingNode?.position ?? target.point;
+  const coincidentRoadIds = city.roads
+    .filter(
+      (road) =>
+        road.id !== movingRoadId &&
+        (distanceMeters(road.geometry.points[0], canonicalPoint) <=
+          ROAD_TOPOLOGY_TOLERANCE_M ||
+          distanceMeters(road.geometry.points.at(-1)!, canonicalPoint) <=
+            ROAD_TOPOLOGY_TOLERANCE_M),
+    )
+    .map((road) => road.id);
   const connectedRoadIds = [
     ...new Set([
       ...(existingNode?.connected_road_ids ?? []),
+      ...coincidentRoadIds,
       ...(target.kind === "road-endpoint" ? [target.roadId] : []),
       ...(target.kind === "road-segment" ? [target.roadId] : []),
       movingRoadId,

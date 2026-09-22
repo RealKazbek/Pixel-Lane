@@ -125,11 +125,9 @@ export function IntersectionPropertiesPanel({
           <span className="text-muted-foreground">m</span>
         </div>
       </label>
-      {isSaving && (
-        <p role="status" className="mt-3 text-muted-foreground">
-          {t("savingLanes")}
-        </p>
-      )}
+      <p role="status" className="sr-only">
+        {isSaving ? t("savingLanes") : ""}
+      </p>
       <div className="mt-3 border-t border-border-subtle pt-3">
         <h3 className="mb-2 text-muted-foreground">{t("connectedRoadList")}</h3>
         <div className="space-y-2">

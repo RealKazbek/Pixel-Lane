@@ -17,6 +17,9 @@ describe("MapCompass", () => {
         label="Map compass"
         resetLabel="Reset north"
         onReset={onReset}
+        onRotate={(bearing) => {
+          camera.bearing = bearing;
+        }}
       />,
     );
 
