@@ -538,3 +538,54 @@ def test_demo_city_is_created_once_and_preserves_road_edits(client) -> None:
     assert {item["id"] for item in persisted["roads"]} == {item["id"] for item in initial["roads"]}
     persisted_road = next(item for item in persisted["roads"] if item["id"] == road["id"])
     assert persisted_road["geometry"]["points"] == edited_points
+
+
+@requires_postgres
+def test_added_road_lane_can_save_maneuver_after_reload(client) -> None:
+    data = _payload()
+    for intersection in data["intersections"]:
+        intersection["connected_lane_ids"] = [
+            lane["id"]
+            for road in data["roads"]
+            if road["id"] in intersection["connected_road_ids"]
+            for lane in road["lanes"]
+        ]
+    assert client.post("/api/v1/cities", json=data).status_code == 201
+    city_id = data["id"]
+    original = data["roads"][0]
+    directions = [lane["direction"] for lane in original["lanes"]] + ["FORWARD"]
+    response = client.patch(
+        f"/api/v1/cities/{city_id}/roads/{original['id']}/properties",
+        json={
+            "name": original["name"],
+            "width_m": len(directions) * 3.5,
+            "lane_count": len(directions),
+            "lane_width_m": 3.5,
+            "lane_directions": directions,
+        },
+    )
+    assert response.status_code == 200
+    added_lane = response.json()["lanes"][-1]
+    city = client.get(f"/api/v1/cities/{city_id}").json()
+    junction = next(i for i in city["intersections"] if original["id"] in i["connected_road_ids"])
+    assert added_lane["id"] in junction["connected_lane_ids"]
+    target = next(
+        r
+        for r in city["roads"]
+        if r["id"] != original["id"] and r["id"] in junction["connected_road_ids"]
+    )
+    target_lane = next(lane for lane in target["lanes"] if lane["direction"] == "BACKWARD")
+    connection = dict(
+        id=str(uuid.uuid4()),
+        intersection_id=junction["id"],
+        from_road_id=original["id"],
+        from_lane_id=added_lane["id"],
+        to_road_id=target["id"],
+        to_lane_id=target_lane["id"],
+        maneuver="LEFT",
+    )
+    saved = client.put(
+        f"/api/v1/cities/{city_id}/lane-connections", json={"connections": [connection]}
+    )
+    assert saved.status_code == 200, saved.text
+    assert client.get(f"/api/v1/cities/{city_id}").json()["lane_connections"] == saved.json()

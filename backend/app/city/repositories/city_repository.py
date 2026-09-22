@@ -217,6 +217,19 @@ def update_road_properties(
                 movement.value for movement in properties.lane_allowed_movements[index]
             ]
         configured_lanes.append(lane)
+    # A lane added to an incident road must participate in the same explicit
+    # junction topology, otherwise valid maneuver writes fail after reload.
+    intersections = db.scalars(
+        select(Intersection)
+        .where(
+            Intersection.city_id == city_id, Intersection.connected_roads.any(Road.id == road_id)
+        )
+        .options(selectinload(Intersection.connected_lanes))
+    ).all()
+    for intersection in intersections:
+        intersection.connected_lanes = [
+            lane for lane in intersection.connected_lanes if lane.road_id != road_id
+        ] + configured_lanes
     road.lanes = configured_lanes
     db.execute(update(City).where(City.id == city_id).values(updated_at=func.now()))
     try:
