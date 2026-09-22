@@ -119,7 +119,18 @@ def replace_lane_connections(
     city = get_city(db, city_id)
     if city is None:
         return None
+    try:
+        _apply_lane_connections(city, city_id, connections)
+        db.commit()
+    except Exception:
+        db.rollback()
+        raise
+    return get_city(db, city_id)
 
+
+def _apply_lane_connections(
+    city: City, city_id: UUID, connections: list[LaneConnectionCreate]
+) -> None:
     city.lane_connections.clear()
     city.lane_connections.extend(
         LaneConnection(
@@ -135,12 +146,6 @@ def replace_lane_connections(
         for connection in connections
     )
     city.updated_at = func.now()
-    try:
-        db.commit()
-    except Exception:
-        db.rollback()
-        raise
-    return get_city(db, city_id)
 
 
 def list_cities(db: Session, *, limit: int = 50, offset: int = 0) -> list[City]:
@@ -353,6 +358,21 @@ def replace_topology(db: Session, city_id: UUID, payload: TopologyUpdate) -> boo
     city = get_city(db, city_id)
     if city is None:
         return False
+    try:
+        _apply_topology(db, city, city_id, payload)
+        db.commit()
+    except Exception:
+        db.rollback()
+        raise
+    return True
+
+
+def _apply_topology(
+    db: Session,
+    city: City,
+    city_id: UUID,
+    payload: TopologyUpdate,
+) -> None:
     roads = {road.id: road for road in city.roads}
     submitted_geometries = [road.geometry.points for road in payload.roads]
     for index, points in enumerate(submitted_geometries):
@@ -425,9 +445,24 @@ def replace_topology(db: Session, city_id: UUID, payload: TopologyUpdate) -> boo
         intersection.connected_lanes = [lane for lane in connected_lanes if lane is not None]
         db.add(intersection)
     db.execute(update(City).where(City.id == city_id).values(updated_at=func.now()))
+
+
+def replace_topology_and_lane_connections(
+    db: Session,
+    city_id: UUID,
+    topology: TopologyUpdate,
+    connections: list[LaneConnectionCreate],
+) -> City | None:
+    """Persist one editor topology change and its surviving maneuvers atomically."""
+    city = get_city(db, city_id)
+    if city is None:
+        return None
     try:
+        _apply_topology(db, city, city_id, topology)
+        db.flush()
+        _apply_lane_connections(city, city_id, connections)
         db.commit()
     except Exception:
         db.rollback()
         raise
-    return True
+    return get_city(db, city_id)

@@ -12,6 +12,7 @@ from sqlalchemy import select
 from app.city.examples import load_four_way_intersection
 from app.city.examples.demo_district import DEMO_DISTRICT_CITY_ID
 from app.city.models.road import Road
+from app.city.repositories import city_repository
 from tests.conftest import requires_postgres
 
 
@@ -247,6 +248,90 @@ def test_topology_creates_new_split_roads_atomically(client) -> None:
     assert response.status_code == 204
     refreshed = client.get(f"/api/v1/cities/{data['id']}").json()
     assert new_id in {road["id"] for road in refreshed["roads"]}
+
+
+@requires_postgres
+def test_topology_and_maneuvers_commit_together(client) -> None:
+    data = _payload()
+    data["roads"][1]["lanes"][0]["direction"] = "BACKWARD"
+    assert client.post("/api/v1/cities", json=data).status_code == 201
+    source, target = data["roads"][0], data["roads"][1]
+    intersection = data["intersections"][0]
+    connection = {
+        "id": str(uuid.uuid4()),
+        "intersection_id": intersection["id"],
+        "from_road_id": source["id"],
+        "from_lane_id": source["lanes"][0]["id"],
+        "to_road_id": target["id"],
+        "to_lane_id": target["lanes"][0]["id"],
+        "maneuver": "STRAIGHT",
+    }
+    topology = {
+        "roads": [{"id": road["id"], "geometry": road["geometry"]} for road in data["roads"]],
+        "intersections": data["intersections"],
+    }
+
+    response = client.put(
+        f"/api/v1/cities/{data['id']}/topology-and-lane-connections",
+        json={"topology": topology, "lane_connections": [connection]},
+    )
+
+    assert response.status_code == 200
+    assert response.json()["lane_connections"] == [{**connection, "city_id": data["id"]}]
+    reloaded = client.get(f"/api/v1/cities/{data['id']}").json()
+    assert reloaded["lane_connections"] == [{**connection, "city_id": data["id"]}]
+
+
+@requires_postgres
+def test_topology_rolls_back_when_atomic_maneuver_write_fails(client, monkeypatch) -> None:
+    data = _payload()
+    data["roads"][1]["lanes"][0]["direction"] = "BACKWARD"
+    assert client.post("/api/v1/cities", json=data).status_code == 201
+    original_geometry = copy.deepcopy(data["roads"][0]["geometry"])
+    changed_geometry = copy.deepcopy(original_geometry)
+    changed_geometry["points"][0]["x"] += 5
+    source, target = data["roads"][0], data["roads"][1]
+    intersection = data["intersections"][0]
+    attempted_connection = {
+        "id": str(uuid.uuid4()),
+        "intersection_id": intersection["id"],
+        "from_road_id": source["id"],
+        "from_lane_id": source["lanes"][0]["id"],
+        "to_road_id": target["id"],
+        "to_lane_id": target["lanes"][0]["id"],
+        "maneuver": "STRAIGHT",
+    }
+    apply_lane_connections = city_repository._apply_lane_connections
+
+    def fail_lane_write(*args, **kwargs):
+        apply_lane_connections(*args, **kwargs)
+        raise RuntimeError("forced lane write failure")
+
+    monkeypatch.setattr(
+        city_repository,
+        "_apply_lane_connections",
+        fail_lane_write,
+    )
+    topology = {
+        "roads": [
+            {
+                "id": road["id"],
+                "geometry": changed_geometry if index == 0 else road["geometry"],
+            }
+            for index, road in enumerate(data["roads"])
+        ],
+        "intersections": data["intersections"],
+    }
+
+    response = client.put(
+        f"/api/v1/cities/{data['id']}/topology-and-lane-connections",
+        json={"topology": topology, "lane_connections": [attempted_connection]},
+    )
+
+    assert response.status_code == 500
+    reloaded = client.get(f"/api/v1/cities/{data['id']}").json()
+    assert reloaded["roads"][0]["geometry"] == original_geometry
+    assert reloaded["lane_connections"] == []
 
 
 @requires_postgres

@@ -2,14 +2,75 @@
 
 from uuid import UUID
 
-from app.city.domain.enums import LaneRelativeDirection
-from app.city.domain.lane_connections import lane_direction_relative_to_intersection
-from app.city.schemas.city import CityRead, ValidationIssue
+from app.city.domain.enums import LaneDirection, LaneRelativeDirection, MovementType
+from app.city.domain.lane_connections import (
+    CityLaneNetwork,
+    LaneConnectionValue,
+    LaneNetworkIntersection,
+    LaneNetworkLane,
+    LaneNetworkPoint,
+    LaneNetworkRoad,
+    lane_direction_relative_to_intersection,
+)
+from app.city.schemas.city import CityCreate, CityRead, ValidationIssue
 from app.city.schemas.lane_connection import LaneConnectionCreate
 
 
+def build_lane_network(city: CityCreate | CityRead) -> CityLaneNetwork:
+    """Translate the API document into the framework-free matcher input."""
+    return CityLaneNetwork(
+        roads=tuple(
+            LaneNetworkRoad(
+                id=road.id,
+                points=tuple(
+                    LaneNetworkPoint(x=point.x, y=point.y) for point in road.geometry.points
+                ),
+                lanes=tuple(
+                    LaneNetworkLane(
+                        id=lane.id,
+                        index=lane.index,
+                        direction=LaneDirection(lane.direction),
+                        allowed_movements=tuple(
+                            MovementType(value) for value in lane.allowed_movements
+                        ),
+                    )
+                    for lane in road.lanes
+                ),
+            )
+            for road in city.roads
+        ),
+        intersections=tuple(
+            LaneNetworkIntersection(
+                id=intersection.id,
+                position=LaneNetworkPoint(
+                    x=intersection.position.x,
+                    y=intersection.position.y,
+                ),
+                connected_road_ids=tuple(intersection.connected_road_ids),
+                connected_lane_ids=tuple(intersection.connected_lane_ids),
+            )
+            for intersection in city.intersections
+        ),
+    )
+
+
+def to_lane_connection_create(connection: LaneConnectionValue) -> LaneConnectionCreate:
+    return LaneConnectionCreate(
+        id=connection.id,
+        intersection_id=connection.intersection_id,
+        from_road_id=connection.from_road_id,
+        from_lane_id=connection.from_lane_id,
+        to_road_id=connection.to_road_id,
+        to_lane_id=connection.to_lane_id,
+        maneuver=connection.maneuver,
+    )
+
+
 def validate_lane_connections(
-    city: CityRead, connections: list[LaneConnectionCreate]
+    city: CityCreate | CityRead,
+    connections: list[LaneConnectionCreate],
+    *,
+    path_prefix: str = "connections",
 ) -> list[ValidationIssue]:
     road_ids = {road.id for road in city.roads}
     lane_road = {lane.id: road.id for road in city.roads for lane in road.lanes}
@@ -17,9 +78,10 @@ def validate_lane_connections(
     seen_ids: set[UUID] = set()
     seen_keys: set[tuple[UUID, UUID, UUID, str]] = set()
     issues: list[ValidationIssue] = []
+    network = build_lane_network(city)
 
     for index, connection in enumerate(connections):
-        path = f"connections[{index}]"
+        path = f"{path_prefix}[{index}]"
         if connection.id in seen_ids:
             issues.append(
                 ValidationIssue(
@@ -127,7 +189,7 @@ def validate_lane_connections(
         if from_road is not None and from_lane_model is not None:
             if (
                 lane_direction_relative_to_intersection(
-                    city,
+                    network,
                     connection.intersection_id,
                     connection.from_road_id,
                     from_lane_model.direction,
@@ -144,7 +206,7 @@ def validate_lane_connections(
         if to_lane_model is not None:
             if (
                 lane_direction_relative_to_intersection(
-                    city,
+                    network,
                     connection.intersection_id,
                     connection.to_road_id,
                     to_lane_model.direction,
@@ -182,6 +244,7 @@ def validate_lane_connections(
 def validate_road_direction_changes(city: CityRead, road_id: UUID) -> list[ValidationIssue]:
     """Validate only persisted movements affected by a road direction edit."""
     issues: list[ValidationIssue] = []
+    network = build_lane_network(city)
     for index, connection in enumerate(city.lane_connections):
         if connection.from_road_id != road_id and connection.to_road_id != road_id:
             continue
@@ -214,7 +277,10 @@ def validate_road_direction_changes(city: CityRead, road_id: UUID) -> list[Valid
         path = f"connections[{index}]"
         if (
             lane_direction_relative_to_intersection(
-                city, intersection.id, from_road.id, from_lane.direction
+                network,
+                intersection.id,
+                from_road.id,
+                LaneDirection(from_lane.direction),
             )
             != LaneRelativeDirection.INBOUND
         ):
@@ -227,7 +293,10 @@ def validate_road_direction_changes(city: CityRead, road_id: UUID) -> list[Valid
             )
         if (
             lane_direction_relative_to_intersection(
-                city, intersection.id, to_road.id, to_lane.direction
+                network,
+                intersection.id,
+                to_road.id,
+                LaneDirection(to_lane.direction),
             )
             != LaneRelativeDirection.OUTBOUND
         ):

@@ -19,7 +19,7 @@ from app.city.schemas.lane_connection import (
 )
 from app.city.schemas.road import RoadCreate, RoadGeometryUpdate, RoadPropertiesUpdate, RoadRead
 from app.city.schemas.spatial import BBox, MapRoad
-from app.city.schemas.topology import TopologyUpdate
+from app.city.schemas.topology import TopologyUpdate, TopologyWithLaneConnectionsUpdate
 from app.city.services import city_service
 from app.db.session import get_db
 
@@ -164,6 +164,29 @@ def replace_topology(city_id: UUID, payload: TopologyUpdate, db: Session = Depen
         raise HTTPException(status_code=422, detail=str(exc)) from exc
     if not persisted:
         raise HTTPException(status_code=404, detail="City not found")
+
+
+@router.put(
+    "/{city_id}/topology-and-lane-connections",
+    response_model=CityRead,
+)
+def replace_topology_and_lane_connections(
+    city_id: UUID,
+    payload: TopologyWithLaneConnectionsUpdate,
+    db: Session = Depends(get_db),
+) -> CityRead:
+    try:
+        persisted = city_service.replace_topology_and_lane_connections(db, city_id, payload)
+    except CityValidationError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
+            detail={"issues": [issue.model_dump() for issue in exc.issues]},
+        ) from exc
+    except ValueError as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
+    if persisted is None:
+        raise HTTPException(status_code=404, detail="City not found")
+    return persisted
 
 
 @router.put(

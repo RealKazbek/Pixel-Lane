@@ -26,6 +26,7 @@ from app.city.schemas.city import (
 )
 from app.city.schemas.import_city import CityImport
 from app.city.schemas.intersection import IntersectionRead
+from app.city.schemas.lane import LaneRead
 from app.city.schemas.lane_connection import (
     LaneConnectionCreate,
     LaneConnectionGenerationResult,
@@ -33,10 +34,12 @@ from app.city.schemas.lane_connection import (
 )
 from app.city.schemas.road import RoadCreate, RoadPropertiesUpdate, RoadRead
 from app.city.schemas.spatial import BBox, MapLaneSummary, MapRoad
-from app.city.schemas.topology import TopologyUpdate
+from app.city.schemas.topology import TopologyUpdate, TopologyWithLaneConnectionsUpdate
 from app.city.services.city_mapper import to_city_read, to_intersection_read, to_road_read
 from app.city.validators.city_validator import validate_city
 from app.city.validators.lane_connection_validator import (
+    build_lane_network,
+    to_lane_connection_create,
     validate_lane_connections,
     validate_road_direction_changes,
 )
@@ -273,6 +276,54 @@ def replace_topology(db: Session, city_id: UUID, payload: TopologyUpdate) -> boo
     return city_repository.replace_topology(db, city_id, payload)
 
 
+def _topology_candidate(
+    city: CityRead,
+    city_id: UUID,
+    payload: TopologyUpdate,
+) -> CityRead:
+    geometry_by_road = {road.id: road.geometry for road in payload.roads}
+    roads = [
+        road.model_copy(update={"geometry": geometry_by_road.get(road.id, road.geometry)})
+        for road in city.roads
+    ]
+    existing_ids = {road.id for road in roads}
+    roads.extend(
+        RoadRead(
+            city_id=city_id,
+            **road.model_dump(exclude={"lanes"}),
+            lanes=[LaneRead(road_id=road.id, **lane.model_dump()) for lane in road.lanes],
+        )
+        for road in payload.new_roads
+        if road.id not in existing_ids
+    )
+    intersections = [
+        IntersectionRead(city_id=city_id, **intersection.model_dump())
+        for intersection in payload.intersections
+    ]
+    return city.model_copy(update={"roads": roads, "intersections": intersections})
+
+
+def replace_topology_and_lane_connections(
+    db: Session,
+    city_id: UUID,
+    payload: TopologyWithLaneConnectionsUpdate,
+) -> CityRead | None:
+    current = get_city(db, city_id)
+    if current is None:
+        return None
+    candidate = _topology_candidate(current, city_id, payload.topology)
+    issues = validate_lane_connections(candidate, payload.lane_connections)
+    if issues:
+        raise CityValidationError(issues)
+    updated = city_repository.replace_topology_and_lane_connections(
+        db,
+        city_id,
+        payload.topology,
+        payload.lane_connections,
+    )
+    return to_city_read(updated) if updated is not None else None
+
+
 def replace_lane_connections(
     db: Session, city_id: UUID, connections: list[LaneConnectionCreate]
 ) -> list[LaneConnectionRead] | None:
@@ -298,9 +349,10 @@ def auto_generate_lane_connections(
         return None
     generated: list[LaneConnectionCreate] = []
     warnings: set[str] = set()
+    network = build_lane_network(city)
     for intersection in city.intersections:
-        result = generate_intersection_connections(city, intersection.id)
-        generated.extend(result.connections)
+        result = generate_intersection_connections(network, intersection.id)
+        generated.extend(to_lane_connection_create(item) for item in result.connections)
         warnings.update(result.warnings)
     persisted = replace_lane_connections(db, city_id, generated)
     assert persisted is not None

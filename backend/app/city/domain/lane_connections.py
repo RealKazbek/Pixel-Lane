@@ -1,8 +1,7 @@
 """Deterministic lane-to-lane matching primitives.
 
-This module deliberately knows nothing about SQLAlchemy or FastAPI.  Roads and
-lanes are reduced to approaches at an intersection, then explicit connection
-records are generated from those semantic inputs.
+Only immutable domain values enter this module. Pydantic and SQLAlchemy
+translation belongs to the application/persistence layers.
 """
 
 from collections.abc import Iterable
@@ -11,10 +10,44 @@ from math import atan2, degrees, hypot
 from uuid import UUID, uuid5
 
 from app.city.domain.enums import LaneDirection, LaneRelativeDirection, MovementType
-from app.city.schemas.city import CityRead
-from app.city.schemas.lane_connection import LaneConnectionCreate
 
 LANE_CONNECTION_NAMESPACE = UUID("9df7d638-67e1-5db6-8c0d-0c6c5a6c58b3")
+GEOMETRY_EPSILON = 1e-9
+
+
+@dataclass(frozen=True)
+class LaneNetworkPoint:
+    x: float
+    y: float
+
+
+@dataclass(frozen=True)
+class LaneNetworkLane:
+    id: UUID
+    index: int
+    direction: LaneDirection
+    allowed_movements: tuple[MovementType, ...] = ()
+
+
+@dataclass(frozen=True)
+class LaneNetworkRoad:
+    id: UUID
+    points: tuple[LaneNetworkPoint, ...]
+    lanes: tuple[LaneNetworkLane, ...]
+
+
+@dataclass(frozen=True)
+class LaneNetworkIntersection:
+    id: UUID
+    position: LaneNetworkPoint
+    connected_road_ids: tuple[UUID, ...]
+    connected_lane_ids: tuple[UUID, ...]
+
+
+@dataclass(frozen=True)
+class CityLaneNetwork:
+    roads: tuple[LaneNetworkRoad, ...]
+    intersections: tuple[LaneNetworkIntersection, ...]
 
 
 @dataclass(frozen=True)
@@ -28,8 +61,19 @@ class LaneApproach:
 
 
 @dataclass(frozen=True)
+class LaneConnectionValue:
+    id: UUID
+    intersection_id: UUID
+    from_road_id: UUID
+    from_lane_id: UUID
+    to_road_id: UUID
+    to_lane_id: UUID
+    maneuver: MovementType
+
+
+@dataclass(frozen=True)
 class LaneMatchResult:
-    connections: tuple[LaneConnectionCreate, ...]
+    connections: tuple[LaneConnectionValue, ...]
     warnings: tuple[str, ...] = ()
 
 
@@ -68,13 +112,15 @@ def match_lane_approaches(
     if not 1 <= len(incoming_lanes) <= 3:
         return LaneMatchResult((), ("UNSUPPORTED_LANE_COUNT",))
 
-    connections: list[LaneConnectionCreate] = []
+    connections: list[LaneConnectionValue] = []
     for source, target in zip(incoming_lanes, outgoing_lanes, strict=True):
+        if source.lane_id == target.lane_id:
+            continue
         maneuver = classify_maneuver(source.outward_bearing_deg, target.outward_bearing_deg)
         if source.allowed_movements and maneuver not in source.allowed_movements:
             continue
         connections.append(
-            LaneConnectionCreate(
+            LaneConnectionValue(
                 id=stable_lane_connection_id(
                     intersection_id, source.lane_id, target.lane_id, maneuver
                 ),
@@ -95,24 +141,22 @@ def _bearing_from_intersection(
     return (degrees(atan2(point_x - intersection_x, point_y - intersection_y)) + 360) % 360
 
 
-def _road_approaches(city: CityRead, intersection_id: UUID) -> tuple[LaneApproach, ...]:
+def _road_approaches(city: CityLaneNetwork, intersection_id: UUID) -> tuple[LaneApproach, ...]:
     intersection = next(item for item in city.intersections if item.id == intersection_id)
     approaches: list[LaneApproach] = []
     connected_lanes = set(intersection.connected_lane_ids)
     for road in city.roads:
-        if road.id not in intersection.connected_road_ids:
+        if road.id not in intersection.connected_road_ids or len(road.points) < 2:
             continue
-        points = road.geometry.points
-        first, last = points[0], points[-1]
+        first, last = road.points[0], road.points[-1]
         first_distance = hypot(first.x - intersection.position.x, first.y - intersection.position.y)
         last_distance = hypot(last.x - intersection.position.x, last.y - intersection.position.y)
-        # The lane approach bearing points away from the intersection. The
-        # endpoint nearest the node is the lane's stop line; use the far
-        # endpoint to recover the road's outward direction.
-        endpoint = first if first_distance >= last_distance else last
-        outward_bearing = _bearing_from_intersection(
-            intersection.position.x, intersection.position.y, endpoint.x, endpoint.y
-        )
+        at_first = first_distance < last_distance
+        endpoint = first if at_first else last
+        adjacent = road.points[1] if at_first else road.points[-2]
+        if hypot(adjacent.x - endpoint.x, adjacent.y - endpoint.y) <= GEOMETRY_EPSILON:
+            continue
+        outward_bearing = _bearing_from_intersection(endpoint.x, endpoint.y, adjacent.x, adjacent.y)
         for lane in road.lanes:
             if connected_lanes and lane.id not in connected_lanes:
                 continue
@@ -121,17 +165,17 @@ def _road_approaches(city: CityRead, intersection_id: UUID) -> tuple[LaneApproac
                     road_id=road.id,
                     lane_id=lane.id,
                     lane_index=lane.index,
-                    direction=LaneDirection(lane.direction),
+                    direction=lane.direction,
                     outward_bearing_deg=outward_bearing,
-                    allowed_movements=tuple(
-                        MovementType(value) for value in lane.allowed_movements
-                    ),
+                    allowed_movements=lane.allowed_movements,
                 )
             )
     return tuple(approaches)
 
 
-def generate_intersection_connections(city: CityRead, intersection_id: UUID) -> LaneMatchResult:
+def generate_intersection_connections(
+    city: CityLaneNetwork, intersection_id: UUID
+) -> LaneMatchResult:
     """Generate all supported incoming-to-outgoing movements at one node."""
     approaches = _road_approaches(city, intersection_id)
     incoming = [
@@ -141,22 +185,27 @@ def generate_intersection_connections(city: CityRead, intersection_id: UUID) -> 
         approach for approach in approaches if not _is_incoming(city, intersection_id, approach)
     ]
     road_ids = sorted({approach.road_id for approach in approaches}, key=str)
-    all_connections: list[LaneConnectionCreate] = []
+    all_connections: list[LaneConnectionValue] = []
     warnings: list[str] = []
     for from_road_id in road_ids:
         for to_road_id in road_ids:
-            if from_road_id == to_road_id:
-                continue
             from_lanes = tuple(lane for lane in incoming if lane.road_id == from_road_id)
             to_lanes = tuple(lane for lane in outgoing if lane.road_id == to_road_id)
             if not from_lanes or not to_lanes:
                 continue
-            result = match_lane_approaches(
-                intersection_id,
-                from_lanes,
-                to_lanes,
-            )
-            all_connections.extend(result.connections)
+            result = match_lane_approaches(intersection_id, from_lanes, to_lanes)
+            if from_road_id == to_road_id:
+                all_connections.extend(
+                    connection
+                    for connection in result.connections
+                    if connection.maneuver == MovementType.U_TURN
+                )
+            else:
+                all_connections.extend(
+                    connection
+                    for connection in result.connections
+                    if connection.maneuver != MovementType.U_TURN
+                )
             warnings.extend(result.warnings)
     unique = {connection.id: connection for connection in all_connections}
     return LaneMatchResult(
@@ -164,45 +213,31 @@ def generate_intersection_connections(city: CityRead, intersection_id: UUID) -> 
     )
 
 
-def _is_incoming(city: CityRead, intersection_id: UUID, approach: LaneApproach) -> bool:
+def _is_incoming(city: CityLaneNetwork, intersection_id: UUID, approach: LaneApproach) -> bool:
     return (
         lane_direction_relative_to_intersection(
-            city,
-            intersection_id,
-            approach.road_id,
-            approach.direction,
+            city, intersection_id, approach.road_id, approach.direction
         )
         == LaneRelativeDirection.INBOUND
     )
 
 
 def lane_direction_relative_to_intersection(
-    city: CityRead,
+    city: CityLaneNetwork,
     intersection_id: UUID,
     road_id: UUID,
     direction: LaneDirection,
 ) -> LaneRelativeDirection | None:
-    """Resolve a road-relative lane direction at one intersection.
-
-    ``FORWARD`` always means the road's first point toward its last point;
-    whether that is inbound or outbound depends on which endpoint touches the
-    selected intersection.
-    """
+    """Resolve a road-relative lane direction at one intersection."""
     intersection = next((item for item in city.intersections if item.id == intersection_id), None)
     road = next((item for item in city.roads if item.id == road_id), None)
-    if intersection is None or road is None or len(road.geometry.points) < 2:
+    if intersection is None or road is None or len(road.points) < 2:
         return None
-    first, last = road.geometry.points[0], road.geometry.points[-1]
-    first_distance = hypot(
-        first.x - intersection.position.x,
-        first.y - intersection.position.y,
-    )
-    last_distance = hypot(
-        last.x - intersection.position.x,
-        last.y - intersection.position.y,
-    )
     if road_id not in intersection.connected_road_ids:
         return None
+    first, last = road.points[0], road.points[-1]
+    first_distance = hypot(first.x - intersection.position.x, first.y - intersection.position.y)
+    last_distance = hypot(last.x - intersection.position.x, last.y - intersection.position.y)
     at_first = first_distance < last_distance
     inbound = direction == (LaneDirection.BACKWARD if at_first else LaneDirection.FORWARD)
     return LaneRelativeDirection.INBOUND if inbound else LaneRelativeDirection.OUTBOUND
