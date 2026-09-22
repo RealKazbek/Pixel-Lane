@@ -41,7 +41,6 @@ export const LAYER_IDS = {
   turnArrows: "pixel-lane-turn-arrows",
   laneConnectionCasing: "pixel-lane-lane-connection-casing",
   laneConnections: "pixel-lane-lane-connections",
-  laneConnectionArrows: "pixel-lane-lane-connection-arrows",
   junctionLaneDirections: "pixel-lane-junction-lane-directions",
   laneParkingLine: "pixel-lane-lane-parking-line",
   laneParkingLabel: "pixel-lane-lane-parking-label",
@@ -77,7 +76,6 @@ export const LAYER_DRAW_ORDER: readonly string[] = [
   LAYER_IDS.turnArrows,
   LAYER_IDS.laneConnectionCasing,
   LAYER_IDS.laneConnections,
-  LAYER_IDS.laneConnectionArrows,
   LAYER_IDS.junctionLaneDirections,
   LAYER_IDS.selection,
   LAYER_IDS.intersections,
@@ -118,11 +116,7 @@ export const LAYER_GROUPS = {
   ],
   trafficLights: [LAYER_IDS.trafficLights],
   amenities: [LAYER_IDS.busStops, LAYER_IDS.crosswalks],
-  connections: [
-    LAYER_IDS.laneConnectionCasing,
-    LAYER_IDS.laneConnections,
-    LAYER_IDS.laneConnectionArrows,
-  ],
+  connections: [LAYER_IDS.laneConnectionCasing, LAYER_IDS.laneConnections],
 } as const;
 
 export type LayerGroupId = keyof typeof LAYER_GROUPS;

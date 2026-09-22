@@ -156,13 +156,18 @@ describe("buildTurnArrowFeatureCollection", () => {
     expect(fc.features[0].properties.lane_index).toBe(0);
   });
 
-  it("combines multiple turns into one glyph string in source order", () => {
+  it("combines multiple turns into one shared-stem vector symbol", () => {
     const road = makeRoad({
       lanes: [makeLane({ index: 0, allowed_turns: ["THROUGH", "RIGHT"] })],
     });
     const fc = buildTurnArrowFeatureCollection([road], "LOCAL_CARTESIAN");
 
-    expect(fc.features[0].properties.arrow).toBe("↑→");
+    expect(fc.features).toHaveLength(1);
+    expect(fc.features[0].properties.maneuvers).toBe("STRAIGHT|RIGHT");
+    expect(fc.features[0].geometry.type).toBe("MultiLineString");
+    // One common stem, two branches, and one compact head per branch.
+    expect(fc.features[0].geometry.coordinates).toHaveLength(5);
+    expect(fc.features[0].geometry.coordinates[0]).toHaveLength(2);
   });
 
   it("never fabricates an arrow when allowed_turns is absent or empty", () => {
@@ -199,7 +204,8 @@ describe("buildTurnArrowFeatureCollection", () => {
       ],
     });
     const fc = buildTurnArrowFeatureCollection([road], "LOCAL_CARTESIAN");
-    expect(fc.features[0].properties.arrow).toBe("←↺");
+    expect(fc.features[0].properties.maneuvers).toBe("U_TURN|LEFT");
+    expect(fc.features[0].geometry.coordinates).toHaveLength(5);
   });
 
   it("reverses arrow orientation and places backward arrows before the approach", () => {
@@ -213,8 +219,10 @@ describe("buildTurnArrowFeatureCollection", () => {
       ],
     });
     const fc = buildTurnArrowFeatureCollection([road], "LOCAL_CARTESIAN");
-    expect(fc.features[0].properties.bearing).toBe(180);
-    expect(fc.features[0].geometry.coordinates[1]).toBeLessThan(0.003);
+    const latitudes = fc.features[0].geometry.coordinates
+      .flat()
+      .map((coordinate) => coordinate[1]);
+    expect(Math.max(...latitudes)).toBeLessThan(0.0031);
   });
 });
 

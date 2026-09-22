@@ -1,4 +1,6 @@
 import { describe, expect, it } from "vitest";
+import distance from "@turf/distance";
+import { point } from "@turf/helpers";
 import {
   buildLaneConnectorArrowhead,
   buildLaneConnectorCurve,
@@ -41,6 +43,11 @@ describe("buildLaneConnectorCurve", () => {
     expect(arrowhead).not.toBeNull();
     expect(arrowhead![1]).toEqual(curve!.at(-1));
     expect(arrowhead![0]).not.toEqual(arrowhead![2]);
+    expect(
+      distance(point(arrowhead![0]), point(arrowhead![1]), {
+        units: "meters",
+      }),
+    ).toBeLessThan(2.2);
   });
 
   it("gives U-turns enough curvature despite adjacent lane endpoints", () => {

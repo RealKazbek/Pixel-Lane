@@ -29,8 +29,8 @@ export interface LaneConnectorEndpoint {
 }
 
 const DEFAULT_SAMPLES = 20;
-const ARROWHEAD_LENGTH_M = 3.8;
-const ARROWHEAD_HALF_ANGLE_DEG = 28;
+const ARROWHEAD_LENGTH_M = 2.15;
+const ARROWHEAD_HALF_ANGLE_DEG = 23;
 
 function cubicBezier(
   p0: LngLat,

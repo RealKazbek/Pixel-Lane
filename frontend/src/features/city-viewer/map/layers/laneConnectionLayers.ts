@@ -25,7 +25,6 @@ export function buildLaneConnectionLayers(
       type: "line",
       source: SOURCE_IDS.laneConnections,
       minzoom: 13,
-      filter: ["==", ["get", "kind"], "shaft"],
       layout: { "line-cap": "round", "line-join": "round" },
       paint: {
         "line-color": theme.background,
@@ -38,25 +37,11 @@ export function buildLaneConnectionLayers(
       type: "line",
       source: SOURCE_IDS.laneConnections,
       minzoom: 13,
-      filter: ["==", ["get", "kind"], "shaft"],
-      layout: { "line-cap": "round", "line-join": "round" },
+      layout: { "line-cap": "round", "line-join": "miter" },
       paint: {
         "line-color": theme.laneConnection,
         "line-width": guidanceWidth(),
         "line-opacity": 0.96,
-      },
-    } as LayerSpecification,
-    {
-      id: LAYER_IDS.laneConnectionArrows,
-      type: "line",
-      source: SOURCE_IDS.laneConnections,
-      minzoom: 13,
-      filter: ["==", ["get", "kind"], "arrowhead"],
-      layout: { "line-cap": "butt", "line-join": "miter" },
-      paint: {
-        "line-color": theme.laneConnection,
-        "line-width": guidanceWidth(0.2),
-        "line-opacity": 1,
       },
     } as LayerSpecification,
   ];

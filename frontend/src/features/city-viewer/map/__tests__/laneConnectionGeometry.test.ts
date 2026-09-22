@@ -12,12 +12,20 @@ function cityWithConnections(): City {
     { x: 0, y: 0 },
     { x: 100, y: 0 },
   ]);
+  const turnRoad = createEditorRoad("road-turn", "Turn", [
+    { x: 0, y: 0 },
+    { x: 0, y: 100 },
+  ]);
   const intersection = {
     id: "intersection-1",
     city_id: "editor-workspace",
     position: { x: 0, y: 0 },
-    connected_road_ids: [fromRoad.id, toRoad.id],
-    connected_lane_ids: [fromRoad.lanes[1].id, toRoad.lanes[0].id],
+    connected_road_ids: [fromRoad.id, toRoad.id, turnRoad.id],
+    connected_lane_ids: [
+      fromRoad.lanes[1].id,
+      toRoad.lanes[0].id,
+      turnRoad.lanes[0].id,
+    ],
     control_type: "UNCONTROLLED" as const,
     traffic_light_id: null,
   };
@@ -28,7 +36,7 @@ function cityWithConnections(): City {
     coordinate_system: "LOCAL_CARTESIAN",
     created_at: new Date(0).toISOString(),
     updated_at: new Date(0).toISOString(),
-    roads: [fromRoad, toRoad],
+    roads: [fromRoad, toRoad, turnRoad],
     intersections: [intersection],
     traffic_lights: [],
     parking_zones: [],
@@ -59,35 +67,52 @@ describe("buildLaneConnectionFeatureCollection", () => {
     ).toHaveLength(0);
   });
 
-  it("derives a curve with stable endpoint metadata", () => {
+  it("derives one unified symbol with stable lane metadata", () => {
     const city = cityWithConnections();
     const collection = buildLaneConnectionFeatureCollection(
       city,
       city.coordinate_system,
     );
-    expect(collection.features).toHaveLength(2);
-    const shaft = collection.features.find(
-      (feature) => feature.properties.kind === "shaft",
-    );
-    const arrowhead = collection.features.find(
-      (feature) => feature.properties.kind === "arrowhead",
-    );
-    expect(shaft?.properties).toMatchObject({
-      id: "connection-1",
+    expect(collection.features).toHaveLength(1);
+    const symbol = collection.features[0];
+    expect(symbol.properties).toMatchObject({
       from_lane_id: city.lane_connections![0].from_lane_id,
-      to_lane_id: city.lane_connections![0].to_lane_id,
-      maneuver: "STRAIGHT",
-      kind: "shaft",
+      connection_ids: "connection-1",
+      maneuvers: "STRAIGHT",
     });
-    expect(shaft?.geometry.type).toBe("LineString");
-    expect(arrowhead?.geometry.type).toBe("LineString");
-    expect(
-      arrowhead?.geometry.type === "LineString"
-        ? arrowhead.geometry.coordinates
-        : [],
-    ).toHaveLength(3);
+    expect(symbol.geometry.type).toBe("MultiLineString");
+    expect(symbol.geometry.coordinates).toHaveLength(3);
+    expect(symbol.geometry.coordinates[0]).toHaveLength(2);
+    expect(symbol.geometry.coordinates[2]).toHaveLength(3);
     expect(collection).toEqual(
       buildLaneConnectionFeatureCollection(city, city.coordinate_system),
+    );
+  });
+
+  it("groups every maneuver from an incoming lane into one feature", () => {
+    const city = cityWithConnections();
+    city.lane_connections!.push({
+      ...city.lane_connections![0],
+      id: "connection-2",
+      to_road_id: city.roads[2].id,
+      to_lane_id: city.roads[2].lanes[0].id,
+      maneuver: "LEFT",
+    });
+
+    const collection = buildLaneConnectionFeatureCollection(
+      city,
+      city.coordinate_system,
+    );
+
+    expect(collection.features).toHaveLength(1);
+    expect(collection.features[0].properties).toMatchObject({
+      connection_ids: "connection-1|connection-2",
+      maneuvers: "LEFT|STRAIGHT",
+    });
+    // One stem, two curves, and two heads: still one GeoJSON symbol.
+    expect(collection.features[0].geometry.coordinates).toHaveLength(5);
+    expect(collection.features[0].geometry.coordinates[1].at(-1)).not.toEqual(
+      collection.features[0].geometry.coordinates[2].at(-1),
     );
   });
 });

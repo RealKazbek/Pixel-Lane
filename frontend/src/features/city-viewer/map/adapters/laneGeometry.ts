@@ -49,6 +49,10 @@ import { toRoadLineString, type AnyRoad } from "./roadLineString";
 import { roadLaneCount, roadWidthMeters } from "../styles/roadStyle";
 import { smoothCenterline } from "../geometry/curveSmoothing";
 import {
+  buildManeuverSymbolGeometry,
+  normalizeManeuverDirections,
+} from "../geometry/maneuverSymbol";
+import {
   computeNodeRadius,
   outwardBearing,
   pointsMatch,
@@ -98,11 +102,7 @@ export interface LaneBoundaryProperties {
 export interface TurnArrowProperties {
   road_id: string;
   lane_index: number;
-  arrow: string;
-  /** Degrees, MapLibre `text-rotate` convention -- approximated from the
-   * road's overall start->end bearing (ignoring intermediate curvature),
-   * since Pixel Lane has no per-point heading source data. */
-  bearing: number;
+  maneuvers: string;
 }
 
 export interface LaneUseMarkingProperties {
@@ -121,38 +121,13 @@ export type LaneBoundaryFeatureCollection = GeoJSON.FeatureCollection<
   LaneBoundaryProperties
 >;
 export type TurnArrowFeatureCollection = GeoJSON.FeatureCollection<
-  GeoJSON.Point,
+  GeoJSON.MultiLineString,
   TurnArrowProperties
 >;
 export type LaneUseMarkingFeatureCollection = GeoJSON.FeatureCollection<
   GeoJSON.LineString,
   LaneUseMarkingProperties
 >;
-
-const TURN_ARROW_GLYPHS: Record<TurnLaneType | MovementType, string> = {
-  LEFT: "←",
-  STRAIGHT: "↑",
-  SLIGHT_LEFT: "↖",
-  THROUGH: "↑",
-  SLIGHT_RIGHT: "↗",
-  RIGHT: "→",
-  REVERSE: "↺",
-  MERGE_TO_LEFT: "⬉",
-  MERGE_TO_RIGHT: "⬈",
-  NONE: "",
-  U_TURN: "↺",
-};
-
-/** `null` when there is nothing worth drawing (no data, or the only
- * token is the explicit "no turn indicated" marker) -- never a fabricated
- * default arrow. */
-function turnArrowGlyph(
-  tokens: (TurnLaneType | MovementType)[] | null | undefined,
-): string | null {
-  if (!tokens || tokens.length === 0) return null;
-  const glyph = tokens.map((t) => TURN_ARROW_GLYPHS[t]).join("");
-  return glyph.length > 0 ? glyph : null;
-}
 
 const PARKING_SCHEMATIC_WIDTH_M = 2.2;
 const CYCLEWAY_SCHEMATIC_WIDTH_M = 1.5;
@@ -551,11 +526,11 @@ export function buildTurnArrowFeatureCollection(
           : "allowed_movements" in lane
             ? (lane as { allowed_movements: MovementType[] }).allowed_movements
             : [];
-      const arrow = turnArrowGlyph(
+      const movementTokens: (TurnLaneType | MovementType)[] | null =
         lane.allowed_turns ??
-          (semanticMovements.length > 0 ? semanticMovements : null),
-      );
-      if (!arrow) continue;
+        (semanticMovements.length > 0 ? semanticMovements : null);
+      const normalizedDirections = normalizeManeuverDirections(movementTokens);
+      if (normalizedDirections.length === 0) continue;
       const laneDirection = "direction" in lane ? lane.direction : "FORWARD";
       const offset = safeOffset(
         line,
@@ -586,29 +561,28 @@ export function buildTurnArrowFeatureCollection(
       } catch {
         continue;
       }
+      const before = along(offset, Math.max(0, arrowDistanceM - 1), {
+        units: "meters",
+      }).geometry.coordinates;
+      const after = along(offset, Math.min(lineLengthM, arrowDistanceM + 1), {
+        units: "meters",
+      }).geometry.coordinates;
+      const roadBearing = bearing(before, after);
+      const travelBearing =
+        laneDirection === "BACKWARD" ? (roadBearing + 180) % 360 : roadBearing;
+      const geometry = buildManeuverSymbolGeometry(
+        point.geometry.coordinates as LngLat,
+        travelBearing,
+        movementTokens,
+      );
+      if (!geometry) continue;
       features.push({
         type: "Feature",
-        geometry: point.geometry,
+        geometry,
         properties: {
           road_id: road.id,
           lane_index: lane.index,
-          arrow,
-          // MapLibre `text-rotate` is clockwise from north; `@turf/bearing`
-          // already returns that convention (-180..180, 0 = north).
-          bearing: (() => {
-            const before = along(offset, Math.max(0, arrowDistanceM - 1), {
-              units: "meters",
-            }).geometry.coordinates;
-            const after = along(
-              offset,
-              Math.min(lineLengthM, arrowDistanceM + 1),
-              { units: "meters" },
-            ).geometry.coordinates;
-            const direction = bearing(before, after);
-            return laneDirection === "BACKWARD"
-              ? (direction + 180) % 360
-              : direction;
-          })(),
+          maneuvers: normalizedDirections.join("|"),
         },
       });
     }
