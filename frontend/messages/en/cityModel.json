@@ -26,7 +26,9 @@
     "selectCityPrompt": "Select a city from the sidebar to view its road network.",
     "cityHasNoRoadData": "This city has no road network data yet. Import the demo dataset to populate it.",
     "loadingViewportData": "Loading roads for this view…",
-    "viewportDataFailed": "Couldn't load roads for this view. Pan or zoom to retry."
+    "viewportDataFailed": "Couldn't load roads for this view. Pan or zoom to retry.",
+    "compass": "Map compass",
+    "resetNorth": "Reset map bearing to north"
   },
   "details": {
     "unknown": "Unknown",
@@ -131,6 +133,17 @@
     "lanes": "Lanes",
     "laneWidth": "Lane width",
     "directions": "Directions",
+    "directionHelp": "Physical travel direction along the road from endpoint A to endpoint B.",
+    "directionForward": "A → B",
+    "directionBackward": "B → A",
+    "laneDirectionAria": "Direction for lane {number}",
+    "turnPermissions": "Turn permissions",
+    "movement": {
+      "STRAIGHT": "Straight",
+      "LEFT": "Left",
+      "RIGHT": "Right",
+      "U_TURN": "U-turn"
+    },
     "laneNumber": "Lane {number}",
     "markings": "Markings",
     "leftEdge": "Left edge",
@@ -140,6 +153,15 @@
     "startNode": "Start node",
     "endNode": "End node",
     "notConnected": "Not connected",
+    "deleteRoad": "Delete road",
+    "deleteConfirmTitle": "Delete road?",
+    "deleteConfirm": "Delete road “{name}”?",
+    "cancelDelete": "Cancel",
+    "confirmDelete": "Delete",
+    "deletingRoad": "Deleting…",
+    "deleteFailed": "Road deletion failed. The editor was not changed.",
+    "workspaceLoadFailed": "The editor workspace could not be loaded. Check the backend and reload.",
+    "topologySaveFailed": "The road topology could not be saved. The editor may differ from the persisted city.",
     "marking": {
       "NONE": "None",
       "DASHED_WHITE": "Dashed",
@@ -161,7 +183,25 @@
     "typeFourWay": "Four-way",
     "typeY": "Y / angled",
     "typeMultiLeg": "Generic multi-leg",
-    "typeGeneric": "Generic"
+    "typeGeneric": "Generic",
+    "endpointA": "endpoint A",
+    "endpointB": "endpoint B",
+    "endpointUnknown": "endpoint unavailable",
+    "laneNumber": "Lane {number}",
+    "laneDirection": {
+      "INBOUND": "Into intersection",
+      "OUTBOUND": "Out of intersection"
+    },
+    "maneuver": {
+      "LEFT": "Left",
+      "STRAIGHT": "Straight",
+      "RIGHT": "Right",
+      "U_TURN": "U-turn"
+    },
+    "outgoingContext": "Destination lane; no maneuver is configured here.",
+    "savingLanes": "Saving changes…",
+    "maneuverSaveFailed": "The maneuver could not be saved. The intersection was not changed.",
+    "maneuverUnavailable": "That maneuver has no valid destination lane."
   },
   "fullscreen": {
     "smoothing": "Smoothing",
@@ -187,6 +227,8 @@
     "trafficLights": "Traffic lights",
     "trafficLightsTooltip": "Show or hide traffic lights",
     "amenities": "Amenities",
-    "amenitiesTooltip": "Show or hide bus stops and pedestrian crossings"
+    "amenitiesTooltip": "Show or hide bus stops and pedestrian crossings",
+    "connections": "Connections",
+    "connectionsTooltip": "Show or hide lane-to-lane connection curves"
   }
 }

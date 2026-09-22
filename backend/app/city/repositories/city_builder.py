@@ -16,6 +16,7 @@ from app.city.models.city import City
 from app.city.models.crosswalk import Crosswalk
 from app.city.models.intersection import Intersection
 from app.city.models.lane import Lane
+from app.city.models.lane_connection import LaneConnection
 from app.city.models.parking import ParkingZone
 from app.city.models.road import Road
 from app.city.models.traffic_demand import TrafficDemand
@@ -197,6 +198,20 @@ def build_city(payload: CityCreate) -> City:
         for demand_data in payload.traffic_demands
     ]
 
+    lane_connections = [
+        LaneConnection(
+            id=connection.id,
+            city_id=payload.id,
+            intersection_id=connection.intersection_id,
+            from_road_id=connection.from_road_id,
+            from_lane_id=connection.from_lane_id,
+            to_road_id=connection.to_road_id,
+            to_lane_id=connection.to_lane_id,
+            maneuver=connection.maneuver.value,
+        )
+        for connection in payload.lane_connections
+    ]
+
     bus_stops = [
         BusStop(
             id=stop_data.id,
@@ -233,4 +248,5 @@ def build_city(payload: CityCreate) -> City:
         traffic_demands=traffic_demands,
         bus_stops=bus_stops,
         crosswalks=crosswalks,
+        lane_connections=lane_connections,
     )

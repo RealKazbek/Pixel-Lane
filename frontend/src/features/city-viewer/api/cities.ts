@@ -8,6 +8,7 @@ import type {
   MapRoad,
   LaneBoundaryMarking,
   RoadEdgeMarking,
+  LaneConnection,
 } from "../types/city";
 import type { TrafficAnalysisResult } from "../types/traffic-analysis";
 import type { BBox } from "../map/adapters/viewport";
@@ -130,6 +131,7 @@ export function updateRoadProperties(
     lane_count: number;
     lane_width_m: number;
     lane_directions: Road["lanes"][number]["direction"][];
+    lane_allowed_movements: Road["lanes"][number]["allowed_movements"][];
     left_edge_marking: RoadEdgeMarking;
     right_edge_marking: RoadEdgeMarking;
     lane_boundary_markings: LaneBoundaryMarking[];
@@ -154,11 +156,41 @@ export function deleteRoad(cityId: string, roadId: string): Promise<void> {
   });
 }
 
-export function replaceTopology(cityId: string, city: Pick<City, "roads" | "intersections">): Promise<void> {
+export function replaceLaneConnections(
+  cityId: string,
+  connections: Omit<LaneConnection, "city_id">[],
+): Promise<LaneConnection[]> {
+  return apiRequest<LaneConnection[]>(
+    `/api/v1/cities/${cityId}/lane-connections`,
+    {
+      method: "PUT",
+      body: JSON.stringify({ connections }),
+    },
+  );
+}
+
+export function generateLaneConnections(cityId: string): Promise<{
+  connections: LaneConnection[];
+  warnings: string[];
+}> {
+  return apiRequest<{ connections: LaneConnection[]; warnings: string[] }>(
+    `/api/v1/cities/${cityId}/lane-connections/auto`,
+    { method: "POST" },
+  );
+}
+
+export function replaceTopology(
+  cityId: string,
+  city: Pick<City, "roads" | "intersections">,
+  newRoads: Road[] = [],
+): Promise<void> {
   return apiRequest<void>(`/api/v1/cities/${cityId}/topology`, {
     method: "PUT",
     body: JSON.stringify({
-      roads: city.roads.map((road) => ({ id: road.id, geometry: road.geometry })),
+      roads: city.roads.map((road) => ({
+        id: road.id,
+        geometry: road.geometry,
+      })),
       intersections: city.intersections.map((intersection) => ({
         id: intersection.id,
         position: intersection.position,
@@ -167,8 +199,44 @@ export function replaceTopology(cityId: string, city: Pick<City, "roads" | "inte
         control_type: intersection.control_type,
         traffic_light_id: intersection.traffic_light_id,
       })),
+      new_roads: newRoads.map((road) => ({ ...road, city_id: undefined })),
     }),
   });
+}
+
+export function replaceTopologyAndLaneConnections(
+  cityId: string,
+  city: Pick<City, "roads" | "intersections">,
+  connections: Omit<LaneConnection, "city_id">[],
+  newRoads: Road[] = [],
+): Promise<City> {
+  return apiRequest<City>(
+    `/api/v1/cities/${cityId}/topology-and-lane-connections`,
+    {
+      method: "PUT",
+      body: JSON.stringify({
+        topology: {
+          roads: city.roads.map((road) => ({
+            id: road.id,
+            geometry: road.geometry,
+          })),
+          intersections: city.intersections.map((intersection) => ({
+            id: intersection.id,
+            position: intersection.position,
+            connected_road_ids: intersection.connected_road_ids,
+            connected_lane_ids: intersection.connected_lane_ids,
+            control_type: intersection.control_type,
+            traffic_light_id: intersection.traffic_light_id,
+          })),
+          new_roads: newRoads.map((road) => ({
+            ...road,
+            city_id: undefined,
+          })),
+        },
+        lane_connections: connections,
+      }),
+    },
+  );
 }
 
 export function buildRoadPropertiesPayload(road: Road) {
@@ -181,6 +249,7 @@ export function buildRoadPropertiesPayload(road: Road) {
     lane_count: laneCount,
     lane_width_m: laneWidth,
     lane_directions: road.lanes.map((lane) => lane.direction),
+    lane_allowed_movements: road.lanes.map((lane) => lane.allowed_movements),
     left_edge_marking: road.left_edge_marking ?? "SOLID_YELLOW",
     right_edge_marking: road.right_edge_marking ?? "SOLID_YELLOW",
     lane_boundary_markings: road.lane_boundary_markings ?? [],

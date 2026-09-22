@@ -22,6 +22,17 @@ export type LaneType =
 
 export type MovementType = "LEFT" | "STRAIGHT" | "RIGHT" | "U_TURN";
 
+export interface LaneConnection {
+  id: string;
+  city_id: string;
+  intersection_id: string;
+  from_road_id: string;
+  from_lane_id: string;
+  to_road_id: string;
+  to_lane_id: string;
+  maneuver: MovementType;
+}
+
 export type IntersectionControlType =
   | "UNCONTROLLED"
   | "STOP_SIGN"
@@ -202,6 +213,22 @@ export interface Crosswalk {
   position_ratio: number;
 }
 
+export interface TrafficRule {
+  id: string;
+  city_id: string;
+  rule_type:
+    | "YIELD"
+    | "STOP"
+    | "PRIORITY_ROAD"
+    | "NO_ENTRY"
+    | "TURN_RESTRICTION"
+    | "SPEED_LIMIT";
+  target_type: "ROAD" | "LANE" | "INTERSECTION" | "MOVEMENT";
+  target_id: string;
+  movement: MovementType | null;
+  speed_limit_kmh: number | null;
+}
+
 export interface City {
   bounds?: [number, number, number, number] | null;
   road_count?: number;
@@ -217,6 +244,8 @@ export interface City {
   parking_zones: ParkingZone[];
   bus_stops: BusStop[];
   crosswalks: Crosswalk[];
+  traffic_rules?: TrafficRule[];
+  lane_connections?: LaneConnection[];
 }
 
 export interface CitySummary {

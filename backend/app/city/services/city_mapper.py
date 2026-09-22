@@ -34,6 +34,7 @@ from app.city.models.city import City
 from app.city.models.crosswalk import Crosswalk
 from app.city.models.intersection import Intersection
 from app.city.models.lane import Lane
+from app.city.models.lane_connection import LaneConnection
 from app.city.models.parking import ParkingZone
 from app.city.models.road import Road
 from app.city.models.traffic_demand import TrafficDemand
@@ -44,6 +45,7 @@ from app.city.schemas.city import CityRead
 from app.city.schemas.crosswalk import CrosswalkRead
 from app.city.schemas.intersection import IntersectionRead
 from app.city.schemas.lane import LaneRead
+from app.city.schemas.lane_connection import LaneConnectionRead
 from app.city.schemas.parking import ParkingZoneRead
 from app.city.schemas.road import RoadRead
 from app.city.schemas.traffic_demand import TrafficDemandRead
@@ -66,6 +68,19 @@ def _to_lane_read(lane: Lane) -> LaneRead:
             else None
         ),
         lane_change=LaneChangePermission(lane.lane_change) if lane.lane_change else None,
+    )
+
+
+def _to_lane_connection_read(connection: LaneConnection) -> LaneConnectionRead:
+    return LaneConnectionRead(
+        id=connection.id,
+        city_id=connection.city_id,
+        intersection_id=connection.intersection_id,
+        from_road_id=connection.from_road_id,
+        from_lane_id=connection.from_lane_id,
+        to_road_id=connection.to_road_id,
+        to_lane_id=connection.to_lane_id,
+        maneuver=MovementType(connection.maneuver),
     )
 
 
@@ -231,4 +246,7 @@ def to_city_read(city: City) -> CityRead:
         traffic_demands=[_to_traffic_demand_read(d) for d in city.traffic_demands],
         bus_stops=[_to_bus_stop_read(s) for s in city.bus_stops],
         crosswalks=[_to_crosswalk_read(c) for c in city.crosswalks],
+        lane_connections=[
+            _to_lane_connection_read(connection) for connection in city.lane_connections
+        ],
     )

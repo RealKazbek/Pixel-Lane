@@ -2,15 +2,24 @@ import type { City, Intersection, Point, Road } from "../types/city";
 import { updatePolylineVertex } from "../map/editor/polylineEditing";
 
 export const ENDPOINT_SNAP_TOLERANCE_PX = 18;
+export const INTERSECTION_SNAP_TOLERANCE_M = 1.5;
 
 function persistedId(value: string, seed: string): string {
-  if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(seed)) {
+  if (
+    !/^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(
+      seed,
+    )
+  ) {
     return value;
   }
-  let hash = 2166136261;
-  for (const character of value) hash = Math.imul(hash ^ character.charCodeAt(0), 16777619);
-  const hex = (hash >>> 0).toString(16).padStart(8, "0");
-  return `${hex}${hex}${hex.slice(0, 8)}-${hex.slice(0, 4)}-5${hex.slice(1, 4)}-8${hex.slice(1, 4)}-${hex}${hex.slice(0, 4)}`;
+  const hashPart = (salt: number) => {
+    let hash = 2166136261;
+    for (const character of `${salt}:${value}`)
+      hash = Math.imul(hash ^ character.charCodeAt(0), 16777619);
+    return (hash >>> 0).toString(16).padStart(8, "0");
+  };
+  const hex = [0, 1, 2, 3].map(hashPart).join("");
+  return `${hex.slice(0, 8)}-${hex.slice(8, 12)}-5${hex.slice(13, 16)}-8${hex.slice(17, 20)}-${hex.slice(20, 32)}`;
 }
 
 export type RoadEndpoint = "start" | "end";
@@ -55,11 +64,79 @@ export type EndpointSnapCandidate = ScreenEndpointSnapTarget & {
 
 const POINT_EPSILON = 1e-9;
 const EDITOR_NODE_PREFIX = "editor-node-";
+const ROAD_TOPOLOGY_TOLERANCE_M = INTERSECTION_SNAP_TOLERANCE_M;
 
 function samePoint(left: Point, right: Point): boolean {
   return (
     Math.abs(left.x - right.x) <= POINT_EPSILON &&
     Math.abs(left.y - right.y) <= POINT_EPSILON
+  );
+}
+
+function distanceMeters(left: Point, right: Point): number {
+  return Math.hypot(left.x - right.x, left.y - right.y);
+}
+
+function sameRoadGeometry(left: Road, right: Road): boolean {
+  const leftPoints = left.geometry.points;
+  const rightPoints = right.geometry.points;
+  if (leftPoints.length !== rightPoints.length) return false;
+  const matches = (points: Point[]) =>
+    leftPoints.every(
+      (point, index) =>
+        distanceMeters(point, points[index]) <= ROAD_TOPOLOGY_TOLERANCE_M,
+    );
+  return matches(rightPoints) || matches([...rightPoints].reverse());
+}
+
+function hasDuplicateRoadGeometry(roads: readonly Road[]): boolean {
+  return roads.some((road, index) => {
+    if (road.geometry.points.length < 2) return true;
+    if (
+      road.geometry.points.some(
+        (point, pointIndex, points) =>
+          pointIndex > 0 &&
+          distanceMeters(point, points[pointIndex - 1]) <= POINT_EPSILON,
+      )
+    ) {
+      return true;
+    }
+    return roads
+      .slice(index + 1)
+      .some((candidate) => sameRoadGeometry(road, candidate));
+  });
+}
+
+function hasUnmigratableRoadDependencies(city: City, road: Road): boolean {
+  const laneIds = new Set(road.lanes.map((lane) => lane.id));
+  return (
+    city.parking_zones.some((zone) => zone.road_id === road.id) ||
+    city.bus_stops.some((stop) => stop.road_id === road.id) ||
+    city.crosswalks.some((crosswalk) => crosswalk.road_id === road.id) ||
+    (city.traffic_rules ?? []).some(
+      (rule) =>
+        (rule.target_type === "ROAD" && rule.target_id === road.id) ||
+        (rule.target_type === "LANE" && laneIds.has(rule.target_id)),
+    )
+  );
+}
+
+function nearestIntersectionWithinTolerance(
+  intersections: readonly Intersection[],
+  point: Point,
+): Intersection | null {
+  return (
+    intersections
+      .map((intersection) => ({
+        intersection,
+        distance: distanceMeters(intersection.position, point),
+      }))
+      .filter(({ distance }) => distance <= INTERSECTION_SNAP_TOLERANCE_M)
+      .sort(
+        (left, right) =>
+          left.distance - right.distance ||
+          left.intersection.id.localeCompare(right.intersection.id),
+      )[0]?.intersection ?? null
   );
 }
 
@@ -74,6 +151,24 @@ function endpointPoint(
 
 function endpointIndex(road: Road, endpoint: RoadEndpoint): number {
   return endpoint === "start" ? 0 : road.geometry.points.length - 1;
+}
+
+/** Keep persisted lane topology in step with the road membership of a node.
+ * Snapping is the editor's topology mutation boundary; leaving this list
+ * empty makes a valid connected road graph unusable to lane matching. */
+function reconcileConnectedLaneIds(
+  roads: readonly Road[],
+  intersections: readonly Intersection[],
+): Intersection[] {
+  const lanesByRoadId = new Map(
+    roads.map((road) => [road.id, road.lanes.map((lane) => lane.id)]),
+  );
+  return intersections.map((intersection) => ({
+    ...intersection,
+    connected_lane_ids: intersection.connected_road_ids
+      .flatMap((roadId) => lanesByRoadId.get(roadId) ?? [])
+      .sort(),
+  }));
 }
 
 export function findRoadEndpointNode(
@@ -156,6 +251,7 @@ export function findEndpointSnapCandidate(
   targets: readonly ScreenEndpointSnapTarget[],
   movingRoadId: string | null,
   tolerancePx = ENDPOINT_SNAP_TOLERANCE_PX,
+  pointerWorld?: Point,
 ): EndpointSnapCandidate | null {
   if (!Number.isFinite(pointer.x) || !Number.isFinite(pointer.y)) return null;
 
@@ -178,7 +274,13 @@ export function findEndpointSnapCandidate(
           target.screenY - pointer.y,
         ),
       }))
-      .filter((target) => target.distancePx <= tolerancePx)
+      .filter(
+        (target) =>
+          target.distancePx <= tolerancePx ||
+          (pointerWorld !== undefined &&
+            distanceMeters(target.point, pointerWorld) <=
+              INTERSECTION_SNAP_TOLERANCE_M),
+      )
       .sort(
         (left, right) =>
           left.distancePx - right.distancePx ||
@@ -190,11 +292,17 @@ export function findEndpointSnapCandidate(
 }
 
 function editorNodeId(target: RoadEndpointSnapTarget): string {
-  return persistedId(`${EDITOR_NODE_PREFIX}${target.roadId}-${target.endpoint}`, target.roadId);
+  return persistedId(
+    `${EDITOR_NODE_PREFIX}${target.roadId}-${target.endpoint}`,
+    target.roadId,
+  );
 }
 
 function segmentNodeId(target: RoadSegmentSnapTarget): string {
-  return persistedId(`editor-node-${target.roadId}-segment-${target.segmentIndex}-${target.point.x}-${target.point.y}`, target.roadId);
+  return persistedId(
+    `editor-node-${target.roadId}-segment-${target.segmentIndex}-${target.point.x}-${target.point.y}`,
+    target.roadId,
+  );
 }
 
 function splitRoadAtPoint(
@@ -207,8 +315,8 @@ function splitRoadAtPoint(
   if (
     segmentIndex < 0 ||
     segmentIndex >= points.length - 1 ||
-    samePoint(point, points[segmentIndex]) ||
-    samePoint(point, points[segmentIndex + 1])
+    distanceMeters(point, points[segmentIndex]) <= ROAD_TOPOLOGY_TOLERANCE_M ||
+    distanceMeters(point, points[segmentIndex + 1]) <= ROAD_TOPOLOGY_TOLERANCE_M
   ) {
     return null;
   }
@@ -247,6 +355,10 @@ function nextSplitRoadId(
   let suffix = 2;
   while (existingIds.has(`${base}-${suffix}`)) suffix += 1;
   return `${base}-${suffix}`;
+}
+
+function splitLaneId(roadId: string, laneId: string, index: number): string {
+  return persistedId(`${roadId}-split-lane-${index}-${laneId}`, roadId);
 }
 
 function setRoadEndpoint(
@@ -355,8 +467,13 @@ export function applyEndpointSnap(
     return null;
   }
 
+  const nearbyIntersection = nearestIntersectionWithinTolerance(
+    city.intersections,
+    target.point,
+  );
   const targetNodeId =
-    target.kind === "road-segment" ? segmentNodeId(target) : target.nodeId;
+    nearbyIntersection?.id ??
+    (target.kind === "road-segment" ? segmentNodeId(target) : target.nodeId);
   const existingNode = targetNodeId
     ? city.intersections.find(
         (intersection) => intersection.id === targetNodeId,
@@ -375,16 +492,20 @@ export function applyEndpointSnap(
         ? segmentNodeId(target)
         : target.nodeId);
   const canonicalPoint = existingNode?.position ?? target.point;
-  if (
-    target.kind === "road-endpoint" &&
-    targetRoad &&
-    !samePoint(endpointPoint(targetRoad, target.endpoint), canonicalPoint)
-  ) {
-    return null;
-  }
+  const coincidentRoadIds = city.roads
+    .filter(
+      (road) =>
+        road.id !== movingRoadId &&
+        (distanceMeters(road.geometry.points[0], canonicalPoint) <=
+          ROAD_TOPOLOGY_TOLERANCE_M ||
+          distanceMeters(road.geometry.points.at(-1)!, canonicalPoint) <=
+            ROAD_TOPOLOGY_TOLERANCE_M),
+    )
+    .map((road) => road.id);
   const connectedRoadIds = [
     ...new Set([
       ...(existingNode?.connected_road_ids ?? []),
+      ...coincidentRoadIds,
       ...(target.kind === "road-endpoint" ? [target.roadId] : []),
       ...(target.kind === "road-segment" ? [target.roadId] : []),
       movingRoadId,
@@ -419,9 +540,50 @@ export function applyEndpointSnap(
   let nextRoads = city.roads.map((road) =>
     road.id === movingRoadId
       ? setRoadEndpoint(road, movingEndpoint, canonicalPoint)
-      : road,
+      : target.kind === "road-endpoint" && road.id === targetRoad?.id
+        ? samePoint(endpointPoint(road, target.endpoint), canonicalPoint)
+          ? road
+          : setRoadEndpoint(road, target.endpoint, canonicalPoint)
+        : road,
   );
-  if (segmentTarget && segmentRoad && !existingNode) {
+  if (segmentTarget && segmentRoad) {
+    const segmentStart =
+      segmentRoad.geometry.points[segmentTarget.segmentIndex];
+    const segmentEnd =
+      segmentRoad.geometry.points[segmentTarget.segmentIndex + 1];
+    const endpoint =
+      distanceMeters(canonicalPoint, segmentStart) <= ROAD_TOPOLOGY_TOLERANCE_M
+        ? "start"
+        : distanceMeters(canonicalPoint, segmentEnd) <=
+            ROAD_TOPOLOGY_TOLERANCE_M
+          ? "end"
+          : null;
+    if (endpoint) {
+      const snappedRoad = setRoadEndpoint(
+        segmentRoad,
+        endpoint,
+        canonicalPoint,
+      );
+      nextRoads = nextRoads.map((road) =>
+        road.id === snappedRoad.id ? snappedRoad : road,
+      );
+      const endpointNode = {
+        ...node,
+        connected_road_ids: [...new Set(node.connected_road_ids)].sort(),
+      };
+      const endpointIntersections = nextIntersections.map((intersection) =>
+        intersection.id === nodeId ? endpointNode : intersection,
+      );
+      return {
+        ...city,
+        roads: nextRoads,
+        intersections: reconcileConnectedLaneIds(
+          nextRoads,
+          endpointIntersections,
+        ),
+      };
+    }
+    if (hasUnmigratableRoadDependencies(city, segmentRoad)) return null;
     const split = splitRoadAtPoint(
       segmentRoad,
       segmentTarget.segmentIndex,
@@ -430,11 +592,26 @@ export function applyEndpointSnap(
     );
     if (!split) return null;
     const [firstRoad, secondRoad] = split;
+    const splitLaneIds = new Map<string, string>();
+    const secondRoadWithLanes: Road = {
+      ...secondRoad,
+      lanes: secondRoad.lanes.map((lane, index) => {
+        const id = splitLaneId(secondRoad.id, lane.id, index);
+        splitLaneIds.set(lane.id, id);
+        return { ...lane, id, road_id: secondRoad.id };
+      }),
+    };
     nextRoads = nextRoads.flatMap((road) =>
-      road.id === segmentRoad.id ? [firstRoad, secondRoad] : [road],
+      road.id === segmentRoad.id ? [firstRoad, secondRoadWithLanes] : [road],
     );
     const connectedRoadIds = [
-      ...new Set([...node.connected_road_ids, secondRoad.id]),
+      ...new Set([
+        ...node.connected_road_ids.filter(
+          (roadId) => roadId !== segmentRoad.id,
+        ),
+        firstRoad.id,
+        secondRoadWithLanes.id,
+      ]),
     ].sort();
     const updatedIntersections = nextIntersections.map((intersection) => {
       if (
@@ -445,7 +622,7 @@ export function applyEndpointSnap(
         return {
           ...intersection,
           connected_road_ids: intersection.connected_road_ids.map((roadId) =>
-            roadId === segmentRoad.id ? secondRoad.id : roadId,
+            roadId === segmentRoad.id ? secondRoadWithLanes.id : roadId,
           ),
         };
       }
@@ -459,17 +636,58 @@ export function applyEndpointSnap(
           intersection.id === nodeId ? nextNode : intersection,
         )
       : [...updatedIntersections, nextNode];
-    return {
+    const movedIntersectionIds = new Set(
+      updatedIntersections
+        .filter(
+          (intersection) =>
+            intersection.id !== nodeId &&
+            intersection.connected_road_ids.includes(secondRoadWithLanes.id),
+        )
+        .map((intersection) => intersection.id),
+    );
+    const nextLaneConnections = (city.lane_connections ?? []).map(
+      (connection) => {
+        if (!movedIntersectionIds.has(connection.intersection_id))
+          return connection;
+        return {
+          ...connection,
+          from_road_id:
+            connection.from_road_id === segmentRoad.id
+              ? secondRoadWithLanes.id
+              : connection.from_road_id,
+          from_lane_id:
+            connection.from_road_id === segmentRoad.id
+              ? (splitLaneIds.get(connection.from_lane_id) ??
+                connection.from_lane_id)
+              : connection.from_lane_id,
+          to_road_id:
+            connection.to_road_id === segmentRoad.id
+              ? secondRoadWithLanes.id
+              : connection.to_road_id,
+          to_lane_id:
+            connection.to_road_id === segmentRoad.id
+              ? (splitLaneIds.get(connection.to_lane_id) ??
+                connection.to_lane_id)
+              : connection.to_lane_id,
+        };
+      },
+    );
+    const result = {
       ...city,
       roads: nextRoads,
-      intersections: nextIntersectionsWithSplit,
+      lane_connections: nextLaneConnections,
+      intersections: reconcileConnectedLaneIds(
+        nextRoads,
+        nextIntersectionsWithSplit,
+      ),
     };
+    return hasDuplicateRoadGeometry(result.roads) ? null : result;
   }
 
   return {
     ...city,
     roads: nextRoads,
-    intersections: nextIntersections,
+    intersections: reconcileConnectedLaneIds(nextRoads, nextIntersections),
   };
 }
 
@@ -527,5 +745,5 @@ export function addRoadWithEndpointSnaps(
   if (endTarget) {
     next = applyEndpointSnap(next, road.id, "end", endTarget) ?? next;
   }
-  return next;
+  return hasDuplicateRoadGeometry(next.roads) ? null : next;
 }

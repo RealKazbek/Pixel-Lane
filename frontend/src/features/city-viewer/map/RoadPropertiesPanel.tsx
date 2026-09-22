@@ -4,9 +4,9 @@ import { useState } from "react";
 import { useTranslations } from "next-intl";
 import type {
   LaneBoundaryMarking,
-  LaneDirection,
   Road,
   RoadEdgeMarking,
+  LaneDirection,
 } from "../types/city";
 import {
   laneWidthMeters,
@@ -29,6 +29,7 @@ interface RoadPropertiesPanelProps {
   road: Road;
   endpointNodeIds: { start: string | null; end: string | null };
   onApplyPreset: (presetId: RoadPresetId) => void;
+  onDelete: () => void;
   onChange: (changes: {
     name?: string;
     width_m?: number;
@@ -45,6 +46,7 @@ export function RoadPropertiesPanel({
   road,
   endpointNodeIds,
   onApplyPreset,
+  onDelete,
   onChange,
 }: RoadPropertiesPanelProps) {
   const t = useTranslations("cityModel.properties");
@@ -53,7 +55,7 @@ export function RoadPropertiesPanel({
   const laneCount = Math.max(MIN_EDITOR_LANE_COUNT, road.lanes.length);
   const laneWidth = laneWidthMeters(road);
   const width = road.width_m ?? laneCount * laneWidth;
-  const directions: LaneDirection[] = Array.from(
+  const directions = Array.from(
     { length: laneCount },
     (_, index) => road.lanes[index]?.direction ?? "FORWARD",
   );
@@ -78,17 +80,12 @@ export function RoadPropertiesPanel({
     "DOUBLE_SOLID_WHITE",
     "NONE",
   ];
-  const updateLaneModel = (
-    count: number,
-    widthM: number,
-    nextDirections = directions,
-  ) => {
+  const updateLaneModel = (count: number, widthM: number) => {
     if (count * widthM > MAX_EDITOR_ROAD_WIDTH_M) return;
     onChange({
       lane_count: count,
       lane_width_m: widthM,
       width_m: count * widthM,
-      lane_directions: nextDirections.slice(0, count),
       lane_boundary_markings: resizeBoundaryMarkings(road, count),
     });
   };
@@ -192,25 +189,30 @@ export function RoadPropertiesPanel({
         <legend className="mb-1 text-muted-foreground">
           {t("directions")}
         </legend>
-        <div className="space-y-1">
-          {directions.map((direction, index) => (
-            <button
-              key={index}
-              type="button"
-              onClick={() => {
-                const next = [...directions];
-                next[index] = direction === "FORWARD" ? "BACKWARD" : "FORWARD";
-                updateLaneModel(laneCount, laneWidth, next);
+        <p className="mb-2 text-[11px] leading-snug text-muted-foreground">
+          {t("directionHelp")}
+        </p>
+        {road.lanes.map((lane, laneIndex) => (
+          <label
+            key={lane.id}
+            className="mt-2 flex items-center justify-between gap-2"
+          >
+            <span>{t("laneNumber", { number: laneIndex + 1 })}</span>
+            <select
+              value={lane.direction}
+              onChange={(event) => {
+                const next = road.lanes.map((item) => item.direction);
+                next[laneIndex] = event.target.value as LaneDirection;
+                onChange({ lane_directions: next });
               }}
-              className="flex w-full items-center justify-between rounded border border-border-subtle px-2 py-1 hover:bg-surface-elevated"
+              className="min-w-0 rounded border border-border-subtle bg-background px-1 py-1 text-foreground"
+              aria-label={t("laneDirectionAria", { number: laneIndex + 1 })}
             >
-              <span>{t("laneNumber", { number: index + 1 })}</span>
-              <span aria-label={direction}>
-                {direction === "FORWARD" ? "→" : "←"}
-              </span>
-            </button>
-          ))}
-        </div>
+              <option value="FORWARD">{t("directionForward")}</option>
+              <option value="BACKWARD">{t("directionBackward")}</option>
+            </select>
+          </label>
+        ))}
       </fieldset>
       <fieldset className="mt-3">
         <legend className="mb-1 text-muted-foreground">{t("markings")}</legend>
@@ -298,6 +300,13 @@ export function RoadPropertiesPanel({
           </dd>
         </dl>
       </details>
+      <button
+        type="button"
+        onClick={onDelete}
+        className="mt-3 w-full rounded-md border border-danger/50 px-2 py-1.5 text-danger transition-colors hover:bg-danger/10 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-danger"
+      >
+        {t("deleteRoad")}
+      </button>
     </section>
   );
 }

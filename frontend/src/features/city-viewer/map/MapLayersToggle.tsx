@@ -19,6 +19,7 @@ const LAYER_ORDER: LayerGroupId[] = [
   "intersections",
   "trafficLights",
   "amenities",
+  "connections",
 ];
 
 /** The independently-toggleable entity layers Pixel Lane currently

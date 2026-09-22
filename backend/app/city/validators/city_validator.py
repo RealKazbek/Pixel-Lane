@@ -11,6 +11,7 @@ from uuid import UUID
 
 from app.city.domain.enums import MovementType, TrafficRuleTargetType
 from app.city.schemas.city import CityCreate, ValidationIssue
+from app.city.validators.lane_connection_validator import validate_lane_connections
 
 
 def validate_city(city: CityCreate) -> list[ValidationIssue]:
@@ -106,6 +107,17 @@ def validate_city(city: CityCreate) -> list[ValidationIssue]:
                         path=f"{path}.connected_lane_ids",
                     )
                 )
+
+    for ci, connection in enumerate(city.lane_connections):
+        path = f"lane_connections[{ci}]"
+        register_id(connection.id, f"{path}.id")
+    issues.extend(
+        validate_lane_connections(
+            city,
+            city.lane_connections,
+            path_prefix="lane_connections",
+        )
+    )
 
     traffic_light_ids: set[UUID] = set()
     intersections_with_light: set[UUID] = set()

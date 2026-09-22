@@ -223,6 +223,38 @@ describe("endpoint snap detection", () => {
 });
 
 describe("endpoint snap topology", () => {
+  it("generates a valid stable UUID for a junction in a persisted city", () => {
+    const first = "6ac0bae9-548e-4de7-becc-b58342c780fb";
+    const second = "d0d12181-f2bf-4ae9-bade-a52935d5e12d";
+    const city = makeCity([makeRoad(first, 0, 10), makeRoad(second, 20, 30)]);
+    const target = endpointTarget(first, "end", { x: 10, y: 0 });
+    const connect = () => applyEndpointSnap(city, second, "start", target);
+    const id = connect()?.intersections[0]?.id;
+
+    expect(id).toMatch(
+      /^[0-9a-f]{8}-[0-9a-f]{4}-5[0-9a-f]{3}-8[0-9a-f]{3}-[0-9a-f]{12}$/,
+    );
+    expect(connect()?.intersections[0]?.id).toBe(id);
+  });
+
+  it("joins every road endpoint already at the snapped T junction", () => {
+    const left = makeRoad("left", 0, 10);
+    const right = makeRoad("right", 10, 20);
+    const incoming = makeRoad("incoming", 30, 40);
+    const connected = applyEndpointSnap(
+      makeCity([left, right, incoming]),
+      incoming.id,
+      "start",
+      endpointTarget(left.id, "end", { x: 10, y: 0 }),
+    );
+
+    expect(connected?.intersections[0].connected_road_ids).toEqual([
+      "incoming",
+      "left",
+      "right",
+    ]);
+  });
+
   it("moves every road connected to one shared node", () => {
     const city = makeCity([
       makeRoad("road-ab", 0, 100),
@@ -312,7 +344,10 @@ describe("endpoint snap topology", () => {
     expect(result?.roads[1].name).toBe("Main Road");
     expect(result?.roads[0].width_m).toBe(12);
     expect(result?.roads[1].width_m).toBe(12);
-    expect(result?.roads[0].lanes).toEqual(result?.roads[1].lanes);
+    expect(result?.roads[0].lanes.map((lane) => lane.direction)).toEqual(
+      result?.roads[1].lanes.map((lane) => lane.direction),
+    );
+    expect(result?.roads[0].lanes[0].id).not.toBe(result?.roads[1].lanes[0].id);
     expect(
       result?.roads.every((road) =>
         road.geometry.points.every(
@@ -331,6 +366,197 @@ describe("endpoint snap topology", () => {
       "road-a",
       "road-a-split-0",
       "road-b",
+    ]);
+  });
+
+  it.each([
+    ["parking zone", "parking"],
+    ["bus stop", "bus"],
+    ["crosswalk", "crosswalk"],
+    ["road traffic rule", "road-rule"],
+    ["lane traffic rule", "lane-rule"],
+  ] as const)("rejects a split when the target owns a %s", (_name, kind) => {
+    const targetRoad: Road = {
+      ...makeRoad("road-a", 0, 100),
+      lanes: [
+        {
+          id: "lane-a",
+          road_id: "road-a",
+          index: 0,
+          direction: "FORWARD",
+          allowed_movements: [],
+          lane_type: "GENERAL",
+          speed_limit_kmh: null,
+        },
+      ],
+    };
+    const city = makeCity([targetRoad, makeRoad("road-b", 200, 300)]);
+    if (kind === "parking") {
+      city.parking_zones = [
+        {
+          id: "parking",
+          city_id: city.id,
+          road_id: targetRoad.id,
+          lane_id: "lane-a",
+          allowed: true,
+          side: "LEFT",
+          capacity: 2,
+        },
+      ];
+    } else if (kind === "bus") {
+      city.bus_stops = [
+        {
+          id: "bus",
+          city_id: city.id,
+          road_id: targetRoad.id,
+          position_x: 75,
+          position_y: 0,
+          name: null,
+        },
+      ];
+    } else if (kind === "crosswalk") {
+      city.crosswalks = [
+        {
+          id: "crosswalk",
+          city_id: city.id,
+          road_id: targetRoad.id,
+          position_ratio: 0.75,
+        },
+      ];
+    } else {
+      city.traffic_rules = [
+        {
+          id: kind,
+          city_id: city.id,
+          rule_type: "SPEED_LIMIT",
+          target_type: kind === "road-rule" ? "ROAD" : "LANE",
+          target_id: kind === "road-rule" ? targetRoad.id : "lane-a",
+          movement: null,
+          speed_limit_kmh: 30,
+        },
+      ];
+    }
+    const target = buildRoadSegmentSnapTargets(city).find(
+      (candidate) => candidate.roadId === targetRoad.id,
+    );
+    if (!target) throw new Error("Expected segment target");
+
+    const result = applyEndpointSnap(city, "road-b", "start", {
+      ...target,
+      point: { x: 50, y: 0 },
+    });
+
+    expect(result).toBeNull();
+    expect(city.roads).toHaveLength(2);
+    expect(city.roads[0].geometry.points).toEqual([
+      { x: 0, y: 0 },
+      { x: 100, y: 0 },
+    ]);
+    const roadIds = new Set(city.roads.map((road) => road.id));
+    const laneIds = new Set(
+      city.roads.flatMap((road) => road.lanes.map((lane) => lane.id)),
+    );
+    expect(city.parking_zones.every((zone) => roadIds.has(zone.road_id))).toBe(
+      true,
+    );
+    expect(
+      city.parking_zones.every(
+        (zone) => zone.lane_id === null || laneIds.has(zone.lane_id),
+      ),
+    ).toBe(true);
+    expect(city.bus_stops.every((stop) => roadIds.has(stop.road_id))).toBe(
+      true,
+    );
+    expect(
+      city.crosswalks.every((crosswalk) => roadIds.has(crosswalk.road_id)),
+    ).toBe(true);
+    expect(
+      (city.traffic_rules ?? []).every(
+        (rule) =>
+          (rule.target_type !== "ROAD" || roadIds.has(rule.target_id)) &&
+          (rule.target_type !== "LANE" || laneIds.has(rule.target_id)),
+      ),
+    ).toBe(true);
+  });
+
+  it("splits once when a new road is attached to an existing road interior", () => {
+    const existing = makeRoad("road-ab", 0, 100);
+    const city = makeCity([existing, makeRoad("road-c", 50, 150)]);
+    const target = buildRoadSegmentSnapTargets(city).find(
+      (candidate) => candidate.roadId === existing.id,
+    );
+    if (!target) throw new Error("Expected segment target");
+
+    const result = addRoadWithEndpointSnaps(
+      makeCity([existing]),
+      makeRoad("road-c", 50, 150),
+      { ...target, point: { x: 50, y: 0 } },
+      null,
+    );
+
+    expect(result?.roads).toHaveLength(3);
+    expect(result?.roads.map((road) => road.geometry.points)).toEqual([
+      [
+        { x: 0, y: 0 },
+        { x: 50, y: 0 },
+      ],
+      [
+        { x: 50, y: 0 },
+        { x: 100, y: 0 },
+      ],
+      [
+        { x: 50, y: 0 },
+        { x: 150, y: 0 },
+      ],
+    ]);
+    expect(result?.intersections).toHaveLength(1);
+    expect(result?.intersections[0].connected_road_ids).toEqual([
+      "road-ab",
+      "road-ab-split-0",
+      "road-c",
+    ]);
+  });
+
+  it("rejects a new road that duplicates an existing physical segment", () => {
+    const existing = makeRoad("road-ab", 0, 100);
+    const duplicate = makeRoad("road-copy", 100, 0);
+    expect(
+      addRoadWithEndpointSnaps(makeCity([existing]), duplicate, null, null),
+    ).toBeNull();
+  });
+
+  it("reuses an existing interior intersection while splitting the road once", () => {
+    const existing = makeRoad("road-ab", 0, 100);
+    const incoming = makeRoad("road-c", 50, 150);
+    const city = makeCity([existing, incoming]);
+    city.intersections = [
+      {
+        id: "junction-j",
+        city_id: city.id,
+        position: { x: 50, y: 0 },
+        connected_road_ids: [existing.id],
+        connected_lane_ids: [],
+        control_type: "UNCONTROLLED",
+        traffic_light_id: null,
+      },
+    ];
+    const target = buildRoadSegmentSnapTargets(city).find(
+      (candidate) => candidate.roadId === existing.id,
+    );
+    if (!target) throw new Error("Expected segment target");
+
+    const result = applyEndpointSnap(city, incoming.id, "start", {
+      ...target,
+      point: { x: 50.5, y: 0 },
+    });
+
+    expect(result?.intersections).toHaveLength(1);
+    expect(result?.intersections[0].id).toBe("junction-j");
+    expect(result?.roads).toHaveLength(3);
+    expect(result?.intersections[0].connected_road_ids).toEqual([
+      "road-ab",
+      "road-ab-split-0",
+      "road-c",
     ]);
   });
 
@@ -391,6 +617,118 @@ describe("endpoint snap topology", () => {
         "start",
       )?.id,
     ).toBe(node?.id);
+  });
+
+  it("persists every lane on roads connected to a snapped node", () => {
+    const first = makeRoad("road-a", 0, 10);
+    first.lanes = [
+      {
+        id: "lane-a-0",
+        road_id: first.id,
+        index: 0,
+        direction: "FORWARD",
+        allowed_movements: [],
+        lane_type: "GENERAL",
+        speed_limit_kmh: null,
+      },
+      {
+        id: "lane-a-1",
+        road_id: first.id,
+        index: 1,
+        direction: "BACKWARD",
+        allowed_movements: [],
+        lane_type: "GENERAL",
+        speed_limit_kmh: null,
+      },
+    ];
+    const second = makeRoad("road-b", 20, 30);
+    second.lanes = [
+      {
+        id: "lane-b-0",
+        road_id: second.id,
+        index: 0,
+        direction: "FORWARD",
+        allowed_movements: [],
+        lane_type: "GENERAL",
+        speed_limit_kmh: null,
+      },
+      {
+        id: "lane-b-1",
+        road_id: second.id,
+        index: 1,
+        direction: "BACKWARD",
+        allowed_movements: [],
+        lane_type: "GENERAL",
+        speed_limit_kmh: null,
+      },
+    ];
+    const result = applyEndpointSnap(
+      makeCity([first, second]),
+      second.id,
+      "start",
+      endpointTarget(first.id, "end", { x: 10, y: 0 }),
+    );
+
+    expect(result?.intersections[0].connected_lane_ids).toEqual([
+      "lane-a-0",
+      "lane-a-1",
+      "lane-b-0",
+      "lane-b-1",
+    ]);
+  });
+
+  it.each([0, 0.5, 1])(
+    "reuses an existing intersection %s m away instead of creating a duplicate",
+    (offset) => {
+      const first = makeRoad("road-a", 0, 10);
+      const second = makeRoad("road-b", 20, 30);
+      const city = makeCity([first, second]);
+      city.intersections = [
+        {
+          id: "canonical-node",
+          city_id: city.id,
+          position: { x: 10 + offset, y: 0 },
+          connected_road_ids: [first.id],
+          connected_lane_ids: first.lanes.map((lane) => lane.id),
+          control_type: "UNCONTROLLED",
+          traffic_light_id: null,
+        },
+      ];
+      const result = applyEndpointSnap(
+        city,
+        second.id,
+        "start",
+        endpointTarget(first.id, "end", { x: 10, y: 0 }),
+      );
+
+      expect(result?.intersections).toHaveLength(1);
+      expect(result?.intersections[0].id).toBe("canonical-node");
+    },
+  );
+
+  it("allows a new intersection outside the canonical snap tolerance", () => {
+    const first = makeRoad("road-a", 0, 10);
+    const second = makeRoad("road-b", 20, 30);
+    const city = makeCity([first, second]);
+    city.intersections = [
+      {
+        id: "canonical-node",
+        city_id: city.id,
+        position: { x: 12, y: 0 },
+        connected_road_ids: [first.id],
+        connected_lane_ids: first.lanes.map((lane) => lane.id),
+        control_type: "UNCONTROLLED",
+        traffic_light_id: null,
+      },
+    ];
+    const result = applyEndpointSnap(
+      city,
+      second.id,
+      "start",
+      endpointTarget(first.id, "end", { x: 10, y: 0 }),
+    );
+
+    expect(result?.intersections).toHaveLength(2);
   });
 
   it("does not infer topology from identical coordinates", () => {

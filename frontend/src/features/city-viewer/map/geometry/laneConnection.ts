@@ -13,9 +13,11 @@
  */
 
 import destination from "@turf/destination";
+import bearing from "@turf/bearing";
 import { point as turfPoint } from "@turf/helpers";
 import distance from "@turf/distance";
 import type { LngLat } from "./nodeGeometry";
+import type { MovementType } from "../../types/city";
 
 export interface LaneConnectorEndpoint {
   point: LngLat;
@@ -26,13 +28,17 @@ export interface LaneConnectorEndpoint {
   outwardBearingDeg: number;
 }
 
-const DEFAULT_SAMPLES = 12;
-/** Bezier handle length as a fraction of the straight-line span between
- * the two endpoints -- keeps the curve's bulge proportional regardless
- * of junction size. */
-const CONTROL_HANDLE_FRACTION = 0.35;
+const DEFAULT_SAMPLES = 20;
+const ARROWHEAD_LENGTH_M = 2.15;
+const ARROWHEAD_HALF_ANGLE_DEG = 23;
 
-function cubicBezier(p0: LngLat, p1: LngLat, p2: LngLat, p3: LngLat, t: number): LngLat {
+function cubicBezier(
+  p0: LngLat,
+  p1: LngLat,
+  p2: LngLat,
+  p3: LngLat,
+  t: number,
+): LngLat {
   const mt = 1 - t;
   const a = mt * mt * mt;
   const b = 3 * mt * mt * t;
@@ -50,6 +56,7 @@ function cubicBezier(p0: LngLat, p1: LngLat, p2: LngLat, p3: LngLat, t: number):
 export function buildLaneConnectorCurve(
   from: LaneConnectorEndpoint,
   to: LaneConnectorEndpoint,
+  maneuver?: MovementType,
   samples: number = DEFAULT_SAMPLES,
 ): LngLat[] | null {
   const spanM = distance(turfPoint(from.point), turfPoint(to.point), {
@@ -57,7 +64,14 @@ export function buildLaneConnectorCurve(
   });
   if (spanM < 0.01) return null;
 
-  const handleLength = Math.max(1, spanM * CONTROL_HANDLE_FRACTION);
+  // Straight movements need restrained handles, while turns benefit from a
+  // longer tangent run so the curve reads like a painted lane guide instead
+  // of a rounded elbow. U-turn endpoints can be only one lane apart, so their
+  // handles must be based on the junction approach rather than that tiny span.
+  const handleLength =
+    maneuver === "U_TURN"
+      ? Math.max(7, spanM * 0.75)
+      : Math.max(2.5, spanM * (maneuver === "STRAIGHT" ? 0.3 : 0.42));
   // Control points point INTO the junction -- the opposite direction
   // from each lane's own outward approach bearing.
   const control1 = destination(
@@ -75,7 +89,29 @@ export function buildLaneConnectorCurve(
 
   const points: LngLat[] = [];
   for (let i = 0; i <= samples; i++) {
-    points.push(cubicBezier(from.point, control1, control2, to.point, i / samples));
+    points.push(
+      cubicBezier(from.point, control1, control2, to.point, i / samples),
+    );
   }
   return points;
+}
+
+/** A crisp open arrowhead whose arms point back from the curve's final
+ * tangent. Keeping this as geometry (rather than a font glyph) makes its
+ * angle, size, placement, and rotation deterministic on every platform. */
+export function buildLaneConnectorArrowhead(curve: LngLat[]): LngLat[] | null {
+  if (curve.length < 2) return null;
+  const tip = curve.at(-1)!;
+  const tangentStart = curve[Math.max(0, curve.length - 4)];
+  const travelBearing = bearing(turfPoint(tangentStart), turfPoint(tip));
+  if (!Number.isFinite(travelBearing)) return null;
+
+  const armEnd = (side: -1 | 1): LngLat =>
+    destination(
+      turfPoint(tip),
+      ARROWHEAD_LENGTH_M,
+      travelBearing + 180 + side * ARROWHEAD_HALF_ANGLE_DEG,
+      { units: "meters" },
+    ).geometry.coordinates as LngLat;
+  return [armEnd(-1), tip, armEnd(1)];
 }

@@ -123,3 +123,96 @@ def test_malformed_nested_payload_rejected() -> None:
     data["roads"][0]["lanes"] = "not-a-list"
     with pytest.raises(ValidationError):
         CityCreate.model_validate(data)
+
+
+def test_valid_lane_connection_has_no_issues() -> None:
+    data = _payload()
+    intersection = data["intersections"][0]
+    from_road = data["roads"][0]
+    to_road = data["roads"][1]
+    to_road["lanes"][0]["direction"] = "BACKWARD"
+    data["lane_connections"] = [
+        {
+            "id": str(uuid.uuid5(uuid.NAMESPACE_URL, "pixel-lane/test-connection")),
+            "intersection_id": intersection["id"],
+            "from_road_id": from_road["id"],
+            "from_lane_id": from_road["lanes"][0]["id"],
+            "to_road_id": to_road["id"],
+            "to_lane_id": to_road["lanes"][0]["id"],
+            "maneuver": "STRAIGHT",
+        }
+    ]
+    city = CityCreate.model_validate(data)
+    assert validate_city(city) == []
+
+
+@pytest.mark.parametrize(
+    ("source_direction", "target_direction", "expected_codes"),
+    [
+        ("BACKWARD", "BACKWARD", {"CONNECTION_SOURCE_NOT_INBOUND"}),
+        ("FORWARD", "FORWARD", {"CONNECTION_TARGET_NOT_OUTBOUND"}),
+        (
+            "BACKWARD",
+            "FORWARD",
+            {"CONNECTION_SOURCE_NOT_INBOUND", "CONNECTION_TARGET_NOT_OUTBOUND"},
+        ),
+        ("FORWARD", "BACKWARD", set()),
+    ],
+)
+def test_city_create_lane_connection_enforces_relative_directions(
+    source_direction: str,
+    target_direction: str,
+    expected_codes: set[str],
+) -> None:
+    data = _payload()
+    intersection = data["intersections"][0]
+    source = data["roads"][0]
+    target = data["roads"][1]
+    source["lanes"][0]["direction"] = source_direction
+    target["lanes"][0]["direction"] = target_direction
+    data["lane_connections"] = [
+        {
+            "id": str(uuid.uuid4()),
+            "intersection_id": intersection["id"],
+            "from_road_id": source["id"],
+            "from_lane_id": source["lanes"][0]["id"],
+            "to_road_id": target["id"],
+            "to_lane_id": target["lanes"][0]["id"],
+            "maneuver": "STRAIGHT",
+        }
+    ]
+
+    codes = {issue.code for issue in validate_city(CityCreate.model_validate(data))}
+
+    for code in expected_codes:
+        assert code in codes
+    if not expected_codes:
+        assert not codes
+
+
+@pytest.mark.parametrize(
+    ("field", "code"),
+    [
+        ("intersection_id", "UNKNOWN_INTERSECTION_REFERENCE"),
+        ("from_road_id", "UNKNOWN_ROAD_REFERENCE"),
+        ("from_lane_id", "UNKNOWN_LANE_REFERENCE"),
+    ],
+)
+def test_invalid_lane_connection_reference_is_rejected(field: str, code: str) -> None:
+    data = _payload()
+    intersection = data["intersections"][0]
+    from_road = data["roads"][0]
+    to_road = data["roads"][1]
+    connection = {
+        "id": str(uuid.uuid4()),
+        "intersection_id": intersection["id"],
+        "from_road_id": from_road["id"],
+        "from_lane_id": from_road["lanes"][0]["id"],
+        "to_road_id": to_road["id"],
+        "to_lane_id": to_road["lanes"][0]["id"],
+        "maneuver": "STRAIGHT",
+    }
+    connection[field] = str(uuid.uuid4())
+    data["lane_connections"] = [connection]
+    city = CityCreate.model_validate(data)
+    assert any(issue.code == code for issue in validate_city(city))

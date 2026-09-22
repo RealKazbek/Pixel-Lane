@@ -9,6 +9,7 @@ from app.city.domain.limits import (
     MAX_BUS_STOPS_PER_CITY,
     MAX_CROSSWALKS_PER_CITY,
     MAX_INTERSECTIONS_PER_CITY,
+    MAX_LANE_CONNECTIONS_PER_CITY,
     MAX_PARKING_ZONES_PER_CITY,
     MAX_ROADS_PER_CITY,
     MAX_TRAFFIC_DEMANDS_PER_CITY,
@@ -19,6 +20,7 @@ from app.city.domain.limits import (
 from app.city.schemas.bus_stop import BusStopCreate, BusStopRead
 from app.city.schemas.crosswalk import CrosswalkCreate, CrosswalkRead
 from app.city.schemas.intersection import IntersectionCreate, IntersectionRead
+from app.city.schemas.lane_connection import LaneConnectionCreate, LaneConnectionRead
 from app.city.schemas.parking import ParkingZoneCreate, ParkingZoneRead
 from app.city.schemas.road import RoadCreate, RoadRead
 from app.city.schemas.traffic_demand import TrafficDemandCreate, TrafficDemandRead
@@ -68,6 +70,9 @@ class CityCreate(BaseModel):
     crosswalks: list[CrosswalkCreate] = Field(
         default_factory=list, max_length=MAX_CROSSWALKS_PER_CITY
     )
+    lane_connections: list[LaneConnectionCreate] = Field(
+        default_factory=list, max_length=MAX_LANE_CONNECTIONS_PER_CITY
+    )
 
 
 class CityRead(BaseModel):
@@ -89,6 +94,7 @@ class CityRead(BaseModel):
     traffic_demands: list[TrafficDemandRead]
     bus_stops: list[BusStopRead]
     crosswalks: list[CrosswalkRead]
+    lane_connections: list[LaneConnectionRead]
 
     model_config = {"from_attributes": True}
 

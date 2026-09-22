@@ -51,8 +51,12 @@ export function useMapLibreMap(
       style: initialOptions.current.style,
       center: initialOptions.current.center,
       zoom: initialOptions.current.zoom,
+      dragRotate: true,
+      touchZoomRotate: { around: "center" },
       attributionControl: initialOptions.current.showAttribution ? {} : false,
     });
+    map.dragRotate.enable();
+    map.touchZoomRotate.enableRotation();
     const updateScale = () => {
       const denominator = mapScaleDenominator(
         map.getZoom(),

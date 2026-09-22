@@ -153,22 +153,27 @@ export function buildLaneDetailLayers(
 
   const turnArrows: LayerSpecification = {
     id: LAYER_IDS.turnArrows,
-    type: "symbol",
+    type: "line",
     source: SOURCE_IDS.turnArrows,
     minzoom: LANE_LABEL_MIN_ZOOM,
     layout: {
-      "text-field": ["get", "arrow"],
-      "text-size": 14,
-      "text-font": ["Noto Sans Regular"],
-      "text-rotate": ["get", "bearing"],
-      "text-rotation-alignment": "map",
-      "text-allow-overlap": true,
-      "text-ignore-placement": true,
+      "line-cap": "round",
+      "line-join": "round",
     },
     paint: {
-      "text-color": theme.laneMarking,
-      "text-halo-color": theme.roadCasing.HIGHWAY,
-      "text-halo-width": 1.2,
+      "line-color": theme.laneMarking,
+      "line-width": [
+        "interpolate",
+        ["linear"],
+        ["zoom"],
+        15,
+        1,
+        18,
+        1.55,
+        20,
+        2,
+      ],
+      "line-opacity": 0.96,
     },
   };
 

@@ -102,9 +102,12 @@ as skewed and arbitrary-angle layouts. A junction surface is derived from
 the shared topology node, semantic centerlines, and road widths; it is not a
 competing persisted source of truth.
 
-Lane-to-lane turn connections and intersection markings remain later work
-(PL-005.19+). The standalone road renderer still uses Turf buffering; only
-connected junction approaches use the flat-ended corridor builder.
+Lane-to-lane turn connections are now explicit `LaneConnection` domain data
+(PL-005.19–.20), while intersection connection curves and turn arrows remain
+derived presentation (PL-005.21–.23). They are separate from painted lane
+markings and are regenerated from persisted topology and lane permissions.
+The standalone road renderer still uses Turf buffering; only connected
+junction approaches use the flat-ended corridor builder.
 
 A ~3cm plate dilation before the final union works around a numerical-
 robustness limitation of the polygon-clipping library behind
@@ -131,17 +134,10 @@ point -- a cubic Bezier, tangent-continuous at both ends, distinct from
 decorative lane-separator markings. This is what lets a future vehicle
 simulation reason `Lane A -> allowed connection -> Lane B` instead of
 inferring connectivity from where painted lines happen to end.
-Unit-tested on its own (straight-through, 90-degree turn, coincident-
-endpoint, determinism) and validated against real Lab junction topology
-in `dev/roadLab/__tests__/fixtures.test.ts`. **Not yet rendered as a
-visible map layer** -- that (and wiring per-lane allowed-turn connectors
-into the production Demo City/Real Almaty rendering, as opposed to the
-plain per-lane turn arrows that already exist) is a reasonable following
-task, both because it needs its own layer/adapter plumbing and because
-the domain model doesn't yet record explicit per-lane allowed target
-lanes at a junction (today `Intersection.connected_lane_ids` records
-_which_ lanes participate, not
-_which lane connects to which_).
+The persisted connection record is the source of truth; the map adapter turns
+it into deterministic GeoJSON, and the arrow adapter derives permission
+glyphs inside the source lane. Neither rendered output is stored as domain
+geometry.
 
 ## 7. `LOCAL_CARTESIAN`-only gates, and why
 

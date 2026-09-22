@@ -39,6 +39,9 @@ does not depend on React or Next.js.
   Model `Intersection` identity and its canonical position. Coincident endpoint
   coordinates without that shared node remain disconnected. Screen-space
   candidate detection and snap feedback are derived UI behavior only.
+- Lane-to-lane connectivity is semantic City Model data (`LaneConnection`),
+  not a painted marking. Connection curves and turn arrows are derived map
+  layers and must be regenerated from persisted domain fields.
 
 ## Where to add new code
 
@@ -50,3 +53,13 @@ editor components/state modules and keep domain logic outside React.
 
 Traffic Engine and City Model domain logic must not import this frontend
 feature. The feature consumes API/domain contracts and renders them.
+
+## Lane edit persistence
+
+Road property saves are serialized in the editor. Server-assigned lane UUIDs
+are reconciled into the local road and junction topology before maneuver
+controls become available. The backend updates incident junction lane
+membership in the same transaction as lane configuration. Maneuvers remain
+explicit `LaneConnection` records saved through the existing API.
+
+See `frontend/e2e/README.md` for the real-browser regression workflow.

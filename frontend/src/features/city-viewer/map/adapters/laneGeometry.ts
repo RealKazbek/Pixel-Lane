@@ -15,8 +15,9 @@
  *
  * Nothing here fabricates turn/bus/parking/cycleway data -- every one of
  * these features is only drawn when the corresponding source-derived
- * field (`Lane.allowed_turns`, `Lane.lane_type`, `Road.parking_left/
- * right`, `Road.cycleway_left/right`) is present and not UNKNOWN/absent.
+ * fields (`Lane.allowed_turns` or editor-authored `Lane.allowed_movements`,
+ * `Lane.lane_type`, `Road.parking_left/right`, `Road.cycleway_left/right`)
+ * are present and not UNKNOWN/absent.
  *
  * IMPORTANT -- `LOCAL_CARTESIAN`-only: every builder below returns an
  * empty collection for `WGS84` (real-world imports, e.g. Almaty). This
@@ -40,12 +41,17 @@
 
 import along from "@turf/along";
 import bearing from "@turf/bearing";
+import distance from "@turf/distance";
+import { point as turfPoint } from "@turf/helpers";
 import lineOffset from "@turf/line-offset";
-import { roadLengthMeters } from "./geometryLength";
 import { toLngLat } from "./coordinates";
 import { toRoadLineString, type AnyRoad } from "./roadLineString";
 import { roadLaneCount, roadWidthMeters } from "../styles/roadStyle";
 import { smoothCenterline } from "../geometry/curveSmoothing";
+import {
+  buildManeuverSymbolGeometry,
+  normalizeManeuverDirections,
+} from "../geometry/maneuverSymbol";
 import {
   computeNodeRadius,
   outwardBearing,
@@ -60,16 +66,21 @@ import type {
   Intersection,
   ParkingLaneOrientation,
   TurnLaneType,
+  MovementType,
   LaneBoundaryMarking,
   RoadEdgeMarking,
+  LaneConnection,
+  Road,
+  Lane,
 } from "../../types/city";
+import { getLaneDirectionRelativeToIntersection } from "../../editor/intersectionLaneDirection";
 
 /** Roads' Intersections, restricted to the fields this module needs --
  * matches what `roadSurfaceGeometry.ts` requires so both adapters can be
  * fed the same `City`/viewport intersection list. */
 export type LaneJunctionIntersection = Pick<
   Intersection,
-  "position" | "connected_road_ids"
+  "id" | "position" | "connected_road_ids"
 >;
 
 export interface LaneSurfaceProperties {
@@ -91,11 +102,7 @@ export interface LaneBoundaryProperties {
 export interface TurnArrowProperties {
   road_id: string;
   lane_index: number;
-  arrow: string;
-  /** Degrees, MapLibre `text-rotate` convention -- approximated from the
-   * road's overall start->end bearing (ignoring intermediate curvature),
-   * since Pixel Lane has no per-point heading source data. */
-  bearing: number;
+  maneuvers: string;
 }
 
 export interface LaneUseMarkingProperties {
@@ -114,36 +121,13 @@ export type LaneBoundaryFeatureCollection = GeoJSON.FeatureCollection<
   LaneBoundaryProperties
 >;
 export type TurnArrowFeatureCollection = GeoJSON.FeatureCollection<
-  GeoJSON.Point,
+  GeoJSON.MultiLineString,
   TurnArrowProperties
 >;
 export type LaneUseMarkingFeatureCollection = GeoJSON.FeatureCollection<
   GeoJSON.LineString,
   LaneUseMarkingProperties
 >;
-
-const TURN_ARROW_GLYPHS: Record<TurnLaneType, string> = {
-  LEFT: "←",
-  SLIGHT_LEFT: "↖",
-  THROUGH: "↑",
-  SLIGHT_RIGHT: "↗",
-  RIGHT: "→",
-  REVERSE: "↺",
-  MERGE_TO_LEFT: "⬉",
-  MERGE_TO_RIGHT: "⬈",
-  NONE: "",
-};
-
-/** `null` when there is nothing worth drawing (no data, or the only
- * token is the explicit "no turn indicated" marker) -- never a fabricated
- * default arrow. */
-function turnArrowGlyph(
-  tokens: TurnLaneType[] | null | undefined,
-): string | null {
-  if (!tokens || tokens.length === 0) return null;
-  const glyph = tokens.map((t) => TURN_ARROW_GLYPHS[t]).join("");
-  return glyph.length > 0 ? glyph : null;
-}
 
 const PARKING_SCHEMATIC_WIDTH_M = 2.2;
 const CYCLEWAY_SCHEMATIC_WIDTH_M = 1.5;
@@ -152,8 +136,6 @@ const LANE_USE_GAP_M = 0.3;
  * near-but-not-at the end, evoking an intersection approach without
  * assuming real stop-line/intersection geometry (see Part 1's rule
  * against deriving intersections from geometry). */
-const TURN_ARROW_POSITION_FRACTION = 0.85;
-
 const toLineStringFeature = toRoadLineString;
 
 /** Offsets `line` by `distanceMeters` (positive = left, per
@@ -450,6 +432,7 @@ export function buildTurnArrowFeatureCollection(
   roads: AnyRoad[],
   coordinateSystem: CoordinateSystem,
   intersections: LaneJunctionIntersection[] = [],
+  laneConnections?: LaneConnection[],
 ): TurnArrowFeatureCollection {
   if (!supportsLaneDetailRendering(coordinateSystem)) {
     return { type: "FeatureCollection", features: [] };
@@ -467,38 +450,139 @@ export function buildTurnArrowFeatureCollection(
     if (laneCount < 1) continue;
     const line = renderingLines.get(road.id);
     if (!line) continue;
-    const lengthM = roadLengthMeters(road, coordinateSystem);
-    if (lengthM <= 0) continue;
     const roadWidthM = roadWidthMeters(road);
     const laneWidthM = roadWidthM / laneCount;
     const coords = line.geometry.coordinates;
-    const roadBearing = bearing(coords[0], coords[coords.length - 1]);
+    const lineLengthM = coords.slice(0, -1).reduce(
+      (total, coordinate, index) =>
+        total +
+        distance(turfPoint(coordinate), turfPoint(coords[index + 1]), {
+          units: "meters",
+        }),
+      0,
+    );
+    if (lineLengthM <= 0) continue;
+    const connectedIntersection = intersections.find((intersection) => {
+      if (!intersection.connected_road_ids.includes(road.id)) return false;
+      const first = road.geometry.points[0];
+      const last = road.geometry.points.at(-1)!;
+      return (
+        Math.min(
+          Math.hypot(
+            first.x - intersection.position.x,
+            first.y - intersection.position.y,
+          ),
+          Math.hypot(
+            last.x - intersection.position.x,
+            last.y - intersection.position.y,
+          ),
+        ) <= 1.5
+      );
+    });
+    if (laneConnections && !connectedIntersection) continue;
+    const roadStart = road.geometry.points[0];
+    const roadEnd = road.geometry.points.at(-1)!;
+    const intersectionAtEnd = connectedIntersection
+      ? Math.hypot(
+          roadEnd.x - connectedIntersection.position.x,
+          roadEnd.y - connectedIntersection.position.y,
+        ) <=
+        Math.hypot(
+          roadStart.x - connectedIntersection.position.x,
+          roadStart.y - connectedIntersection.position.y,
+        )
+      : null;
+    const approachOffsetM = Math.min(
+      Math.max(4, laneWidthM * 1.5),
+      lineLengthM * 0.4,
+    );
     for (const lane of lanes) {
-      const arrow = turnArrowGlyph(lane.allowed_turns);
-      if (!arrow) continue;
+      if (
+        laneConnections &&
+        connectedIntersection &&
+        "id" in lane &&
+        "lanes" in road
+      ) {
+        const fullLane = lane as Lane;
+        const relative = getLaneDirectionRelativeToIntersection(
+          road as Road,
+          fullLane,
+          connectedIntersection as Intersection,
+        );
+        if (relative !== "INBOUND") continue;
+      }
+      // Imported turn:lanes data remains the most specific source when it is
+      // present. Editor-authored semantic permissions are the fallback; the
+      // arrow is never the source of truth for either representation.
+      const semanticMovements: MovementType[] =
+        laneConnections && connectedIntersection && "id" in lane
+          ? laneConnections
+              .filter(
+                (connection) =>
+                  connection.intersection_id === connectedIntersection.id &&
+                  connection.from_lane_id === (lane as Lane).id,
+              )
+              .map((connection) => connection.maneuver)
+          : "allowed_movements" in lane
+            ? (lane as { allowed_movements: MovementType[] }).allowed_movements
+            : [];
+      const movementTokens: (TurnLaneType | MovementType)[] | null =
+        lane.allowed_turns ??
+        (semanticMovements.length > 0 ? semanticMovements : null);
+      const normalizedDirections = normalizeManeuverDirections(movementTokens);
+      if (normalizedDirections.length === 0) continue;
+      const laneDirection = "direction" in lane ? lane.direction : "FORWARD";
       const offset = safeOffset(
         line,
         laneCenterOffsetM(roadWidthM, laneWidthM, lane.index),
       );
       if (!offset) continue;
+      const travelEndsAtIntersection =
+        intersectionAtEnd === null
+          ? null
+          : laneDirection === "FORWARD"
+            ? intersectionAtEnd
+            : !intersectionAtEnd;
+      const arrowDistanceM =
+        travelEndsAtIntersection === null
+          ? lineLengthM * 0.7
+          : travelEndsAtIntersection
+            ? lineLengthM - approachOffsetM
+            : approachOffsetM;
       let point: GeoJSON.Feature<GeoJSON.Point>;
       try {
-        point = along(offset, lengthM * TURN_ARROW_POSITION_FRACTION, {
-          units: "meters",
-        });
+        point = along(
+          offset,
+          Math.max(0, Math.min(lineLengthM, arrowDistanceM)),
+          {
+            units: "meters",
+          },
+        );
       } catch {
         continue;
       }
+      const before = along(offset, Math.max(0, arrowDistanceM - 1), {
+        units: "meters",
+      }).geometry.coordinates;
+      const after = along(offset, Math.min(lineLengthM, arrowDistanceM + 1), {
+        units: "meters",
+      }).geometry.coordinates;
+      const roadBearing = bearing(before, after);
+      const travelBearing =
+        laneDirection === "BACKWARD" ? (roadBearing + 180) % 360 : roadBearing;
+      const geometry = buildManeuverSymbolGeometry(
+        point.geometry.coordinates as LngLat,
+        travelBearing,
+        movementTokens,
+      );
+      if (!geometry) continue;
       features.push({
         type: "Feature",
-        geometry: point.geometry,
+        geometry,
         properties: {
           road_id: road.id,
           lane_index: lane.index,
-          arrow,
-          // MapLibre `text-rotate` is clockwise from north; `@turf/bearing`
-          // already returns that convention (-180..180, 0 = north).
-          bearing: roadBearing,
+          maneuvers: normalizedDirections.join("|"),
         },
       });
     }

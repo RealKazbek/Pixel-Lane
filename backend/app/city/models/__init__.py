@@ -10,6 +10,7 @@ from app.city.models.city import City  # noqa: F401
 from app.city.models.crosswalk import Crosswalk  # noqa: F401
 from app.city.models.intersection import Intersection  # noqa: F401
 from app.city.models.lane import Lane  # noqa: F401
+from app.city.models.lane_connection import LaneConnection  # noqa: F401
 from app.city.models.parking import ParkingZone  # noqa: F401
 from app.city.models.road import Road  # noqa: F401
 from app.city.models.traffic_demand import TrafficDemand  # noqa: F401
@@ -20,6 +21,7 @@ __all__ = [
     "City",
     "Road",
     "Lane",
+    "LaneConnection",
     "Intersection",
     "TrafficLight",
     "SignalGroup",

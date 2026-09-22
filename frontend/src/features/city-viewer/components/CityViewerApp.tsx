@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useReducer, useState } from "react";
+import { useCallback, useEffect, useReducer, useRef, useState } from "react";
 import { useTranslations } from "next-intl";
 import { mapStyleUrl } from "@/lib/config";
 import {
@@ -10,10 +10,12 @@ import {
 import type {
   City,
   LaneBoundaryMarking,
-  LaneDirection,
   Point,
   RoadEdgeMarking,
   Road,
+  MovementType,
+  LaneDirection,
+  LaneConnection,
 } from "../types/city";
 import {
   insertPolylinePoint,
@@ -21,7 +23,13 @@ import {
 } from "../map/editor/polylineEditing";
 import { EDITOR_WORLD_BOUNDS } from "../editor/editorWorld";
 import { PixelLaneMap } from "../map/PixelLaneMap";
-import { DEFAULT_LAYER_VISIBILITY, type MapSelection } from "../map/types";
+import { MapLayersToggle } from "../map/MapLayersToggle";
+import {
+  DEFAULT_LAYER_VISIBILITY,
+  type MapSelection,
+  type LayerVisibility,
+} from "../map/types";
+import type { LayerGroupId } from "../map/layers/layerIds";
 import { EditorToolbar } from "../map/EditorToolbar";
 import { RoadPropertiesPanel } from "../map/RoadPropertiesPanel";
 import { IntersectionPropertiesPanel } from "../map/IntersectionPropertiesPanel";
@@ -35,6 +43,8 @@ import {
 } from "../map/environment/useEnvironment";
 import { useSimulationClock } from "../map/environment/simulationClock";
 import { buildLaneConfiguration } from "../editor/laneConfiguration";
+import { removeRoadFromCity } from "../editor/roadDeletion";
+import { updateIntersectionManeuver } from "../editor/intersectionManeuverState";
 import {
   applyRoadPreset,
   getRoadPreset,
@@ -54,12 +64,18 @@ import {
 } from "../map/editor/editorState";
 import {
   buildRoadPropertiesPayload,
-  createRoad,
+  deleteRoad,
   getEditorWorkspace,
-  replaceTopology,
+  replaceLaneConnections,
+  replaceTopologyAndLaneConnections,
   updateRoadGeometry,
   updateRoadProperties,
 } from "../api/cities";
+
+import {
+  reconcileSavedRoadLanes,
+  reconcileSavedTopology,
+} from "../editor/savedRoadLanes";
 
 type RoadChanges = {
   name?: string;
@@ -73,23 +89,104 @@ type RoadChanges = {
 };
 
 function applyRoadChanges(road: Road, changes: RoadChanges): Road {
-  const { lane_count, lane_width_m, lane_directions, lane_boundary_markings, ...simple } = changes;
-  if (!lane_count || !lane_width_m || !lane_directions) {
-    return { ...road, ...simple, ...(lane_boundary_markings ? { lane_boundary_markings } : {}) };
+  const {
+    lane_count,
+    lane_width_m,
+    lane_directions,
+    lane_boundary_markings,
+    ...simple
+  } = changes;
+  if (!lane_count || !lane_width_m) {
+    return {
+      ...road,
+      ...simple,
+      ...(lane_directions
+        ? {
+            lanes: road.lanes.map((lane, index) => ({
+              ...lane,
+              direction: lane_directions[index] ?? lane.direction,
+            })),
+          }
+        : {}),
+      ...(lane_boundary_markings ? { lane_boundary_markings } : {}),
+    };
   }
-  const laneConfiguration = buildLaneConfiguration(road, lane_count, lane_width_m, lane_directions);
+  const laneDirections = Array.from(
+    { length: lane_count },
+    (_, index) =>
+      road.lanes[index]?.direction ?? road.lanes.at(-1)?.direction ?? "FORWARD",
+  );
+  const laneConfiguration = buildLaneConfiguration(
+    road,
+    lane_count,
+    lane_width_m,
+    laneDirections,
+  );
   return laneConfiguration
-    ? { ...road, ...simple, ...laneConfiguration, lane_boundary_markings: lane_boundary_markings ?? road.lane_boundary_markings }
+    ? {
+        ...road,
+        ...simple,
+        ...laneConfiguration,
+        ...(lane_directions
+          ? {
+              lanes: laneConfiguration.lanes.map((lane, index) => ({
+                ...lane,
+                direction: lane_directions[index] ?? lane.direction,
+              })),
+            }
+          : {}),
+        lane_boundary_markings:
+          lane_boundary_markings ?? road.lane_boundary_markings,
+      }
     : road;
 }
 
+function withAuthoritativeLaneIdentities(
+  topology: City,
+  authoritative: City,
+): City {
+  const authoritativeRoads = new Map(
+    authoritative.roads.map((road) => [road.id, road]),
+  );
+  const roads = topology.roads.map((road) => {
+    const saved = authoritativeRoads.get(road.id);
+    return saved ? { ...road, lanes: saved.lanes } : road;
+  });
+  const laneIdsByRoad = new Map(
+    roads.map((road) => [road.id, road.lanes.map((lane) => lane.id)]),
+  );
+  return {
+    ...topology,
+    roads,
+    intersections: topology.intersections.map((intersection) => ({
+      ...intersection,
+      connected_lane_ids: intersection.connected_road_ids.flatMap(
+        (roadId) => laneIdsByRoad.get(roadId) ?? [],
+      ),
+    })),
+  };
+}
 /** City Model is currently an editor document, not a city picker/viewer. */
 export function CityViewerApp() {
   const t = useTranslations("cityModel.fullscreen");
+  const tMap = useTranslations("cityModel.map");
+  const tProperties = useTranslations("cityModel.properties");
+  const tIntersection = useTranslations("cityModel.intersectionProperties");
+  const [pendingRoadSaves, setPendingRoadSaves] = useState(0);
+  const [isSavingManeuver, setIsSavingManeuver] = useState(false);
+  const roadSaveQueue = useRef<Promise<void>>(Promise.resolve());
+  const cityWriteQueue = useRef<Promise<void>>(Promise.resolve());
   const [city, setCity] = useState(buildEditorWorkspace);
   const [hydrated, setHydrated] = useState(false);
   const [loadError, setLoadError] = useState<string | null>(null);
+  const [deleteError, setDeleteError] = useState<string | null>(null);
+  const [deleteConfirmationRoad, setDeleteConfirmationRoad] =
+    useState<Road | null>(null);
+  const [isDeletingRoad, setIsDeletingRoad] = useState(false);
   const [isFullscreen, setIsFullscreen] = useState(false);
+  const [layerVisibility, setLayerVisibility] = useState<LayerVisibility>(
+    DEFAULT_LAYER_VISIBILITY,
+  );
   const [selected, setSelected] = useState<MapSelection | null>(null);
   const [selectedVertexIndex, setSelectedVertexIndex] = useState<number | null>(
     null,
@@ -106,12 +203,24 @@ export function CityViewerApp() {
   const [crosshair, setCrosshair] = useState<{ x: number; y: number } | null>(
     null,
   );
+  const cityRef = useRef(city);
+  const maneuverRequestRef = useRef(0);
   const [environment, dispatchEnvironment] = useEnvironment();
   const [simulationClock, dispatchSimulationClock] = useSimulationClock();
   const timeOfDay = resolveTimeOfDay(
     environment.timeMode,
     simulationClock.time,
   );
+
+  useEffect(() => {
+    cityRef.current = city;
+  }, [city]);
+
+  const enqueueCityWrite = useCallback((write: () => Promise<void>) => {
+    const pending = cityWriteQueue.current.then(write);
+    cityWriteQueue.current = pending.catch(() => {});
+    return pending;
+  }, []);
 
   useEffect(() => {
     let cancelled = false;
@@ -123,7 +232,8 @@ export function CityViewerApp() {
       })
       .catch((error: unknown) => {
         if (cancelled) return;
-        const message = error instanceof Error ? error.message : "Unknown error";
+        const message =
+          error instanceof Error ? error.message : "Unknown error";
         setLoadError(message);
         console.error("Failed to load EditorWorkspace", error);
       });
@@ -132,25 +242,112 @@ export function CityViewerApp() {
     };
   }, []);
 
-  const persistRoad = useCallback((road: City["roads"][number]) => {
-    if (!hydrated) return;
-    void updateRoadGeometry(city.id, road.id, road.geometry)
-      .then(() => updateRoadProperties(city.id, road.id, buildRoadPropertiesPayload(road)))
-      .catch((error) => console.error("Failed to persist EditorWorkspace road", error));
-  }, [city.id, hydrated]);
-  const persistCityTopology = useCallback((nextCity: City) => {
-    if (!hydrated) return;
-    void replaceTopology(nextCity.id, nextCity).catch((error) =>
-      console.error("Failed to persist EditorWorkspace topology", error),
-    );
-  }, [hydrated]);
+  const persistRoad = useCallback(
+    (road: City["roads"][number]) => {
+      if (!hydrated) return;
+      // Property writes allocate authoritative lane UUIDs. Serialize them so an
+      // older response cannot replace a newer lane configuration.
+      setPendingRoadSaves((count) => count + 1);
+      roadSaveQueue.current = roadSaveQueue.current.then(async () => {
+        try {
+          await updateRoadGeometry(city.id, road.id, road.geometry);
+          const saved = await updateRoadProperties(
+            city.id,
+            road.id,
+            buildRoadPropertiesPayload(road),
+          );
+          setCity((current) => {
+            const updated = reconcileSavedRoadLanes(current, saved);
+            cityRef.current = updated;
+            return updated;
+          });
+        } catch (error) {
+          console.error("Failed to persist EditorWorkspace road", error);
+          setDeleteError(tProperties("topologySaveFailed"));
+        } finally {
+          setPendingRoadSaves((count) => count - 1);
+        }
+      });
+    },
+    [city.id, hydrated, tProperties],
+  );
+  const persistCityTopology = useCallback(
+    (nextCity: City) => {
+      if (!hydrated) return;
+      void enqueueCityWrite(async () => {
+        await roadSaveQueue.current;
+        const topology = withAuthoritativeLaneIdentities(
+          nextCity,
+          cityRef.current,
+        );
+        const submittedLaneConnections = cityRef.current.lane_connections;
+        const saved = await replaceTopologyAndLaneConnections(
+          topology.id,
+          topology,
+          submittedLaneConnections ?? [],
+        );
+        setCity((current) => {
+          const updated = reconcileSavedTopology(
+            current,
+            saved,
+            submittedLaneConnections,
+          );
+          cityRef.current = updated;
+          return updated;
+        });
+      }).catch((error) => {
+        console.error("Failed to persist EditorWorkspace topology", error);
+        setDeleteError(tProperties("topologySaveFailed"));
+      });
+    },
+    [enqueueCityWrite, hydrated, tProperties],
+  );
+  const persistCreatedRoadTopology = useCallback(
+    (previousCity: City, nextCity: City) => {
+      if (!hydrated) return;
+      const previousRoadIds = new Set(
+        previousCity.roads.map((road) => road.id),
+      );
+      const createdRoads = nextCity.roads.filter(
+        (road) => !previousRoadIds.has(road.id),
+      );
+      void enqueueCityWrite(async () => {
+        await roadSaveQueue.current;
+        const topology = withAuthoritativeLaneIdentities(
+          nextCity,
+          cityRef.current,
+        );
+        const submittedLaneConnections = cityRef.current.lane_connections;
+        const saved = await replaceTopologyAndLaneConnections(
+          topology.id,
+          topology,
+          submittedLaneConnections ?? [],
+          createdRoads,
+        );
+        setCity((current) => {
+          const updated = reconcileSavedTopology(
+            current,
+            saved,
+            submittedLaneConnections,
+          );
+          cityRef.current = updated;
+          return updated;
+        });
+      }).catch((error) =>
+        console.error("Failed to persist created road topology", error),
+      );
+    },
+    [enqueueCityWrite, hydrated],
+  );
   const selectedRoad =
     selected?.type === "road"
       ? city.roads.find((road) => road.id === selected.id)
       : null;
   const selectedIntersection =
     selected?.type === "intersection"
-      ? city.intersections.find((intersection) => intersection.id === selected.id)
+      ? city.intersections.find(
+          (intersection) => intersection.id === selected.id,
+        )
       : null;
   const selectedRoadNodeIds = selectedRoad
     ? {
@@ -167,14 +364,16 @@ export function CityViewerApp() {
       setCity((current) => {
         const nextRoad = current.roads.find((road) => road.id === roadId);
         if (!nextRoad) return current;
-        const updatedRoad = { ...nextRoad, geometry: { ...nextRoad.geometry, points } };
+        const updatedRoad = {
+          ...nextRoad,
+          geometry: { ...nextRoad.geometry, points },
+        };
         persistRoad(updatedRoad);
         return {
-        ...current,
-        roads: current.roads.map((road) =>
-          road.id === roadId ? updatedRoad
-            : road,
-        ),
+          ...current,
+          roads: current.roads.map((road) =>
+            road.id === roadId ? updatedRoad : road,
+          ),
         };
       });
     },
@@ -193,15 +392,17 @@ export function CityViewerApp() {
     }) => {
       if (selected?.type !== "road") return;
       setCity((current) => {
-        const road = current.roads.find((candidate) => candidate.id === selected.id);
+        const road = current.roads.find(
+          (candidate) => candidate.id === selected.id,
+        );
         if (!road) return current;
         const updatedRoad = applyRoadChanges(road, changes);
         persistRoad(updatedRoad);
         return {
-        ...current,
-        roads: current.roads.map((road) => {
-          return road.id === selected.id ? updatedRoad : road;
-        }),
+          ...current,
+          roads: current.roads.map((road) => {
+            return road.id === selected.id ? updatedRoad : road;
+          }),
         };
       });
     },
@@ -212,7 +413,9 @@ export function CityViewerApp() {
       if (selected?.type !== "road") return;
       const preset = getRoadPreset(presetId);
       setCity((current) => {
-        const road = current.roads.find((candidate) => candidate.id === selected.id);
+        const road = current.roads.find(
+          (candidate) => candidate.id === selected.id,
+        );
         const updatedRoad = road ? applyRoadPreset(road, preset) : null;
         if (!updatedRoad) return current;
         persistRoad(updatedRoad);
@@ -226,6 +429,33 @@ export function CityViewerApp() {
     },
     [persistRoad, selected],
   );
+  const handleDeleteRoad = useCallback(() => {
+    if (selected?.type !== "road") return;
+    const road = city.roads.find((candidate) => candidate.id === selected.id);
+    if (!road) return;
+    setDeleteError(null);
+    setDeleteConfirmationRoad(road);
+  }, [city.roads, selected]);
+
+  const confirmDeleteRoad = useCallback(async () => {
+    if (!deleteConfirmationRoad) return;
+    setIsDeletingRoad(true);
+    setDeleteError(null);
+    try {
+      await deleteRoad(city.id, deleteConfirmationRoad.id);
+      setCity((current) =>
+        removeRoadFromCity(current, deleteConfirmationRoad.id),
+      );
+      setSelected(null);
+      setSelectedVertexIndex(null);
+      setDeleteConfirmationRoad(null);
+    } catch (error) {
+      console.error("Failed to delete EditorWorkspace road", error);
+      setDeleteError(tProperties("deleteFailed"));
+    } finally {
+      setIsDeletingRoad(false);
+    }
+  }, [city.id, deleteConfirmationRoad, tProperties]);
   const handleIntersectionRadiusChange = useCallback(
     (radius: number) => {
       if (selected?.type !== "intersection") return;
@@ -243,6 +473,83 @@ export function CityViewerApp() {
   const handleSelect = useCallback((selection: MapSelection | null) => {
     setSelected(selection);
     setSelectedVertexIndex(null);
+    setDeleteError(null);
+  }, []);
+
+  const handleManeuverChange = useCallback(
+    async (
+      roadId: string,
+      laneId: string,
+      movement: MovementType,
+      enabled: boolean,
+    ) => {
+      if (selected?.type !== "intersection") return;
+      const intersectionId = selected.id;
+      const currentCity = cityRef.current;
+      const previousConnections = currentCity.lane_connections ?? [];
+      const nextCity = updateIntersectionManeuver(
+        currentCity,
+        intersectionId,
+        roadId,
+        laneId,
+        movement,
+        enabled,
+      );
+      if (nextCity === currentCity) {
+        setDeleteError(tIntersection("maneuverUnavailable"));
+        return;
+      }
+      setIsSavingManeuver(true);
+      setDeleteError(null);
+      const requestId = ++maneuverRequestRef.current;
+      cityRef.current = nextCity;
+      setCity(nextCity);
+      try {
+        let saved: LaneConnection[] = [];
+        await enqueueCityWrite(async () => {
+          saved = await replaceLaneConnections(
+            currentCity.id,
+            cityRef.current.lane_connections ?? [],
+          );
+        });
+        if (requestId === maneuverRequestRef.current) {
+          setCity((latestCity) => {
+            const savedCity = { ...latestCity, lane_connections: saved };
+            cityRef.current = savedCity;
+            return savedCity;
+          });
+        }
+      } catch (error) {
+        console.error("Failed to persist intersection maneuver", {
+          error,
+          intersectionId,
+          roadId,
+          laneId,
+          movement,
+        });
+        if (requestId === maneuverRequestRef.current) {
+          setCity((latestCity) => {
+            const rolledBackCity = {
+              ...latestCity,
+              lane_connections: previousConnections,
+            };
+            cityRef.current = rolledBackCity;
+            return rolledBackCity;
+          });
+          setDeleteError(tIntersection("maneuverSaveFailed"));
+        }
+      } finally {
+        setIsSavingManeuver(false);
+      }
+    },
+    [enqueueCityWrite, selected, tIntersection],
+  );
+
+  const handleToggleLayer = useCallback((layer: LayerGroupId) => {
+    setLayerVisibility((current) => ({
+      ...current,
+      [layer]: !current[layer],
+    }));
   }, []);
   const handleEndpointDrag = useCallback(
     (vertexIndex: number, point: Point) => {
@@ -312,25 +619,25 @@ export function CityViewerApp() {
         const next = {
           ...current,
           roads: current.roads.map((road) => {
-          if (road.id !== selected.id) return road;
-          const next = insertPolylinePoint(
-            road.geometry.points,
-            segmentIndex,
-            point,
-          );
-          return next
-            ? {
-                ...road,
-                geometry: { ...road.geometry, points: next },
-                corner_smoothing: next.map((_, index) =>
-                  index === segmentIndex + 1
-                    ? 0
-                    : (road.corner_smoothing?.[
-                        index > segmentIndex + 1 ? index - 1 : index
-                      ] ?? 0),
-                ),
-              }
-            : road;
+            if (road.id !== selected.id) return road;
+            const next = insertPolylinePoint(
+              road.geometry.points,
+              segmentIndex,
+              point,
+            );
+            return next
+              ? {
+                  ...road,
+                  geometry: { ...road.geometry, points: next },
+                  corner_smoothing: next.map((_, index) =>
+                    index === segmentIndex + 1
+                      ? 0
+                      : (road.corner_smoothing?.[
+                          index > segmentIndex + 1 ? index - 1 : index
+                        ] ?? 0),
+                  ),
+                }
+              : road;
           }),
         };
         const updatedRoad = next.roads.find((road) => road.id === selected.id);
@@ -356,31 +663,21 @@ export function CityViewerApp() {
         `Road ${String.fromCharCode(65 + city.roads.length)}`,
         [drawStartPoint.point, point],
       );
-      setCity((current) => {
-        const next =
-          addRoadWithEndpointSnaps(
-            current,
-            road,
-            drawStartPoint.snapTarget,
-            snapTarget,
-          ) ?? current;
-        if (next !== current) {
-          const created = next.roads.find((candidate) => candidate.id === id);
-          if (created) {
-            void createRoad(next.id, created).catch((error) => {
-              console.error("Failed to persist new EditorWorkspace road", error);
-              setCity(current);
-            });
-          }
-          persistCityTopology(next);
-        }
-        return next;
-      });
+      const previousCity = city;
+      const next = addRoadWithEndpointSnaps(
+        previousCity,
+        road,
+        drawStartPoint.snapTarget,
+        snapTarget,
+      );
+      if (!next) return;
+      setCity(next);
+      persistCreatedRoadTopology(previousCity, next);
       setSelected({ type: "road", id });
       setDrawStartPoint(null);
       dispatch({ type: "set-tool", tool: "select" });
     },
-    [city.roads.length, drawStartPoint, persistCityTopology],
+    [city, drawStartPoint, persistCreatedRoadTopology],
   );
 
   useEffect(() => {
@@ -421,46 +718,61 @@ export function CityViewerApp() {
         onPointerLeave={() => setCrosshair(null)}
       >
         <div className="relative flex h-full min-w-0 flex-1">
-          <PixelLaneMap
-            city={city}
-            selected={selected}
-            onSelect={handleSelect}
-            selectedVertexIndex={selectedVertexIndex}
-            onVertexSelect={setSelectedVertexIndex}
-            onVertexDrag={handleEndpointDrag}
-            onVertexDragEnd={handleEndpointDragEnd}
-            onInsertPoint={handleInsertPoint}
-            basemapEnabled={false}
-            mapStyleUrl={mapStyleUrl}
-            overlayVisible
-            layerVisibility={DEFAULT_LAYER_VISIBILITY}
-            // The empty editor workspace uses a fixed world. Persisted cities
-            // must fit to their loaded geometry once, otherwise the initial
-            // pre-hydration camera can leave the real network off-screen.
-            fitSignal={hydrated ? 1 : 0}
-            editorWorld={city.coordinate_system === "LOCAL_CARTESIAN" ? EDITOR_WORLD_BOUNDS : undefined}
-            mode={
-              session.mode === "edit" && session.activeTool === "select"
-                ? "edit-geometry"
-                : "view"
-            }
-            activeTool={
-              session.activeTool === "draw-road" ? "draw-road" : "select"
-            }
-            snapLabel={t("snap")}
-            onDrawPoint={handleDrawPoint}
-            editorAction={null}
-            onEditorStatusChange={() => undefined}
-            onRoadSaved={() => undefined}
-            onScaleChange={setScale}
-            onRoadGeometryChange={handleRoadGeometryChange}
-          />
+          {!hydrated && !loadError ? (
+            <div
+              className="flex flex-1 items-center justify-center text-sm text-muted-foreground"
+              role="status"
+            >
+              {tMap("loadingCity")}
+            </div>
+          ) : (
+            <PixelLaneMap
+              city={city}
+              selected={selected}
+              onSelect={handleSelect}
+              selectedVertexIndex={selectedVertexIndex}
+              onVertexSelect={setSelectedVertexIndex}
+              onVertexDrag={handleEndpointDrag}
+              onVertexDragEnd={handleEndpointDragEnd}
+              onInsertPoint={handleInsertPoint}
+              basemapEnabled={false}
+              mapStyleUrl={mapStyleUrl}
+              overlayVisible
+              layerVisibility={layerVisibility}
+              // The empty editor workspace uses a fixed world. Persisted cities
+              // must fit to their loaded geometry once, otherwise the initial
+              // pre-hydration camera can leave the real network off-screen.
+              fitSignal={hydrated ? 1 : 0}
+              editorWorld={
+                city.coordinate_system === "LOCAL_CARTESIAN"
+                  ? EDITOR_WORLD_BOUNDS
+                  : undefined
+              }
+              mode={
+                session.mode === "edit" && session.activeTool === "select"
+                  ? "edit-geometry"
+                  : "view"
+              }
+              activeTool={
+                session.activeTool === "draw-road" ? "draw-road" : "select"
+              }
+              snapLabel={t("snap")}
+              compassLabel={tMap("compass")}
+              resetNorthLabel={tMap("resetNorth")}
+              onDrawPoint={handleDrawPoint}
+              editorAction={null}
+              onEditorStatusChange={() => undefined}
+              onRoadSaved={() => undefined}
+              onScaleChange={setScale}
+              onRoadGeometryChange={handleRoadGeometryChange}
+            />
+          )}
           <WeatherOverlay
             timeOfDay={timeOfDay}
             weather={environment.weather}
             intensity={environment.weatherIntensity}
           />
-          <div className="pointer-events-none absolute right-3 top-14 z-20">
+          <div className="pointer-events-none absolute right-3 top-24 z-40">
             <EnvironmentControls
               value={environment}
               timeOfDay={timeOfDay}
@@ -478,7 +790,10 @@ export function CityViewerApp() {
                 dispatchEnvironment({ type: "set-weather", weather })
               }
               onWeatherIntensityChange={(intensity) =>
-                dispatchEnvironment({ type: "set-weather-intensity", intensity })
+                dispatchEnvironment({
+                  type: "set-weather-intensity",
+                  intensity,
+                })
               }
               onDateChange={(date) =>
                 dispatchSimulationClock({ type: "set-date", date })
@@ -495,8 +810,19 @@ export function CityViewerApp() {
           <SimulationClockDisplay clock={simulationClock} />
         </div>
         {loadError && (
-          <div role="alert" className="absolute left-3 top-3 rounded-md bg-surface p-3 text-sm text-danger shadow">
-            Failed to load the EditorWorkspace. Check the backend and reload.
+          <div
+            role="alert"
+            className="absolute left-3 top-3 rounded-md bg-surface p-3 text-sm text-danger shadow"
+          >
+            {tProperties("workspaceLoadFailed")}
+          </div>
+        )}
+        {deleteError && (
+          <div
+            role="alert"
+            className="absolute left-3 top-14 rounded-md bg-surface p-3 text-sm text-danger shadow"
+          >
+            {deleteError}
           </div>
         )}
         {selectedRoad && (
@@ -505,6 +831,7 @@ export function CityViewerApp() {
             road={selectedRoad}
             endpointNodeIds={selectedRoadNodeIds ?? { start: null, end: null }}
             onApplyPreset={handleApplyRoadPreset}
+            onDelete={handleDeleteRoad}
             onChange={handleRoadPropertiesChange}
           />
         )}
@@ -513,7 +840,60 @@ export function CityViewerApp() {
             intersection={selectedIntersection}
             roads={city.roads}
             onCornerRadiusChange={handleIntersectionRadiusChange}
+            laneConnections={city.lane_connections ?? []}
+            onManeuverChange={handleManeuverChange}
+            isSaving={pendingRoadSaves > 0 || isSavingManeuver}
           />
+        )}
+        {deleteConfirmationRoad && (
+          <div
+            className="absolute inset-0 z-20 flex items-center justify-center bg-black/20 p-4"
+            role="presentation"
+            onMouseDown={(event) => {
+              if (event.target === event.currentTarget && !isDeletingRoad) {
+                setDeleteConfirmationRoad(null);
+              }
+            }}
+          >
+            <section
+              role="dialog"
+              aria-modal="true"
+              aria-labelledby="delete-road-title"
+              className="w-full max-w-sm rounded-lg border border-border-subtle bg-surface p-5 shadow-xl"
+            >
+              <h2
+                id="delete-road-title"
+                className="text-base font-semibold text-foreground"
+              >
+                {tProperties("deleteConfirmTitle")}
+              </h2>
+              <p className="mt-2 text-sm text-muted-foreground">
+                {tProperties("deleteConfirm", {
+                  name: deleteConfirmationRoad.name,
+                })}
+              </p>
+              <div className="mt-5 flex justify-end gap-2">
+                <button
+                  type="button"
+                  disabled={isDeletingRoad}
+                  onClick={() => setDeleteConfirmationRoad(null)}
+                  className="rounded-md border border-border-subtle px-3 py-1.5 text-sm text-foreground hover:bg-surface-elevated disabled:opacity-50"
+                >
+                  {tProperties("cancelDelete")}
+                </button>
+                <button
+                  type="button"
+                  disabled={isDeletingRoad}
+                  onClick={() => void confirmDeleteRoad()}
+                  className="rounded-md bg-danger px-3 py-1.5 text-sm text-white hover:opacity-90 disabled:opacity-50"
+                >
+                  {isDeletingRoad
+                    ? tProperties("deletingRoad")
+                    : tProperties("confirmDelete")}
+                </button>
+              </div>
+            </section>
+          </div>
         )}
         <div className="pointer-events-none absolute inset-x-3 top-3 flex justify-end">
           <button
@@ -546,6 +926,14 @@ export function CityViewerApp() {
             onExitEdit={() => dispatch({ type: "exit-edit" })}
             onSetTool={(tool) => dispatch({ type: "set-tool", tool })}
           />
+        </div>
+        <div className="pointer-events-none absolute left-3 top-14 max-w-[calc(100%-10rem)] sm:max-w-none">
+          <div className="pointer-events-auto overflow-x-auto rounded-lg border border-border-subtle bg-surface/90 p-1.5 shadow-sm backdrop-blur">
+            <MapLayersToggle
+              layerVisibility={layerVisibility}
+              onToggleLayer={handleToggleLayer}
+            />
+          </div>
         </div>
         {session.activeTool === "draw-road" && crosshair && (
           <div

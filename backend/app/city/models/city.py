@@ -13,6 +13,7 @@ if TYPE_CHECKING:
     from app.city.models.bus_stop import BusStop
     from app.city.models.crosswalk import Crosswalk
     from app.city.models.intersection import Intersection
+    from app.city.models.lane_connection import LaneConnection
     from app.city.models.parking import ParkingZone
     from app.city.models.road import Road
     from app.city.models.traffic_demand import TrafficDemand
@@ -66,4 +67,7 @@ class City(Base):
     )
     crosswalks: Mapped[list["Crosswalk"]] = relationship(
         back_populates="city", cascade="all, delete-orphan"
+    )
+    lane_connections: Mapped[list["LaneConnection"]] = relationship(
+        back_populates="city", cascade="all, delete-orphan", foreign_keys="LaneConnection.city_id"
     )
