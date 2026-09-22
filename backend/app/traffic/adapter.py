@@ -13,6 +13,9 @@ from pixel_lane_simulation.traffic.models.inputs import (
     PointInput,
     RoadInput,
     TrafficDemandInput,
+    LaneConnectionInput,
+    TrafficRuleInput,
+    TrafficRuleType,
 )
 
 from app.city.schemas.city import CityRead
@@ -26,6 +29,7 @@ def _to_lane_input(lane: LaneRead) -> LaneInput:
         index=lane.index,
         direction=lane.direction.value,  # type: ignore[arg-type]
         speed_limit_kmh=lane.speed_limit_kmh,
+        lane_type=lane.lane_type.value,
     )
 
 
@@ -63,5 +67,35 @@ def to_engine_city_input(city: CityRead) -> CityInput:
                 vehicles_per_hour=demand.vehicles_per_hour,
             )
             for demand in city.traffic_demands
+        ),
+        lane_connections=tuple(
+            LaneConnectionInput(
+                id=item.id,
+                intersection_id=item.intersection_id,
+                from_road_id=item.from_road_id,
+                from_lane_id=item.from_lane_id,
+                to_road_id=item.to_road_id,
+                to_lane_id=item.to_lane_id,
+                maneuver=item.maneuver.value,
+            )
+            for item in city.lane_connections
+        ),
+        traffic_rules=tuple(
+            TrafficRuleInput(
+                id=item.id,
+                rule_type=(
+                    TrafficRuleType.NO_ACCESS
+                    if item.rule_type.value == "NO_ENTRY"
+                    else TrafficRuleType.SPEED_LIMIT
+                ),
+                target_id=item.target_id,
+                target_kind=(
+                    item.target_type.value
+                    if item.target_type.value != "INTERSECTION"
+                    else "MOVEMENT"
+                ),
+                speed_limit_kmh=item.speed_limit_kmh,
+            )
+            for item in city.traffic_rules
         ),
     )
