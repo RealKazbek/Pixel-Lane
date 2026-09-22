@@ -85,6 +85,31 @@
     "cancel": "Бас тарту",
     "fitToView": "Экранға сыйдыру"
   },
+  "environment": {
+    "timeLabel": "Уақыт",
+    "weatherLabel": "Ауа райы",
+    "dateLabel": "Күн",
+    "simulationTimeLabel": "Симуляция уақыты",
+    "intensityLabel": "Қарқындылық",
+    "time": {
+      "auto": "Авто",
+      "morning": "Таң",
+      "day": "Күндіз",
+      "evening": "Кеш",
+      "night": "Түн"
+    },
+    "weather": {
+      "clear": "Ашық",
+      "rain": "Жаңбыр",
+      "snow": "Қар",
+      "fog": "Тұман"
+    },
+    "intensity": {
+      "light": "Жеңіл",
+      "medium": "Орташа",
+      "heavy": "Қатты"
+    }
+  },
   "properties": {
     "title": "Таңдалған жол",
     "preset": "Жол үлгісі",
