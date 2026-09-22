@@ -199,6 +199,7 @@
       "U_TURN": "U-turn"
     },
     "outgoingContext": "Destination lane; no maneuver is configured here.",
+    "savingLanes": "Saving changes…",
     "maneuverSaveFailed": "The maneuver could not be saved. The intersection was not changed.",
     "maneuverUnavailable": "That maneuver has no valid destination lane."
   },

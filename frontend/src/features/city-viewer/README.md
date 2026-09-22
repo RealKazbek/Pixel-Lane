@@ -53,3 +53,13 @@ editor components/state modules and keep domain logic outside React.
 
 Traffic Engine and City Model domain logic must not import this frontend
 feature. The feature consumes API/domain contracts and renders them.
+
+## Lane edit persistence
+
+Road property saves are serialized in the editor. Server-assigned lane UUIDs
+are reconciled into the local road and junction topology before maneuver
+controls become available. The backend updates incident junction lane
+membership in the same transaction as lane configuration. Maneuvers remain
+explicit `LaneConnection` records saved through the existing API.
+
+See `frontend/e2e/README.md` for the real-browser regression workflow.

@@ -21,23 +21,76 @@ export function MapCompass({
       aria-label={resetLabel}
       title={label}
       onClick={onReset}
-      className="pointer-events-auto relative h-14 w-14 rounded-full border border-border-subtle bg-surface/95 text-[11px] font-semibold text-muted-foreground shadow-md backdrop-blur transition-colors hover:border-primary/60 hover:bg-surface-elevated focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+      className="pointer-events-auto relative h-[72px] w-[72px] cursor-pointer rounded-full border border-border-subtle bg-surface/95 text-foreground shadow-lg ring-4 ring-surface/50 backdrop-blur transition-colors hover:border-primary hover:bg-surface-elevated focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus-visible:ring-offset-background"
     >
-      <span
+      <svg
         aria-hidden="true"
-        className="absolute inset-1.5 rounded-full border border-border-subtle/80 transition-transform duration-150"
+        viewBox="0 0 72 72"
+        className="h-full w-full transition-transform duration-150"
         style={{ transform: `rotate(${compassRoseRotation(bearing)}deg)` }}
       >
-        <span className="absolute left-1/2 top-1 -translate-x-1/2 text-danger">
+        <circle
+          cx="36"
+          cy="36"
+          r="29"
+          fill="none"
+          className="stroke-border-subtle"
+          strokeWidth="1.5"
+        />
+        <circle
+          cx="36"
+          cy="36"
+          r="21"
+          fill="none"
+          className="stroke-border-subtle"
+          strokeDasharray="1 5"
+        />
+        <g
+          fill="currentColor"
+          textAnchor="middle"
+          dominantBaseline="central"
+          fontSize="8"
+          fontWeight="600"
+          className="text-muted-foreground"
+        >
+          <text x="11" y="36">
+            W
+          </text>
+          <text x="61" y="36">
+            E
+          </text>
+          <text x="36" y="61">
+            S
+          </text>
+        </g>
+        <text
+          x="36"
+          y="11"
+          textAnchor="middle"
+          dominantBaseline="central"
+          fontSize="11"
+          fontWeight="800"
+          fill="currentColor"
+          className="text-danger"
+        >
           N
-        </span>
-        <span className="absolute bottom-1 left-1/2 -translate-x-1/2 text-[9px] text-muted-foreground">
-          S
-        </span>
-        <span className="absolute left-1/2 top-1/2 h-0 w-0 -translate-x-1/2 -translate-y-[92%] border-x-[5px] border-b-[15px] border-x-transparent border-b-danger" />
-        <span className="absolute left-1/2 top-1/2 h-0 w-0 translate-x-[-50%] translate-y-[-4%] border-x-[5px] border-t-[12px] border-x-transparent border-t-muted-foreground/70" />
-        <span className="absolute left-1/2 top-1/2 h-2 w-2 -translate-x-1/2 -translate-y-1/2 rounded-full border border-background bg-foreground shadow-sm" />
-      </span>
+        </text>
+        <path d="M36 18 L44 40 L36 36 L28 40 Z" className="fill-danger" />
+        <path
+          d="M36 54 L29 36 L36 39 L43 36 Z"
+          fill="currentColor"
+          className="text-muted-foreground"
+        />
+        <path d="M36 18 L36 36 L28 40 Z" className="fill-foreground/15" />
+        <circle
+          cx="36"
+          cy="36"
+          r="4"
+          className="fill-surface stroke-foreground"
+          strokeWidth="1.5"
+        />
+        <circle cx="36" cy="36" r="1.5" fill="currentColor" />
+      </svg>
     </button>
   );
 }

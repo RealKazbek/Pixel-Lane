@@ -71,6 +71,8 @@ import {
   updateRoadProperties,
 } from "../api/cities";
 
+import { reconcileSavedRoadLanes } from "../editor/savedRoadLanes";
+
 type RoadChanges = {
   name?: string;
   width_m?: number;
@@ -139,6 +141,10 @@ export function CityViewerApp() {
   const t = useTranslations("cityModel.fullscreen");
   const tMap = useTranslations("cityModel.map");
   const tProperties = useTranslations("cityModel.properties");
+  const tIntersection = useTranslations("cityModel.intersectionProperties");
+  const [pendingRoadSaves, setPendingRoadSaves] = useState(0);
+  const [isSavingManeuver, setIsSavingManeuver] = useState(false);
+  const roadSaveQueue = useRef<Promise<void>>(Promise.resolve());
   const [city, setCity] = useState(buildEditorWorkspace);
   const [hydrated, setHydrated] = useState(false);
   const [loadError, setLoadError] = useState<string | null>(null);
@@ -202,19 +208,31 @@ export function CityViewerApp() {
   const persistRoad = useCallback(
     (road: City["roads"][number]) => {
       if (!hydrated) return;
-      void updateRoadGeometry(city.id, road.id, road.geometry)
-        .then(() =>
-          updateRoadProperties(
+      // Property writes allocate authoritative lane UUIDs. Serialize them so an
+      // older response cannot replace a newer lane configuration.
+      setPendingRoadSaves((count) => count + 1);
+      roadSaveQueue.current = roadSaveQueue.current.then(async () => {
+        try {
+          await updateRoadGeometry(city.id, road.id, road.geometry);
+          const saved = await updateRoadProperties(
             city.id,
             road.id,
             buildRoadPropertiesPayload(road),
-          ),
-        )
-        .catch((error) =>
-          console.error("Failed to persist EditorWorkspace road", error),
-        );
+          );
+          setCity((current) => {
+            const updated = reconcileSavedRoadLanes(current, saved);
+            cityRef.current = updated;
+            return updated;
+          });
+        } catch (error) {
+          console.error("Failed to persist EditorWorkspace road", error);
+          setDeleteError(tProperties("topologySaveFailed"));
+        } finally {
+          setPendingRoadSaves((count) => count - 1);
+        }
+      });
     },
-    [city.id, hydrated],
+    [city.id, hydrated, tProperties],
   );
   const persistCityTopology = useCallback(
     (nextCity: City) => {
@@ -409,9 +427,11 @@ export function CityViewerApp() {
         enabled,
       );
       if (nextCity === currentCity) {
-        setDeleteError(tProperties("maneuverUnavailable"));
+        setDeleteError(tIntersection("maneuverUnavailable"));
         return;
       }
+      setIsSavingManeuver(true);
+      setDeleteError(null);
       const requestId = ++maneuverRequestRef.current;
       cityRef.current = nextCity;
       setCity(nextCity);
@@ -444,11 +464,13 @@ export function CityViewerApp() {
             cityRef.current = rolledBackCity;
             return rolledBackCity;
           });
-          setDeleteError(tProperties("maneuverSaveFailed"));
+          setDeleteError(tIntersection("maneuverSaveFailed"));
         }
+      } finally {
+        setIsSavingManeuver(false);
       }
     },
-    [selected, tProperties],
+    [selected, tIntersection],
   );
 
   const handleToggleLayer = useCallback((layer: LayerGroupId) => {
@@ -678,7 +700,7 @@ export function CityViewerApp() {
             weather={environment.weather}
             intensity={environment.weatherIntensity}
           />
-          <div className="pointer-events-none absolute right-3 top-14 z-20">
+          <div className="pointer-events-none absolute right-3 top-24 z-40">
             <EnvironmentControls
               value={environment}
               timeOfDay={timeOfDay}
@@ -748,6 +770,7 @@ export function CityViewerApp() {
             onCornerRadiusChange={handleIntersectionRadiusChange}
             laneConnections={city.lane_connections ?? []}
             onManeuverChange={handleManeuverChange}
+            isSaving={pendingRoadSaves > 0 || isSavingManeuver}
           />
         )}
         {deleteConfirmationRoad && (
@@ -832,8 +855,8 @@ export function CityViewerApp() {
             onSetTool={(tool) => dispatch({ type: "set-tool", tool })}
           />
         </div>
-        <div className="pointer-events-none absolute left-3 top-14">
-          <div className="pointer-events-auto rounded-lg border border-border-subtle bg-surface/90 p-1.5 shadow-sm backdrop-blur">
+        <div className="pointer-events-none absolute left-3 top-14 max-w-[calc(100%-10rem)] sm:max-w-none">
+          <div className="pointer-events-auto overflow-x-auto rounded-lg border border-border-subtle bg-surface/90 p-1.5 shadow-sm backdrop-blur">
             <MapLayersToggle
               layerVisibility={layerVisibility}
               onToggleLayer={handleToggleLayer}

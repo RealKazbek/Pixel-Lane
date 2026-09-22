@@ -222,10 +222,13 @@ export function updatePixelLaneTheme(
     theme.roadLabel,
     theme.roadLabelHalo,
   ]);
-  for (const layerId of LAYER_DRAW_ORDER) {
-    if (map.getLayer(layerId)) map.removeLayer(layerId);
+  const layers = buildAllLayers(referenceLatitudeDeg, theme);
+  // Include derived variants (for example the yellow road edge), not only
+  // layers explicitly listed in the draw-order registry.
+  for (const layer of layers) {
+    if (map.getLayer(layer.id)) map.removeLayer(layer.id);
   }
-  for (const layer of buildAllLayers(referenceLatitudeDeg, theme)) {
+  for (const layer of layers) {
     map.addLayer(layer);
   }
   for (const layerId of LAYER_DRAW_ORDER) {
@@ -267,7 +270,9 @@ export function updatePixelLaneData(
   const laneConnectionsSource = map.getSource(SOURCE_IDS.laneConnections);
   if (laneConnectionsSource instanceof GeoJSONSource)
     laneConnectionsSource.setData(data.laneConnections);
-  const junctionLaneDirectionsSource = map.getSource(SOURCE_IDS.junctionLaneDirections);
+  const junctionLaneDirectionsSource = map.getSource(
+    SOURCE_IDS.junctionLaneDirections,
+  );
   if (junctionLaneDirectionsSource instanceof GeoJSONSource)
     junctionLaneDirectionsSource.setData(data.junctionLaneDirections);
 

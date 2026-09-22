@@ -19,6 +19,7 @@ interface IntersectionPropertiesPanelProps {
   roads: Road[];
   onCornerRadiusChange: (radius: number) => void;
   laneConnections: LaneConnection[];
+  isSaving?: boolean;
   onManeuverChange: (
     roadId: string,
     laneId: string,
@@ -69,6 +70,7 @@ export function IntersectionPropertiesPanel({
   onCornerRadiusChange,
   laneConnections,
   onManeuverChange,
+  isSaving = false,
 }: IntersectionPropertiesPanelProps) {
   const t = useTranslations("cityModel.intersectionProperties");
   const connectedRoads = intersection.connected_road_ids
@@ -78,7 +80,7 @@ export function IntersectionPropertiesPanel({
 
   return (
     <section
-      className="pointer-events-auto absolute right-3 top-16 z-30 max-h-[calc(100%-5rem)] w-60 overflow-y-auto rounded-lg border border-border-subtle bg-surface/95 p-3 text-xs text-foreground shadow-lg backdrop-blur"
+      className="pointer-events-auto absolute right-3 top-56 z-30 max-h-[calc(100%-15rem)] w-60 overflow-y-auto rounded-lg border border-border-subtle bg-surface/95 p-3 text-xs text-foreground shadow-lg backdrop-blur"
       onPointerDown={(event) => event.stopPropagation()}
       onClick={(event) => event.stopPropagation()}
     >
@@ -123,6 +125,11 @@ export function IntersectionPropertiesPanel({
           <span className="text-muted-foreground">m</span>
         </div>
       </label>
+      {isSaving && (
+        <p role="status" className="mt-3 text-muted-foreground">
+          {t("savingLanes")}
+        </p>
+      )}
       <div className="mt-3 border-t border-border-subtle pt-3">
         <h3 className="mb-2 text-muted-foreground">{t("connectedRoadList")}</h3>
         <div className="space-y-2">
@@ -193,7 +200,9 @@ export function IntersectionPropertiesPanel({
                                 type="button"
                                 key={movement}
                                 aria-pressed={enabled.has(movement)}
-                                className={`min-h-8 min-w-16 cursor-pointer rounded border px-2 py-1 text-[11px] transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary ${
+                                disabled={isSaving}
+                                title={isSaving ? t("savingLanes") : undefined}
+                                className={`min-h-10 min-w-16 cursor-pointer disabled:cursor-wait disabled:opacity-50 rounded border px-2 py-1 text-[11px] transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary ${
                                   enabled.has(movement)
                                     ? "border-primary bg-primary/15 text-primary"
                                     : "border-border-subtle bg-background text-muted-foreground hover:border-primary/60 hover:text-foreground"
