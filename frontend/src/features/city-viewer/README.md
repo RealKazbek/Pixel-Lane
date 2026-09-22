@@ -16,13 +16,17 @@ geometry, adapter, and editor modules are feature-scoped.
 
 `types/` mirrors City Model contracts; `api/` owns fetch calls; `map/` contains
 MapLibre setup, GeoJSON adapters, pure geometry, layers, styles, and editor
-interaction; `components/` contains the page shell and toolbar.
+interaction; `world/terrain/` contains provider-neutral elevation contracts
+and the isolated MapLibre raster-DEM adapter; `components/` contains the page
+shell and toolbar.
 
 ## Dependency direction
 
 Components use editor state and map adapters; geometry remains framework-free;
 MapLibre consumes derived GeoJSON and never owns City Model data. Domain logic
-does not depend on React or Next.js.
+does not depend on React or Next.js. Terrain is a rendering/world-surface
+input: it may provide ground elevation for future world objects, but it never
+replaces City Model road geometry or other domain data.
 
 ## Important invariants
 

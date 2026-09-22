@@ -57,6 +57,7 @@ section below.
 | Traffic Engine v1 | `simulation/pixel_lane_simulation/traffic/` | Static network/routing/congestion analysis                                                    | `analyze_city()` / `TrafficEngine.analyze()`                          | Nothing in this repo (its own `CityInput` contract only)                              |
 | Traffic adapter   | `backend/app/traffic/`                      | Translates City -> Traffic Engine input, serializes result                                    | REST `POST /api/v1/cities/{id}/traffic-analysis`                      | City Model, Traffic Engine                                                            |
 | Map/editor v2     | `frontend/src/features/city-viewer/`        | Editor workspace and limited road geometry rendering/editing                                  | `CityViewerApp` component                                             | City Model geometry adapters; persisted API remains available to future editor stages |
+| World terrain     | `frontend/src/features/city-viewer/world/terrain/` | Provider-neutral DEM configuration and MapLibre elevation adapter for future 2.5D world rendering | `TerrainProvider`, `installTerrain()` | MapLibre raster-dem/terrain APIs; no provider or domain-geometry ownership |
 | OSM importer      | `backend/app/city/importers/osm/`           | Administrative-boundary import from regional PBF or cached polygon chunks; atomic replacement | Full CLI (`make import-almaty-full`), legacy `import_city_from_osm()` | City Model service; OSMnx/PyOsmium (isolated optional `backend[osm]`)                 |
 
 **Planned** (not implemented, see their sections under "High-level
@@ -66,7 +67,7 @@ integration, Auth/Users.
 **Dependency flow** (implemented parts only):
 
 ```
-Frontend (MapLibre map/editor)
+Frontend (MapLibre map/editor and world terrain)
     | HTTP
 Backend API (FastAPI routes)
     |
