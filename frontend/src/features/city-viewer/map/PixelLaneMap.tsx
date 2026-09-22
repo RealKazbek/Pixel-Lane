@@ -36,25 +36,6 @@ import {
   computeReferenceLatitude,
   computeEditorWorldBounds,
 } from "./adapters/cityBounds";
-import {
-  buildIntersectionFeatureCollection,
-  buildRoadFeatureCollection,
-  buildRoadLabelFeatureCollection,
-  buildTrafficLightFeatureCollection,
-} from "./adapters/cityModelToGeoJson";
-import {
-  buildLaneBoundaryFeatureCollection,
-  buildLaneSurfaceFeatureCollection,
-  buildLaneUseMarkingFeatureCollection,
-  buildTurnArrowFeatureCollection,
-} from "./adapters/laneGeometry";
-import { buildRoadSurfaceFeatureCollection } from "./adapters/roadSurfaceGeometry";
-import {
-  buildBusStopFeatureCollection,
-  buildCrosswalkFeatureCollection,
-} from "./adapters/cityAmenitiesToGeoJson";
-import { buildLaneConnectionFeatureCollection } from "./adapters/laneConnectionGeometry";
-import { buildJunctionLaneDirectionFeatureCollection } from "./adapters/junctionLaneDirection";
 import { MapCompass } from "./MapCompass";
 import {
   addPixelLaneSourcesAndLayers,
@@ -68,6 +49,7 @@ import { SOURCE_IDS, LAYER_IDS } from "./layers/layerIds";
 import { resolveMapStyle } from "./styles/mapStyle";
 import { resolveMapTheme } from "./styles/mapTheme";
 import type { City } from "../types/city";
+import { buildRoadWorldData } from "../world/roads/buildRoadWorldData";
 import type { EditorWorldBounds } from "../editor/editorWorld";
 import {
   buildEndpointSnapTargets,
@@ -79,7 +61,6 @@ import {
   type EndpointSnapTarget,
   type ScreenEndpointSnapTarget,
 } from "../editor/endpointSnapping";
-import { buildEditorGrid } from "./grid";
 import type { LayerVisibility, MapMode, MapSelection } from "./types";
 
 export interface EditorAction {
@@ -327,114 +308,25 @@ export function PixelLaneMap({
     onViewportStatusChange?.(viewport.status);
   }, [viewport.status, onViewportStatusChange]);
 
-  const geoJson = useMemo<PixelLaneGeoJson>(() => {
-    // Traffic lights aren't separately bbox-queried (see
-    // docs/city-model.md): a light is a 1:1 attachment to an
-    // intersection with no geometry of its own, so its position is
-    // exactly its parent intersection's -- derived here from whichever
-    // viewport intersections carry a `traffic_light_id`, rather than a
-    // fourth endpoint.
-    const trafficLights = visibleIntersections
-      .filter((i) => i.traffic_light_id !== null)
-      .map((i) => ({
-        id: i.traffic_light_id as string,
-        intersection_id: i.id,
-      }));
-
-    return {
-      grid: editorWorld
-        ? buildEditorGrid(editorWorld, city.coordinate_system, gridZoom)
-        : { type: "FeatureCollection", features: [] },
-      roads: buildRoadFeatureCollection({
-        roads: visibleRoads,
-        coordinate_system: city.coordinate_system,
-      }),
-      intersections: buildIntersectionFeatureCollection({
-        intersections: visibleIntersections,
-        coordinate_system: city.coordinate_system,
-      }),
-      trafficLights: buildTrafficLightFeatureCollection({
-        traffic_lights: trafficLights,
-        intersections: visibleIntersections,
-        coordinate_system: city.coordinate_system,
-      }),
-      labels: buildRoadLabelFeatureCollection({
-        roads: visibleRoads,
-        coordinate_system: city.coordinate_system,
-      }),
-      laneSurfaces: buildLaneSurfaceFeatureCollection(
-        visibleRoads,
-        city.coordinate_system,
-        visibleIntersections,
-      ),
-      laneBoundaries: buildLaneBoundaryFeatureCollection(
-        visibleRoads,
-        city.coordinate_system,
-        visibleIntersections,
-      ),
-      turnArrows: buildTurnArrowFeatureCollection(
-        visibleRoads,
-        city.coordinate_system,
-        selectedIntersectionId
-          ? visibleIntersections.filter(
-              (item) => item.id === selectedIntersectionId,
-            )
-          : [],
-        city.lane_connections ?? [],
-      ),
-      laneConnections: buildLaneConnectionFeatureCollection(
-        {
-          roads: city.coordinate_system === "LOCAL_CARTESIAN" ? city.roads : [],
-          intersections:
-            city.coordinate_system === "LOCAL_CARTESIAN"
-              ? city.intersections
-              : [],
-          lane_connections: city.lane_connections,
-        },
-        city.coordinate_system,
-      ),
-      junctionLaneDirections: buildJunctionLaneDirectionFeatureCollection(
-        city.coordinate_system === "LOCAL_CARTESIAN" ? city.roads : [],
-        null,
-        city.coordinate_system,
-      ),
-      laneUseMarkings: buildLaneUseMarkingFeatureCollection(
-        visibleRoads,
-        city.coordinate_system,
-        visibleIntersections,
-      ),
-      roadSurfaces: buildRoadSurfaceFeatureCollection(
+  const geoJson = useMemo<PixelLaneGeoJson>(
+    () =>
+      buildRoadWorldData({
+        city,
         visibleRoads,
         visibleIntersections,
-        city.coordinate_system,
-      ),
-      // Not yet bbox/viewport-scoped (see docs/city-model.md) -- `city`
-      // itself, not `visibleRoads`/`visibleIntersections`, since a WGS84
-      // city's own bus_stops/crosswalks are always [] until that follow-up
-      // exists, and a LOCAL_CARTESIAN city's full list is already `city`.
-      busStops: buildBusStopFeatureCollection(
-        city.bus_stops,
-        city.coordinate_system,
-      ),
-      crosswalks: buildCrosswalkFeatureCollection(
-        city.crosswalks,
-        city.roads,
-        city.coordinate_system,
-      ),
-    };
-  }, [
-    visibleRoads,
-    visibleIntersections,
-    city.coordinate_system,
-    city.bus_stops,
-    city.crosswalks,
-    city.roads,
-    city.intersections,
-    city.lane_connections,
-    editorWorld,
-    gridZoom,
-    selectedIntersectionId,
-  ]);
+        selectedIntersectionId,
+        editorWorld,
+        gridZoom,
+      }),
+    [
+      city,
+      visibleRoads,
+      visibleIntersections,
+      editorWorld,
+      gridZoom,
+      selectedIntersectionId,
+    ],
+  );
 
   useEffect(() => {
     const map = mapRef.current;
