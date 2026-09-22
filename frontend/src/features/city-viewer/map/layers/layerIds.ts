@@ -16,6 +16,7 @@ export const SOURCE_IDS = {
   roadSurfaces: "pixel-lane-road-surfaces",
   busStops: "pixel-lane-bus-stops",
   crosswalks: "pixel-lane-crosswalks",
+  buildings: "pixel-lane-buildings",
 } as const;
 
 export const LAYER_IDS = {
@@ -47,6 +48,7 @@ export const LAYER_IDS = {
   laneCyclewayLine: "pixel-lane-lane-cycleway-line",
   busStops: "pixel-lane-bus-stops",
   crosswalks: "pixel-lane-crosswalks",
+  buildings: "pixel-lane-buildings",
 } as const;
 
 /** Draw order, back to front (basemap sits below all of these; Terra

@@ -7,6 +7,8 @@
  * truth (the backend Pydantic schemas).
  */
 
+import type { Building } from "../buildings/building";
+
 export type CoordinateSystem = "LOCAL_CARTESIAN" | "WGS84";
 
 export type RoadType =
@@ -246,6 +248,8 @@ export interface City {
   crosswalks: Crosswalk[];
   traffic_rules?: TrafficRule[];
   lane_connections?: LaneConnection[];
+  /** Optional until the backend City Model exposes persisted buildings. */
+  buildings?: Building[];
 }
 
 export interface CitySummary {
