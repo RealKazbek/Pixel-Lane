@@ -187,7 +187,10 @@ export function replaceTopology(
   return apiRequest<void>(`/api/v1/cities/${cityId}/topology`, {
     method: "PUT",
     body: JSON.stringify({
-      roads: city.roads.map((road) => ({ id: road.id, geometry: road.geometry })),
+      roads: city.roads.map((road) => ({
+        id: road.id,
+        geometry: road.geometry,
+      })),
       intersections: city.intersections.map((intersection) => ({
         id: intersection.id,
         position: intersection.position,
@@ -199,6 +202,41 @@ export function replaceTopology(
       new_roads: newRoads.map((road) => ({ ...road, city_id: undefined })),
     }),
   });
+}
+
+export function replaceTopologyAndLaneConnections(
+  cityId: string,
+  city: Pick<City, "roads" | "intersections">,
+  connections: Omit<LaneConnection, "city_id">[],
+  newRoads: Road[] = [],
+): Promise<City> {
+  return apiRequest<City>(
+    `/api/v1/cities/${cityId}/topology-and-lane-connections`,
+    {
+      method: "PUT",
+      body: JSON.stringify({
+        topology: {
+          roads: city.roads.map((road) => ({
+            id: road.id,
+            geometry: road.geometry,
+          })),
+          intersections: city.intersections.map((intersection) => ({
+            id: intersection.id,
+            position: intersection.position,
+            connected_road_ids: intersection.connected_road_ids,
+            connected_lane_ids: intersection.connected_lane_ids,
+            control_type: intersection.control_type,
+            traffic_light_id: intersection.traffic_light_id,
+          })),
+          new_roads: newRoads.map((road) => ({
+            ...road,
+            city_id: undefined,
+          })),
+        },
+        lane_connections: connections,
+      }),
+    },
+  );
 }
 
 export function buildRoadPropertiesPayload(road: Road) {

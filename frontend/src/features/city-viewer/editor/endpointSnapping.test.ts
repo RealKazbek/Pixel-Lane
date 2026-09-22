@@ -369,6 +369,116 @@ describe("endpoint snap topology", () => {
     ]);
   });
 
+  it.each([
+    ["parking zone", "parking"],
+    ["bus stop", "bus"],
+    ["crosswalk", "crosswalk"],
+    ["road traffic rule", "road-rule"],
+    ["lane traffic rule", "lane-rule"],
+  ] as const)("rejects a split when the target owns a %s", (_name, kind) => {
+    const targetRoad: Road = {
+      ...makeRoad("road-a", 0, 100),
+      lanes: [
+        {
+          id: "lane-a",
+          road_id: "road-a",
+          index: 0,
+          direction: "FORWARD",
+          allowed_movements: [],
+          lane_type: "GENERAL",
+          speed_limit_kmh: null,
+        },
+      ],
+    };
+    const city = makeCity([targetRoad, makeRoad("road-b", 200, 300)]);
+    if (kind === "parking") {
+      city.parking_zones = [
+        {
+          id: "parking",
+          city_id: city.id,
+          road_id: targetRoad.id,
+          lane_id: "lane-a",
+          allowed: true,
+          side: "LEFT",
+          capacity: 2,
+        },
+      ];
+    } else if (kind === "bus") {
+      city.bus_stops = [
+        {
+          id: "bus",
+          city_id: city.id,
+          road_id: targetRoad.id,
+          position_x: 75,
+          position_y: 0,
+          name: null,
+        },
+      ];
+    } else if (kind === "crosswalk") {
+      city.crosswalks = [
+        {
+          id: "crosswalk",
+          city_id: city.id,
+          road_id: targetRoad.id,
+          position_ratio: 0.75,
+        },
+      ];
+    } else {
+      city.traffic_rules = [
+        {
+          id: kind,
+          city_id: city.id,
+          rule_type: "SPEED_LIMIT",
+          target_type: kind === "road-rule" ? "ROAD" : "LANE",
+          target_id: kind === "road-rule" ? targetRoad.id : "lane-a",
+          movement: null,
+          speed_limit_kmh: 30,
+        },
+      ];
+    }
+    const target = buildRoadSegmentSnapTargets(city).find(
+      (candidate) => candidate.roadId === targetRoad.id,
+    );
+    if (!target) throw new Error("Expected segment target");
+
+    const result = applyEndpointSnap(city, "road-b", "start", {
+      ...target,
+      point: { x: 50, y: 0 },
+    });
+
+    expect(result).toBeNull();
+    expect(city.roads).toHaveLength(2);
+    expect(city.roads[0].geometry.points).toEqual([
+      { x: 0, y: 0 },
+      { x: 100, y: 0 },
+    ]);
+    const roadIds = new Set(city.roads.map((road) => road.id));
+    const laneIds = new Set(
+      city.roads.flatMap((road) => road.lanes.map((lane) => lane.id)),
+    );
+    expect(city.parking_zones.every((zone) => roadIds.has(zone.road_id))).toBe(
+      true,
+    );
+    expect(
+      city.parking_zones.every(
+        (zone) => zone.lane_id === null || laneIds.has(zone.lane_id),
+      ),
+    ).toBe(true);
+    expect(city.bus_stops.every((stop) => roadIds.has(stop.road_id))).toBe(
+      true,
+    );
+    expect(
+      city.crosswalks.every((crosswalk) => roadIds.has(crosswalk.road_id)),
+    ).toBe(true);
+    expect(
+      (city.traffic_rules ?? []).every(
+        (rule) =>
+          (rule.target_type !== "ROAD" || roadIds.has(rule.target_id)) &&
+          (rule.target_type !== "LANE" || laneIds.has(rule.target_id)),
+      ),
+    ).toBe(true);
+  });
+
   it("splits once when a new road is attached to an existing road interior", () => {
     const existing = makeRoad("road-ab", 0, 100);
     const city = makeCity([existing, makeRoad("road-c", 50, 150)]);
@@ -386,9 +496,18 @@ describe("endpoint snap topology", () => {
 
     expect(result?.roads).toHaveLength(3);
     expect(result?.roads.map((road) => road.geometry.points)).toEqual([
-      [{ x: 0, y: 0 }, { x: 50, y: 0 }],
-      [{ x: 50, y: 0 }, { x: 100, y: 0 }],
-      [{ x: 50, y: 0 }, { x: 150, y: 0 }],
+      [
+        { x: 0, y: 0 },
+        { x: 50, y: 0 },
+      ],
+      [
+        { x: 50, y: 0 },
+        { x: 100, y: 0 },
+      ],
+      [
+        { x: 50, y: 0 },
+        { x: 150, y: 0 },
+      ],
     ]);
     expect(result?.intersections).toHaveLength(1);
     expect(result?.intersections[0].connected_road_ids).toEqual([
@@ -426,12 +545,10 @@ describe("endpoint snap topology", () => {
     );
     if (!target) throw new Error("Expected segment target");
 
-    const result = applyEndpointSnap(
-      city,
-      incoming.id,
-      "start",
-      { ...target, point: { x: 50.5, y: 0 } },
-    );
+    const result = applyEndpointSnap(city, incoming.id, "start", {
+      ...target,
+      point: { x: 50.5, y: 0 },
+    });
 
     expect(result?.intersections).toHaveLength(1);
     expect(result?.intersections[0].id).toBe("junction-j");
@@ -505,13 +622,45 @@ describe("endpoint snap topology", () => {
   it("persists every lane on roads connected to a snapped node", () => {
     const first = makeRoad("road-a", 0, 10);
     first.lanes = [
-      { id: "lane-a-0", road_id: first.id, index: 0, direction: "FORWARD", allowed_movements: [], lane_type: "GENERAL", speed_limit_kmh: null },
-      { id: "lane-a-1", road_id: first.id, index: 1, direction: "BACKWARD", allowed_movements: [], lane_type: "GENERAL", speed_limit_kmh: null },
+      {
+        id: "lane-a-0",
+        road_id: first.id,
+        index: 0,
+        direction: "FORWARD",
+        allowed_movements: [],
+        lane_type: "GENERAL",
+        speed_limit_kmh: null,
+      },
+      {
+        id: "lane-a-1",
+        road_id: first.id,
+        index: 1,
+        direction: "BACKWARD",
+        allowed_movements: [],
+        lane_type: "GENERAL",
+        speed_limit_kmh: null,
+      },
     ];
     const second = makeRoad("road-b", 20, 30);
     second.lanes = [
-      { id: "lane-b-0", road_id: second.id, index: 0, direction: "FORWARD", allowed_movements: [], lane_type: "GENERAL", speed_limit_kmh: null },
-      { id: "lane-b-1", road_id: second.id, index: 1, direction: "BACKWARD", allowed_movements: [], lane_type: "GENERAL", speed_limit_kmh: null },
+      {
+        id: "lane-b-0",
+        road_id: second.id,
+        index: 0,
+        direction: "FORWARD",
+        allowed_movements: [],
+        lane_type: "GENERAL",
+        speed_limit_kmh: null,
+      },
+      {
+        id: "lane-b-1",
+        road_id: second.id,
+        index: 1,
+        direction: "BACKWARD",
+        allowed_movements: [],
+        lane_type: "GENERAL",
+        speed_limit_kmh: null,
+      },
     ];
     const result = applyEndpointSnap(
       makeCity([first, second]),

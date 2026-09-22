@@ -12,7 +12,7 @@ vi.mock("../api/cities", () => ({
   deleteRoad: vi.fn(),
   getEditorWorkspace: vi.fn(),
   replaceLaneConnections: vi.fn(),
-  replaceTopology: vi.fn(),
+  replaceTopologyAndLaneConnections: vi.fn(),
   updateRoadGeometry: vi.fn(),
   updateRoadProperties: vi.fn(),
 }));

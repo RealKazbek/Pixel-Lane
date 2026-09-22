@@ -5,6 +5,7 @@ import {
   getCityForMap,
   getRoadsInBbox,
   replaceLaneConnections,
+  replaceTopologyAndLaneConnections,
 } from "./cities";
 
 vi.mock("./client", () => ({ apiRequest: vi.fn() }));
@@ -74,6 +75,65 @@ describe("geographic map requests", () => {
       {
         method: "PUT",
         body: JSON.stringify({ connections: [connection] }),
+      },
+    );
+  });
+
+  it("persists topology and lane connections in one aggregate request", async () => {
+    vi.mocked(apiRequest).mockReset();
+    vi.mocked(apiRequest).mockResolvedValue({ id: "city" });
+    const road = {
+      id: "road",
+      city_id: "city",
+      name: "Road",
+      road_type: "RESIDENTIAL" as const,
+      geometry: {
+        points: [
+          { x: 0, y: 0 },
+          { x: 10, y: 0 },
+        ],
+      },
+      default_speed_limit_kmh: 30,
+      lanes: [],
+    };
+    const intersection = {
+      id: "intersection",
+      city_id: "city",
+      position: { x: 10, y: 0 },
+      connected_road_ids: [road.id],
+      connected_lane_ids: [],
+      control_type: "UNCONTROLLED" as const,
+      traffic_light_id: null,
+    };
+
+    await replaceTopologyAndLaneConnections(
+      "city",
+      { roads: [road], intersections: [intersection] },
+      [],
+      [road],
+    );
+
+    expect(apiRequest).toHaveBeenCalledExactlyOnceWith(
+      "/api/v1/cities/city/topology-and-lane-connections",
+      {
+        method: "PUT",
+        body: JSON.stringify({
+          topology: {
+            roads: [{ id: road.id, geometry: road.geometry }],
+            intersections: [
+              {
+                id: intersection.id,
+                position: intersection.position,
+                connected_road_ids: intersection.connected_road_ids,
+                connected_lane_ids: intersection.connected_lane_ids,
+                control_type: intersection.control_type,
+                traffic_light_id: null,
+              },
+            ],
+            new_roads: [{ ...road, city_id: undefined }],
+          },
+          lane_connections: [],
+        }),
       },
     );
   });

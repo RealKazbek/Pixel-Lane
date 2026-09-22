@@ -69,6 +69,7 @@ describe("intersection maneuver topology", () => {
     expect(
       getDestinationLanesForManeuver(
         incoming,
+        incoming.lanes[0].id,
         intersection,
         [incoming, left, right],
         "LEFT",
@@ -95,5 +96,45 @@ describe("intersection maneuver topology", () => {
     );
     expect(incoming.lanes[0].direction).toBe("FORWARD");
     expect(outgoing.lanes[0].direction).toBe("BACKWARD");
+  });
+
+  it("offers only a U-turn to the outbound lane on the same road", () => {
+    const twoWay = road("a", [
+      { x: -10, y: 0 },
+      { x: 0, y: 0 },
+    ]);
+    twoWay.lanes.push({
+      ...twoWay.lanes[0],
+      id: "a-outbound",
+      index: 1,
+      direction: "BACKWARD",
+    });
+    const sameRoadIntersection = {
+      ...intersection,
+      connected_road_ids: [twoWay.id],
+      connected_lane_ids: twoWay.lanes.map((lane) => lane.id),
+    };
+
+    expect(
+      getAvailableManeuvers(twoWay, sameRoadIntersection, [twoWay]),
+    ).toEqual(["U_TURN"]);
+    expect(
+      getDestinationLanesForManeuver(
+        twoWay,
+        twoWay.lanes[0].id,
+        sameRoadIntersection,
+        [twoWay],
+        "U_TURN",
+      ),
+    ).toEqual([{ road: twoWay, lane: twoWay.lanes[1] }]);
+    expect(
+      getDestinationLanesForManeuver(
+        twoWay,
+        twoWay.lanes[0].id,
+        sameRoadIntersection,
+        [twoWay],
+        "LEFT",
+      ),
+    ).toEqual([]);
   });
 });

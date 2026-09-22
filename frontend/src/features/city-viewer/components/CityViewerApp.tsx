@@ -67,12 +67,15 @@ import {
   deleteRoad,
   getEditorWorkspace,
   replaceLaneConnections,
-  replaceTopology,
+  replaceTopologyAndLaneConnections,
   updateRoadGeometry,
   updateRoadProperties,
 } from "../api/cities";
 
-import { reconcileSavedRoadLanes } from "../editor/savedRoadLanes";
+import {
+  reconcileSavedRoadLanes,
+  reconcileSavedTopology,
+} from "../editor/savedRoadLanes";
 
 type RoadChanges = {
   name?: string;
@@ -136,6 +139,32 @@ function applyRoadChanges(road: Road, changes: RoadChanges): Road {
           lane_boundary_markings ?? road.lane_boundary_markings,
       }
     : road;
+}
+
+function withAuthoritativeLaneIdentities(
+  topology: City,
+  authoritative: City,
+): City {
+  const authoritativeRoads = new Map(
+    authoritative.roads.map((road) => [road.id, road]),
+  );
+  const roads = topology.roads.map((road) => {
+    const saved = authoritativeRoads.get(road.id);
+    return saved ? { ...road, lanes: saved.lanes } : road;
+  });
+  const laneIdsByRoad = new Map(
+    roads.map((road) => [road.id, road.lanes.map((lane) => lane.id)]),
+  );
+  return {
+    ...topology,
+    roads,
+    intersections: topology.intersections.map((intersection) => ({
+      ...intersection,
+      connected_lane_ids: intersection.connected_road_ids.flatMap(
+        (roadId) => laneIdsByRoad.get(roadId) ?? [],
+      ),
+    })),
+  };
 }
 /** City Model is currently an editor document, not a city picker/viewer. */
 export function CityViewerApp() {
@@ -246,11 +275,26 @@ export function CityViewerApp() {
     (nextCity: City) => {
       if (!hydrated) return;
       void enqueueCityWrite(async () => {
-        await replaceTopology(nextCity.id, nextCity);
-        await replaceLaneConnections(
-          nextCity.id,
-          cityRef.current.lane_connections ?? [],
+        await roadSaveQueue.current;
+        const topology = withAuthoritativeLaneIdentities(
+          nextCity,
+          cityRef.current,
         );
+        const submittedLaneConnections = cityRef.current.lane_connections;
+        const saved = await replaceTopologyAndLaneConnections(
+          topology.id,
+          topology,
+          submittedLaneConnections ?? [],
+        );
+        setCity((current) => {
+          const updated = reconcileSavedTopology(
+            current,
+            saved,
+            submittedLaneConnections,
+          );
+          cityRef.current = updated;
+          return updated;
+        });
       }).catch((error) => {
         console.error("Failed to persist EditorWorkspace topology", error);
         setDeleteError(tProperties("topologySaveFailed"));
@@ -268,13 +312,27 @@ export function CityViewerApp() {
         (road) => !previousRoadIds.has(road.id),
       );
       void enqueueCityWrite(async () => {
-        await replaceTopology(nextCity.id, nextCity, createdRoads);
-        if (cityRef.current.lane_connections) {
-          await replaceLaneConnections(
-            nextCity.id,
-            cityRef.current.lane_connections,
+        await roadSaveQueue.current;
+        const topology = withAuthoritativeLaneIdentities(
+          nextCity,
+          cityRef.current,
+        );
+        const submittedLaneConnections = cityRef.current.lane_connections;
+        const saved = await replaceTopologyAndLaneConnections(
+          topology.id,
+          topology,
+          submittedLaneConnections ?? [],
+          createdRoads,
+        );
+        setCity((current) => {
+          const updated = reconcileSavedTopology(
+            current,
+            saved,
+            submittedLaneConnections,
           );
-        }
+          cityRef.current = updated;
+          return updated;
+        });
       }).catch((error) =>
         console.error("Failed to persist created road topology", error),
       );

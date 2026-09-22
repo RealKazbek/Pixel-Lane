@@ -213,6 +213,22 @@ export interface Crosswalk {
   position_ratio: number;
 }
 
+export interface TrafficRule {
+  id: string;
+  city_id: string;
+  rule_type:
+    | "YIELD"
+    | "STOP"
+    | "PRIORITY_ROAD"
+    | "NO_ENTRY"
+    | "TURN_RESTRICTION"
+    | "SPEED_LIMIT";
+  target_type: "ROAD" | "LANE" | "INTERSECTION" | "MOVEMENT";
+  target_id: string;
+  movement: MovementType | null;
+  speed_limit_kmh: number | null;
+}
+
 export interface City {
   bounds?: [number, number, number, number] | null;
   road_count?: number;
@@ -228,6 +244,7 @@ export interface City {
   parking_zones: ParkingZone[];
   bus_stops: BusStop[];
   crosswalks: Crosswalk[];
+  traffic_rules?: TrafficRule[];
   lane_connections?: LaneConnection[];
 }
 

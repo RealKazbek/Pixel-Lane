@@ -503,7 +503,7 @@ test(
       page.on("response", (response) => {
         if (
           response.request().method() === "PUT" &&
-          (response.url().endsWith("/topology") ||
+          (response.url().endsWith("/topology-and-lane-connections") ||
             response.url().endsWith("/lane-connections"))
         ) {
           writes.push({
@@ -521,11 +521,15 @@ test(
         .getByRole("button", { name: "Редактировать", exact: true })
         .click();
       await page.getByRole("button", { name: /Нарисовать дорогу/ }).click();
-      await page.route("**/api/v1/cities/*/topology", async (route) => {
-        createdRoadId = route.request().postDataJSON().new_roads[0].id;
-        await new Promise((resolve) => setTimeout(resolve, 2000));
-        await route.continue();
-      });
+      await page.route(
+        "**/api/v1/cities/*/topology-and-lane-connections",
+        async (route) => {
+          createdRoadId = route.request().postDataJSON().topology
+            .new_roads[0].id;
+          await new Promise((resolve) => setTimeout(resolve, 2000));
+          await route.continue();
+        },
+      );
       await selectAt(page, lngLat(600, -130));
       await selectAt(page, lngLat(600, 0));
       await page.waitForTimeout(600);
@@ -550,7 +554,9 @@ test(
       assert.ok((await panel.innerText()).includes("Подходы\n3"));
       assert.ok(
         writes.some(
-          (write) => write.path.endsWith("/topology") && write.status === 204,
+          (write) =>
+            write.path.endsWith("/topology-and-lane-connections") &&
+            write.status === 200,
         ),
       );
       assert.ok(
@@ -582,7 +588,8 @@ test(
           writes.map(({ path, status, payload }) => ({
             path,
             status,
-            connections: payload?.connections?.length,
+            connections:
+              payload?.connections?.length ?? payload?.lane_connections?.length,
           })),
         ),
       );

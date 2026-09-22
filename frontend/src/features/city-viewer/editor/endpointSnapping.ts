@@ -83,7 +83,8 @@ function sameRoadGeometry(left: Road, right: Road): boolean {
   if (leftPoints.length !== rightPoints.length) return false;
   const matches = (points: Point[]) =>
     leftPoints.every(
-      (point, index) => distanceMeters(point, points[index]) <= ROAD_TOPOLOGY_TOLERANCE_M,
+      (point, index) =>
+        distanceMeters(point, points[index]) <= ROAD_TOPOLOGY_TOLERANCE_M,
     );
   return matches(rightPoints) || matches([...rightPoints].reverse());
 }
@@ -100,8 +101,24 @@ function hasDuplicateRoadGeometry(roads: readonly Road[]): boolean {
     ) {
       return true;
     }
-    return roads.slice(index + 1).some((candidate) => sameRoadGeometry(road, candidate));
+    return roads
+      .slice(index + 1)
+      .some((candidate) => sameRoadGeometry(road, candidate));
   });
+}
+
+function hasUnmigratableRoadDependencies(city: City, road: Road): boolean {
+  const laneIds = new Set(road.lanes.map((lane) => lane.id));
+  return (
+    city.parking_zones.some((zone) => zone.road_id === road.id) ||
+    city.bus_stops.some((stop) => stop.road_id === road.id) ||
+    city.crosswalks.some((crosswalk) => crosswalk.road_id === road.id) ||
+    (city.traffic_rules ?? []).some(
+      (rule) =>
+        (rule.target_type === "ROAD" && rule.target_id === road.id) ||
+        (rule.target_type === "LANE" && laneIds.has(rule.target_id)),
+    )
+  );
 }
 
 function nearestIntersectionWithinTolerance(
@@ -275,11 +292,17 @@ export function findEndpointSnapCandidate(
 }
 
 function editorNodeId(target: RoadEndpointSnapTarget): string {
-  return persistedId(`${EDITOR_NODE_PREFIX}${target.roadId}-${target.endpoint}`, target.roadId);
+  return persistedId(
+    `${EDITOR_NODE_PREFIX}${target.roadId}-${target.endpoint}`,
+    target.roadId,
+  );
 }
 
 function segmentNodeId(target: RoadSegmentSnapTarget): string {
-  return persistedId(`editor-node-${target.roadId}-segment-${target.segmentIndex}-${target.point.x}-${target.point.y}`, target.roadId);
+  return persistedId(
+    `editor-node-${target.roadId}-segment-${target.segmentIndex}-${target.point.x}-${target.point.y}`,
+    target.roadId,
+  );
 }
 
 function splitRoadAtPoint(
@@ -452,7 +475,9 @@ export function applyEndpointSnap(
     nearbyIntersection?.id ??
     (target.kind === "road-segment" ? segmentNodeId(target) : target.nodeId);
   const existingNode = targetNodeId
-    ? city.intersections.find((intersection) => intersection.id === targetNodeId)
+    ? city.intersections.find(
+        (intersection) => intersection.id === targetNodeId,
+      )
     : null;
   if (targetNodeId && !existingNode && target.kind === "road-endpoint") {
     return null;
@@ -522,16 +547,23 @@ export function applyEndpointSnap(
         : road,
   );
   if (segmentTarget && segmentRoad) {
-    const segmentStart = segmentRoad.geometry.points[segmentTarget.segmentIndex];
-    const segmentEnd = segmentRoad.geometry.points[segmentTarget.segmentIndex + 1];
+    const segmentStart =
+      segmentRoad.geometry.points[segmentTarget.segmentIndex];
+    const segmentEnd =
+      segmentRoad.geometry.points[segmentTarget.segmentIndex + 1];
     const endpoint =
       distanceMeters(canonicalPoint, segmentStart) <= ROAD_TOPOLOGY_TOLERANCE_M
         ? "start"
-        : distanceMeters(canonicalPoint, segmentEnd) <= ROAD_TOPOLOGY_TOLERANCE_M
+        : distanceMeters(canonicalPoint, segmentEnd) <=
+            ROAD_TOPOLOGY_TOLERANCE_M
           ? "end"
           : null;
     if (endpoint) {
-      const snappedRoad = setRoadEndpoint(segmentRoad, endpoint, canonicalPoint);
+      const snappedRoad = setRoadEndpoint(
+        segmentRoad,
+        endpoint,
+        canonicalPoint,
+      );
       nextRoads = nextRoads.map((road) =>
         road.id === snappedRoad.id ? snappedRoad : road,
       );
@@ -545,9 +577,13 @@ export function applyEndpointSnap(
       return {
         ...city,
         roads: nextRoads,
-        intersections: reconcileConnectedLaneIds(nextRoads, endpointIntersections),
+        intersections: reconcileConnectedLaneIds(
+          nextRoads,
+          endpointIntersections,
+        ),
       };
     }
+    if (hasUnmigratableRoadDependencies(city, segmentRoad)) return null;
     const split = splitRoadAtPoint(
       segmentRoad,
       segmentTarget.segmentIndex,
@@ -570,7 +606,9 @@ export function applyEndpointSnap(
     );
     const connectedRoadIds = [
       ...new Set([
-        ...node.connected_road_ids.filter((roadId) => roadId !== segmentRoad.id),
+        ...node.connected_road_ids.filter(
+          (roadId) => roadId !== segmentRoad.id,
+        ),
         firstRoad.id,
         secondRoadWithLanes.id,
       ]),
@@ -607,28 +645,33 @@ export function applyEndpointSnap(
         )
         .map((intersection) => intersection.id),
     );
-    const nextLaneConnections = (city.lane_connections ?? []).map((connection) => {
-      if (!movedIntersectionIds.has(connection.intersection_id)) return connection;
-      return {
-        ...connection,
-        from_road_id:
-          connection.from_road_id === segmentRoad.id
-            ? secondRoadWithLanes.id
-            : connection.from_road_id,
-        from_lane_id:
-          connection.from_road_id === segmentRoad.id
-            ? splitLaneIds.get(connection.from_lane_id) ?? connection.from_lane_id
-            : connection.from_lane_id,
-        to_road_id:
-          connection.to_road_id === segmentRoad.id
-            ? secondRoadWithLanes.id
-            : connection.to_road_id,
-        to_lane_id:
-          connection.to_road_id === segmentRoad.id
-            ? splitLaneIds.get(connection.to_lane_id) ?? connection.to_lane_id
-            : connection.to_lane_id,
-      };
-    });
+    const nextLaneConnections = (city.lane_connections ?? []).map(
+      (connection) => {
+        if (!movedIntersectionIds.has(connection.intersection_id))
+          return connection;
+        return {
+          ...connection,
+          from_road_id:
+            connection.from_road_id === segmentRoad.id
+              ? secondRoadWithLanes.id
+              : connection.from_road_id,
+          from_lane_id:
+            connection.from_road_id === segmentRoad.id
+              ? (splitLaneIds.get(connection.from_lane_id) ??
+                connection.from_lane_id)
+              : connection.from_lane_id,
+          to_road_id:
+            connection.to_road_id === segmentRoad.id
+              ? secondRoadWithLanes.id
+              : connection.to_road_id,
+          to_lane_id:
+            connection.to_road_id === segmentRoad.id
+              ? (splitLaneIds.get(connection.to_lane_id) ??
+                connection.to_lane_id)
+              : connection.to_lane_id,
+        };
+      },
+    );
     const result = {
       ...city,
       roads: nextRoads,

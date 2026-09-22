@@ -1,6 +1,9 @@
 import { describe, expect, it } from "vitest";
 import { buildEditorWorkspace } from "./editorWorkspace";
-import { reconcileSavedRoadLanes } from "./savedRoadLanes";
+import {
+  reconcileSavedRoadLanes,
+  reconcileSavedTopology,
+} from "./savedRoadLanes";
 
 describe("reconcileSavedRoadLanes", () => {
   it("adopts persisted IDs while preserving newer local edits and other roads", () => {
@@ -61,5 +64,55 @@ describe("reconcileSavedRoadLanes", () => {
     expect(reconcileSavedRoadLanes(city, road).lane_connections).toEqual([
       connection,
     ]);
+  });
+
+  it("preserves a maneuver changed while an atomic topology save was in flight", () => {
+    const submitted = buildEditorWorkspace();
+    submitted.lane_connections = [];
+    const optimisticConnection = {
+      id: "newer-maneuver",
+      city_id: submitted.id,
+      intersection_id: "junction",
+      from_road_id: submitted.roads[0].id,
+      from_lane_id: submitted.roads[0].lanes[0].id,
+      to_road_id: submitted.roads[1].id,
+      to_lane_id: submitted.roads[1].lanes[0].id,
+      maneuver: "LEFT" as const,
+    };
+    const current = {
+      ...submitted,
+      lane_connections: [optimisticConnection],
+    };
+    const staleResponse = { ...submitted, lane_connections: [] };
+
+    expect(
+      reconcileSavedTopology(current, staleResponse, submitted.lane_connections)
+        .lane_connections,
+    ).toEqual([optimisticConnection]);
+  });
+
+  it("adopts authoritative maneuvers when no newer edit exists", () => {
+    const current = buildEditorWorkspace();
+    current.lane_connections = [];
+    const authoritative = {
+      ...current,
+      lane_connections: [
+        {
+          id: "server-connection",
+          city_id: current.id,
+          intersection_id: "junction",
+          from_road_id: current.roads[0].id,
+          from_lane_id: current.roads[0].lanes[0].id,
+          to_road_id: current.roads[1].id,
+          to_lane_id: current.roads[1].lanes[0].id,
+          maneuver: "RIGHT" as const,
+        },
+      ],
+    };
+
+    expect(
+      reconcileSavedTopology(current, authoritative, current.lane_connections)
+        .lane_connections,
+    ).toEqual(authoritative.lane_connections);
   });
 });

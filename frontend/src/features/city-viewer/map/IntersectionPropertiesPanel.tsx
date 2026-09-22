@@ -162,6 +162,7 @@ export function IntersectionPropertiesPanel({
                           (movement) =>
                             getDestinationLanesForManeuver(
                               road,
+                              lane.id,
                               intersection,
                               connectedRoads,
                               movement,

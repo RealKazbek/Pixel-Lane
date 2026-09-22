@@ -32,6 +32,7 @@ export function updateIntersectionManeuver(
 
   const destinations = getDestinationLanesForManeuver(
     sourceRoad,
+    laneId,
     intersection,
     city.roads.filter((road) =>
       intersection.connected_road_ids.includes(road.id),

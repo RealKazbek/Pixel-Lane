@@ -26,12 +26,15 @@ function turnFor(incoming: number, outgoing: number): MovementType {
 
 export function getDestinationLanesForManeuver(
   incomingRoad: Road,
+  incomingLaneId: string,
   intersection: Intersection,
   connectedRoads: Road[],
   movement: MovementType,
 ): Array<{ road: Road; lane: Lane }> {
   return connectedRoads.flatMap((road) => {
-    if (road.id === incomingRoad.id) return [];
+    const sameRoad = road.id === incomingRoad.id;
+    if (sameRoad && movement !== "U_TURN") return [];
+    if (!sameRoad && movement === "U_TURN") return [];
     if (
       !getAvailableManeuvers(incomingRoad, intersection, [road]).includes(
         movement,
@@ -42,8 +45,9 @@ export function getDestinationLanesForManeuver(
     return road.lanes
       .filter(
         (lane) =>
+          lane.id !== incomingLaneId &&
           getLaneDirectionRelativeToIntersection(road, lane, intersection) ===
-          "OUTBOUND",
+            "OUTBOUND",
       )
       .map((lane) => ({ road, lane }));
   });
@@ -59,7 +63,6 @@ export function getAvailableManeuvers(
   if (incoming === null) return [];
   const movements = new Set<MovementType>();
   for (const candidate of connectedRoads) {
-    if (candidate.id === incomingRoad.id) continue;
     if (
       !candidate.lanes.some(
         (lane) =>
@@ -72,7 +75,13 @@ export function getAvailableManeuvers(
     )
       continue;
     const outgoing = outwardBearing(candidate, intersection);
-    if (outgoing !== null) movements.add(turnFor(incoming, outgoing));
+    if (outgoing === null) continue;
+    if (candidate.id === incomingRoad.id) {
+      movements.add("U_TURN");
+    } else {
+      const movement = turnFor(incoming, outgoing);
+      if (movement !== "U_TURN") movements.add(movement);
+    }
   }
   const ordered: MovementType[] = ["LEFT", "STRAIGHT", "RIGHT", "U_TURN"];
   return ordered.filter((movement) => movements.has(movement));

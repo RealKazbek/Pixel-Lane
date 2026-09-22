@@ -1,4 +1,4 @@
-import type { City, Road } from "../types/city";
+import type { City, LaneConnection, Road } from "../types/city";
 
 /** Adopt server-assigned lane identities without reverting newer local road
  * edits. The road-save queue keeps maneuvers disabled until its final response. */
@@ -36,5 +36,26 @@ export function reconcileSavedRoadLanes(city: City, saved: Road): City {
         laneIds.has(connection.from_lane_id) &&
         laneIds.has(connection.to_lane_id),
     ),
+  };
+}
+
+/** Reconcile an atomic topology response without letting an older response
+ * replace maneuver edits made while that request was in flight. */
+export function reconcileSavedTopology(
+  city: City,
+  saved: City,
+  submittedLaneConnections: LaneConnection[] | undefined,
+): City {
+  const hasNewerManeuverEdit =
+    city.lane_connections !== submittedLaneConnections;
+  const reconciled = saved.roads.reduce(
+    (candidate, road) => reconcileSavedRoadLanes(candidate, road),
+    city,
+  );
+  return {
+    ...reconciled,
+    lane_connections: hasNewerManeuverEdit
+      ? reconciled.lane_connections
+      : saved.lane_connections,
   };
 }
