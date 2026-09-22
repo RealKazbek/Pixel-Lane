@@ -12,7 +12,7 @@ import {
   getRoadEndpointAtIntersection,
   type LaneRelativeDirection,
 } from "../editor/intersectionLaneDirection";
-import { getAvailableManeuvers } from "../editor/intersectionManeuvers";
+import { getDestinationLanesForManeuver } from "../editor/intersectionManeuvers";
 
 interface IntersectionPropertiesPanelProps {
   intersection: Intersection;
@@ -78,7 +78,7 @@ export function IntersectionPropertiesPanel({
 
   return (
     <section
-      className="pointer-events-auto absolute right-3 top-16 z-20 max-h-[calc(100%-5rem)] w-60 overflow-y-auto rounded-lg border border-border-subtle bg-surface/95 p-3 text-xs text-foreground shadow-lg backdrop-blur"
+      className="pointer-events-auto absolute right-3 top-16 z-30 max-h-[calc(100%-5rem)] w-60 overflow-y-auto rounded-lg border border-border-subtle bg-surface/95 p-3 text-xs text-foreground shadow-lg backdrop-blur"
       onPointerDown={(event) => event.stopPropagation()}
       onClick={(event) => event.stopPropagation()}
     >
@@ -151,10 +151,16 @@ export function IntersectionPropertiesPanel({
                     );
                     const isIncoming = direction === "INBOUND";
                     const maneuvers = isIncoming
-                      ? getAvailableManeuvers(
-                          road,
-                          intersection,
-                          connectedRoads,
+                      ? (
+                          ["LEFT", "STRAIGHT", "RIGHT", "U_TURN"] as const
+                        ).filter(
+                          (movement) =>
+                            getDestinationLanesForManeuver(
+                              road,
+                              intersection,
+                              connectedRoads,
+                              movement,
+                            ).length > 0,
                         )
                       : [];
                     const enabled = new Set(
@@ -162,6 +168,7 @@ export function IntersectionPropertiesPanel({
                         .filter(
                           (connection) =>
                             connection.intersection_id === intersection.id &&
+                            connection.from_road_id === road.id &&
                             connection.from_lane_id === lane.id,
                         )
                         .map((connection) => connection.maneuver),
@@ -186,7 +193,7 @@ export function IntersectionPropertiesPanel({
                                 type="button"
                                 key={movement}
                                 aria-pressed={enabled.has(movement)}
-                                className={`rounded border px-1.5 py-1 text-[10px] transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary ${
+                                className={`min-h-8 min-w-16 cursor-pointer rounded border px-2 py-1 text-[11px] transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary ${
                                   enabled.has(movement)
                                     ? "border-primary bg-primary/15 text-primary"
                                     : "border-border-subtle bg-background text-muted-foreground hover:border-primary/60 hover:text-foreground"

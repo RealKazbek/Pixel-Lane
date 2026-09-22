@@ -408,6 +408,10 @@ export function CityViewerApp() {
         movement,
         enabled,
       );
+      if (nextCity === currentCity) {
+        setDeleteError(tProperties("maneuverUnavailable"));
+        return;
+      }
       const requestId = ++maneuverRequestRef.current;
       cityRef.current = nextCity;
       setCity(nextCity);

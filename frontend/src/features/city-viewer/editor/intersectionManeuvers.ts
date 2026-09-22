@@ -1,4 +1,4 @@
-import type { Intersection, MovementType, Road } from "../types/city";
+import type { Intersection, Lane, MovementType, Road } from "../types/city";
 import {
   getLaneDirectionRelativeToIntersection,
   getRoadEndpointAtIntersection,
@@ -22,6 +22,31 @@ function turnFor(incoming: number, outgoing: number): MovementType {
   if (Math.abs(delta) <= 45) return "STRAIGHT";
   if (delta > 135 || delta < -135) return "U_TURN";
   return delta > 0 ? "RIGHT" : "LEFT";
+}
+
+export function getDestinationLanesForManeuver(
+  incomingRoad: Road,
+  intersection: Intersection,
+  connectedRoads: Road[],
+  movement: MovementType,
+): Array<{ road: Road; lane: Lane }> {
+  return connectedRoads.flatMap((road) => {
+    if (road.id === incomingRoad.id) return [];
+    if (
+      !getAvailableManeuvers(incomingRoad, intersection, [road]).includes(
+        movement,
+      )
+    ) {
+      return [];
+    }
+    return road.lanes
+      .filter(
+        (lane) =>
+          getLaneDirectionRelativeToIntersection(road, lane, intersection) ===
+          "OUTBOUND",
+      )
+      .map((lane) => ({ road, lane }));
+  });
 }
 
 /** Returns only movements that have a physically connected destination. */

@@ -23,12 +23,15 @@ vi.mock("../map/PixelLaneMap", () => ({
   }: {
     onSelect: (selection: { type: "intersection"; id: string }) => void;
   }) => (
-    <button
-      type="button"
-      onClick={() => onSelect({ type: "intersection", id: "j" })}
-    >
-      Select intersection
-    </button>
+    <>
+      <button
+        type="button"
+        onClick={() => onSelect({ type: "intersection", id: "j" })}
+      >
+        Select intersection
+      </button>
+      <output data-testid="camera-state">center=0,0;zoom=10;bearing=37</output>
+    </>
   ),
 }));
 
@@ -141,6 +144,8 @@ describe("CityViewerApp live maneuver path", () => {
       await screen.findByRole("button", { name: "Select intersection" }),
     );
     const left = screen.getByRole("button", { name: "Left" });
+    expect(screen.getByRole("button", { name: "Right" })).toBeTruthy();
+    expect(screen.queryByRole("button", { name: "Straight" })).toBeNull();
     expect(left.getAttribute("aria-pressed")).toBe("false");
 
     await user.click(left);
@@ -165,6 +170,9 @@ describe("CityViewerApp live maneuver path", () => {
     expect(
       screen.getByRole("button", { name: "Select intersection" }),
     ).toBeTruthy();
+    expect(screen.getByTestId("camera-state").textContent).toBe(
+      "center=0,0;zoom=10;bearing=37",
+    );
 
     await user.click(left);
 

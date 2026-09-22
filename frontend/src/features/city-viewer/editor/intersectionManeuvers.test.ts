@@ -1,6 +1,9 @@
 import { describe, expect, it } from "vitest";
 import type { Intersection, Road } from "../types/city";
-import { getAvailableManeuvers } from "./intersectionManeuvers";
+import {
+  getAvailableManeuvers,
+  getDestinationLanesForManeuver,
+} from "./intersectionManeuvers";
 
 const intersection: Intersection = {
   id: "j",
@@ -63,6 +66,14 @@ describe("intersection maneuver topology", () => {
     expect(
       getAvailableManeuvers(incoming, intersection, [incoming, left, right]),
     ).toEqual(["LEFT", "RIGHT"]);
+    expect(
+      getDestinationLanesForManeuver(
+        incoming,
+        intersection,
+        [incoming, left, right],
+        "LEFT",
+      ),
+    ).toEqual([{ road: left, lane: left.lanes[0] }]);
   });
 
   it("derives road-level reversal without changing the intersection model", () => {
