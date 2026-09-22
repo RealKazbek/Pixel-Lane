@@ -54,3 +54,11 @@ Nothing — this is a leaf dependency other subsystems consume. It must
 never import from `backend/app/*`; `backend/app/traffic/adapter.py` is the
 only place allowed to depend on both this package and the backend's City
 schemas.
+The package also exposes `traffic.graph.world.build_world_graph`, an additive
+hierarchical graph contract. It retains physical `RoadInput` objects as
+directed `RoadSegment` records, preserves every `LaneInput`, and represents
+explicit `LaneConnectionInput` movements. `TrafficRuleInput` is evaluated by
+vehicle class and optional connection, so conditional access (for example a
+car entering a bus lane only for a right-turn movement) does not require
+bus-specific logic in routing. `LaneAvailabilityInput` is a dynamic overlay;
+incidents and closures do not mutate static road geometry.
