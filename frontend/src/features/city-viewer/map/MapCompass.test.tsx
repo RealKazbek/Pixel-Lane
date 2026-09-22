@@ -22,6 +22,8 @@ describe("MapCompass", () => {
 
     const compass = screen.getByRole("button", { name: "Reset north" });
     const rose = compass.querySelector("[aria-hidden='true']");
+    expect(compass.textContent).toContain("N");
+    expect(compass.textContent).toContain("S");
     expect(compass.className).toContain("h-14");
     expect(compass.className).toContain("w-14");
     expect(rose?.getAttribute("style")).toContain("rotate(-180deg)");
