@@ -5,7 +5,10 @@ import bearing from "@turf/bearing";
 import distance from "@turf/distance";
 import lineOffset from "@turf/line-offset";
 import { lineString, point } from "@turf/helpers";
-import { buildLaneConnectorCurve } from "../geometry/laneConnection";
+import {
+  buildLaneConnectorArrowhead,
+  buildLaneConnectorCurve,
+} from "../geometry/laneConnection";
 import { toLngLat } from "./coordinates";
 import { toRoadLineString } from "./roadLineString";
 import { roadLaneCount, roadWidthMeters } from "../styles/roadStyle";
@@ -27,6 +30,7 @@ export interface LaneConnectionFeatureProperties {
   to_road_id: string;
   to_lane_id: string;
   maneuver: LaneConnection["maneuver"];
+  kind: "shaft" | "arrowhead";
 }
 
 export type LaneConnectionFeatureCollection = GeoJSON.FeatureCollection<
@@ -57,11 +61,10 @@ function laneEndpoint(
   const length = distance(point(coordinates[0]), point(coordinates.at(-1)!), {
     units: "meters",
   });
-  // Keep the connector visibly rooted in each lane rather than collapsing
-  // all four approaches into a tiny marker at the node. This is still
-  // junction-local (12 m maximum), but gives the debug layer enough length
-  // to remain legible at the editor's normal inspection zoom.
-  const fromNodeDistance = Math.min(12, Math.max(1, length / 3));
+  // Keep the guide rooted in the lane while leaving comfortable clearance
+  // from labels and road borders. Ten metres produces a moderate navigation
+  // arrow at inspection zoom without stretching far down the road.
+  const fromNodeDistance = Math.min(10, Math.max(3, length / 3));
   const endpoint = along(
     lineFeature,
     nodeAtStart ? fromNodeDistance : Math.max(0, length - fromNodeDistance),
@@ -73,37 +76,54 @@ function laneEndpoint(
   };
 }
 
-function buildConnectionFeature(
+function buildConnectionFeatures(
   connection: LaneConnection,
   roads: Map<string, Road>,
   intersections: Map<string, Intersection>,
   coordinateSystem: CoordinateSystem,
-): GeoJSON.Feature<GeoJSON.LineString, LaneConnectionFeatureProperties> | null {
+): LaneConnectionFeatureCollection["features"] {
   const fromRoad = roads.get(connection.from_road_id);
   const toRoad = roads.get(connection.to_road_id);
   const intersection = intersections.get(connection.intersection_id);
-  const fromLane = fromRoad?.lanes.find((lane) => lane.id === connection.from_lane_id);
-  const toLane = toRoad?.lanes.find((lane) => lane.id === connection.to_lane_id);
-  if (!fromRoad || !toRoad || !intersection || !fromLane || !toLane) return null;
+  const fromLane = fromRoad?.lanes.find(
+    (lane) => lane.id === connection.from_lane_id,
+  );
+  const toLane = toRoad?.lanes.find(
+    (lane) => lane.id === connection.to_lane_id,
+  );
+  if (!fromRoad || !toRoad || !intersection || !fromLane || !toLane) return [];
   const from = laneEndpoint(fromRoad, fromLane, intersection, coordinateSystem);
   const to = laneEndpoint(toRoad, toLane, intersection, coordinateSystem);
-  if (!from || !to) return null;
-  const coordinates = buildLaneConnectorCurve(from, to);
-  if (!coordinates) return null;
-  return {
+  if (!from || !to) return [];
+  const coordinates = buildLaneConnectorCurve(from, to, connection.maneuver);
+  if (!coordinates) return [];
+  const properties = {
+    id: connection.id,
+    intersection_id: connection.intersection_id,
+    from_road_id: connection.from_road_id,
+    from_lane_id: connection.from_lane_id,
+    to_road_id: connection.to_road_id,
+    to_lane_id: connection.to_lane_id,
+    maneuver: connection.maneuver,
+  };
+  const shaft: LaneConnectionFeatureCollection["features"][number] = {
     type: "Feature",
     id: connection.id,
-    properties: {
-      id: connection.id,
-      intersection_id: connection.intersection_id,
-      from_road_id: connection.from_road_id,
-      from_lane_id: connection.from_lane_id,
-      to_road_id: connection.to_road_id,
-      to_lane_id: connection.to_lane_id,
-      maneuver: connection.maneuver,
-    },
+    properties: { ...properties, kind: "shaft" },
     geometry: { type: "LineString", coordinates },
   };
+  const arrowhead = buildLaneConnectorArrowhead(coordinates);
+  return arrowhead
+    ? [
+        shaft,
+        {
+          type: "Feature",
+          id: `${connection.id}:arrowhead`,
+          properties: { ...properties, kind: "arrowhead" },
+          geometry: { type: "LineString", coordinates: arrowhead },
+        },
+      ]
+    : [shaft];
 }
 
 export function buildLaneConnectionFeatureCollection(
@@ -118,14 +138,13 @@ export function buildLaneConnectionFeatureCollection(
   const features = connections
     .slice()
     .sort((a, b) => a.id.localeCompare(b.id))
-    .map((connection) =>
-      buildConnectionFeature(connection, roads, intersections, coordinateSystem),
-    )
-    .filter(
-      (feature): feature is GeoJSON.Feature<
-        GeoJSON.LineString,
-        LaneConnectionFeatureProperties
-      > => feature !== null,
+    .flatMap((connection) =>
+      buildConnectionFeatures(
+        connection,
+        roads,
+        intersections,
+        coordinateSystem,
+      ),
     );
   return { type: "FeatureCollection", features };
 }

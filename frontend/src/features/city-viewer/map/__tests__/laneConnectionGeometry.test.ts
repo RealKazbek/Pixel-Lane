@@ -54,7 +54,8 @@ describe("buildLaneConnectionFeatureCollection", () => {
     const city = cityWithConnections();
     city.lane_connections = [];
     expect(
-      buildLaneConnectionFeatureCollection(city, city.coordinate_system).features,
+      buildLaneConnectionFeatureCollection(city, city.coordinate_system)
+        .features,
     ).toHaveLength(0);
   });
 
@@ -64,13 +65,27 @@ describe("buildLaneConnectionFeatureCollection", () => {
       city,
       city.coordinate_system,
     );
-    expect(collection.features).toHaveLength(1);
-    expect(collection.features[0].properties).toMatchObject({
+    expect(collection.features).toHaveLength(2);
+    const shaft = collection.features.find(
+      (feature) => feature.properties.kind === "shaft",
+    );
+    const arrowhead = collection.features.find(
+      (feature) => feature.properties.kind === "arrowhead",
+    );
+    expect(shaft?.properties).toMatchObject({
       id: "connection-1",
       from_lane_id: city.lane_connections![0].from_lane_id,
       to_lane_id: city.lane_connections![0].to_lane_id,
       maneuver: "STRAIGHT",
+      kind: "shaft",
     });
+    expect(shaft?.geometry.type).toBe("LineString");
+    expect(arrowhead?.geometry.type).toBe("LineString");
+    expect(
+      arrowhead?.geometry.type === "LineString"
+        ? arrowhead.geometry.coordinates
+        : [],
+    ).toHaveLength(3);
     expect(collection).toEqual(
       buildLaneConnectionFeatureCollection(city, city.coordinate_system),
     );

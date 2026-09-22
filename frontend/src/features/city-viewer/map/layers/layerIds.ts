@@ -39,6 +39,7 @@ export const LAYER_IDS = {
   laneBoundarySolid: "pixel-lane-lane-boundary-solid",
   laneBoundaryCenter: "pixel-lane-lane-boundary-center",
   turnArrows: "pixel-lane-turn-arrows",
+  laneConnectionCasing: "pixel-lane-lane-connection-casing",
   laneConnections: "pixel-lane-lane-connections",
   laneConnectionArrows: "pixel-lane-lane-connection-arrows",
   junctionLaneDirections: "pixel-lane-junction-lane-directions",
@@ -74,6 +75,7 @@ export const LAYER_DRAW_ORDER: readonly string[] = [
   LAYER_IDS.laneBoundaryCenter,
   LAYER_IDS.laneBusLabel,
   LAYER_IDS.turnArrows,
+  LAYER_IDS.laneConnectionCasing,
   LAYER_IDS.laneConnections,
   LAYER_IDS.laneConnectionArrows,
   LAYER_IDS.junctionLaneDirections,
@@ -109,10 +111,18 @@ export const LAYER_GROUPS = {
     LAYER_IDS.selection,
     LAYER_IDS.roadLabels,
   ],
-  intersections: [LAYER_IDS.intersections, LAYER_IDS.intersectionDetails, LAYER_IDS.junctionLaneDirections],
+  intersections: [
+    LAYER_IDS.intersections,
+    LAYER_IDS.intersectionDetails,
+    LAYER_IDS.junctionLaneDirections,
+  ],
   trafficLights: [LAYER_IDS.trafficLights],
   amenities: [LAYER_IDS.busStops, LAYER_IDS.crosswalks],
-  connections: [LAYER_IDS.laneConnections, LAYER_IDS.laneConnectionArrows],
+  connections: [
+    LAYER_IDS.laneConnectionCasing,
+    LAYER_IDS.laneConnections,
+    LAYER_IDS.laneConnectionArrows,
+  ],
 } as const;
 
 export type LayerGroupId = keyof typeof LAYER_GROUPS;

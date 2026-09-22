@@ -1,50 +1,62 @@
-import type { LayerSpecification } from "maplibre-gl";
+import type { ExpressionSpecification, LayerSpecification } from "maplibre-gl";
 import { LAYER_IDS, SOURCE_IDS } from "./layerIds";
 import type { MapThemeColors } from "../styles/mapTheme";
+
+function guidanceWidth(extra = 0): ExpressionSpecification {
+  return [
+    "interpolate",
+    ["linear"],
+    ["zoom"],
+    13,
+    1.25 + extra,
+    16,
+    1.8 + extra,
+    20,
+    2.6 + extra,
+  ];
+}
 
 export function buildLaneConnectionLayers(
   theme: MapThemeColors,
 ): LayerSpecification[] {
   return [
     {
+      id: LAYER_IDS.laneConnectionCasing,
+      type: "line",
+      source: SOURCE_IDS.laneConnections,
+      minzoom: 13,
+      filter: ["==", ["get", "kind"], "shaft"],
+      layout: { "line-cap": "round", "line-join": "round" },
+      paint: {
+        "line-color": theme.background,
+        "line-width": guidanceWidth(1.6),
+        "line-opacity": 0.68,
+      },
+    } as LayerSpecification,
+    {
       id: LAYER_IDS.laneConnections,
       type: "line",
       source: SOURCE_IDS.laneConnections,
-      minzoom: 12,
+      minzoom: 13,
+      filter: ["==", ["get", "kind"], "shaft"],
       layout: { "line-cap": "round", "line-join": "round" },
       paint: {
         "line-color": theme.laneConnection,
-        "line-width": 3,
-        "line-opacity": 1,
+        "line-width": guidanceWidth(),
+        "line-opacity": 0.96,
       },
     } as LayerSpecification,
     {
       id: LAYER_IDS.laneConnectionArrows,
-      type: "symbol",
+      type: "line",
       source: SOURCE_IDS.laneConnections,
       minzoom: 13,
-      layout: {
-        "symbol-placement": "line-center",
-        "text-field": [
-          "match",
-          ["get", "maneuver"],
-          "LEFT",
-          "↶",
-          "RIGHT",
-          "↷",
-          "U_TURN",
-          "↺",
-          "↑",
-        ],
-        "text-size": ["interpolate", ["linear"], ["zoom"], 13, 11, 17, 16, 20, 20],
-        "text-allow-overlap": true,
-        "text-ignore-placement": true,
-        "text-rotation-alignment": "map",
-      },
+      filter: ["==", ["get", "kind"], "arrowhead"],
+      layout: { "line-cap": "butt", "line-join": "miter" },
       paint: {
-        "text-color": theme.laneConnection,
-        "text-halo-color": theme.background,
-        "text-halo-width": 1.5,
+        "line-color": theme.laneConnection,
+        "line-width": guidanceWidth(0.2),
+        "line-opacity": 1,
       },
     } as LayerSpecification,
   ];
