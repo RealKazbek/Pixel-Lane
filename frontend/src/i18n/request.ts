@@ -11,9 +11,6 @@ import { routing } from "./routing";
  */
 const NAMESPACES = [
   "common",
-  "marketing",
-  "auth",
-  "dashboard",
   "cityModel",
   "traffic",
   "infrastructure",

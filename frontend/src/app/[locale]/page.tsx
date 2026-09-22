@@ -8,10 +8,11 @@ export async function generateMetadata({
   params: Promise<{ locale: string }>;
 }): Promise<Metadata> {
   const { locale } = await params;
-  const t = await getTranslations({ locale, namespace: "common.nav" });
-  return { title: t("cityModel") };
+  const t = await getTranslations({ locale, namespace: "common" });
+  return { title: t("siteTitle"), robots: { index: false, follow: false } };
 }
 
-export default function Home() {
+/** The localized root is the product workspace, not a marketing landing page. */
+export default function HomePage() {
   return <CityViewerApp />;
 }
