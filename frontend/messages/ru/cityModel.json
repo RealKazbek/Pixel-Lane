@@ -87,6 +87,31 @@
     "cancel": "Отмена",
     "fitToView": "Вписать в экран"
   },
+  "environment": {
+    "timeLabel": "Время",
+    "weatherLabel": "Погода",
+    "dateLabel": "Дата",
+    "simulationTimeLabel": "Время симуляции",
+    "intensityLabel": "Интенсивность",
+    "time": {
+      "auto": "Авто",
+      "morning": "Утро",
+      "day": "День",
+      "evening": "Вечер",
+      "night": "Ночь"
+    },
+    "weather": {
+      "clear": "Ясно",
+      "rain": "Дождь",
+      "snow": "Снег",
+      "fog": "Туман"
+    },
+    "intensity": {
+      "light": "Слабая",
+      "medium": "Средняя",
+      "heavy": "Сильная"
+    }
+  },
   "properties": {
     "title": "Выбранная дорога",
     "preset": "Шаблон дороги",

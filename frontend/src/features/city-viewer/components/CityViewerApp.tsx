@@ -32,6 +32,15 @@ import type { LayerGroupId } from "../map/layers/layerIds";
 import { EditorToolbar } from "../map/EditorToolbar";
 import { RoadPropertiesPanel } from "../map/RoadPropertiesPanel";
 import { IntersectionPropertiesPanel } from "../map/IntersectionPropertiesPanel";
+import { EnvironmentControls } from "../map/environment/EnvironmentControls";
+import { WeatherOverlay } from "../map/environment/WeatherOverlay";
+import { SimulationClockDisplay } from "../map/environment/SimulationClockDisplay";
+import {
+  defaultTimeForMode,
+  resolveTimeOfDay,
+  useEnvironment,
+} from "../map/environment/useEnvironment";
+import { useSimulationClock } from "../map/environment/simulationClock";
 import { buildLaneConfiguration } from "../editor/laneConfiguration";
 import { removeRoadFromCity } from "../editor/roadDeletion";
 import { updateIntersectionManeuver } from "../editor/intersectionManeuverState";
@@ -159,6 +168,12 @@ export function CityViewerApp() {
   );
   const cityRef = useRef(city);
   const maneuverRequestRef = useRef(0);
+  const [environment, dispatchEnvironment] = useEnvironment();
+  const [simulationClock, dispatchSimulationClock] = useSimulationClock();
+  const timeOfDay = resolveTimeOfDay(
+    environment.timeMode,
+    simulationClock.time,
+  );
 
   useEffect(() => {
     cityRef.current = city;
@@ -604,55 +619,98 @@ export function CityViewerApp() {
         }}
         onPointerLeave={() => setCrosshair(null)}
       >
-        {!hydrated && !loadError ? (
-          <div
-            className="flex flex-1 items-center justify-center text-sm text-muted-foreground"
-            role="status"
-          >
-            {tMap("loadingCity")}
-          </div>
-        ) : (
-          <PixelLaneMap
-            city={city}
-            selected={selected}
-            onSelect={handleSelect}
-            selectedVertexIndex={selectedVertexIndex}
-            onVertexSelect={setSelectedVertexIndex}
-            onVertexDrag={handleEndpointDrag}
-            onVertexDragEnd={handleEndpointDragEnd}
-            onInsertPoint={handleInsertPoint}
-            basemapEnabled={false}
-            mapStyleUrl={mapStyleUrl}
-            overlayVisible
-            layerVisibility={layerVisibility}
-            // The empty editor workspace uses a fixed world. Persisted cities
-            // must fit to their loaded geometry once, otherwise the initial
-            // pre-hydration camera can leave the real network off-screen.
-            fitSignal={hydrated ? 1 : 0}
-            editorWorld={
-              city.coordinate_system === "LOCAL_CARTESIAN"
-                ? EDITOR_WORLD_BOUNDS
-                : undefined
-            }
-            mode={
-              session.mode === "edit" && session.activeTool === "select"
-                ? "edit-geometry"
-                : "view"
-            }
-            activeTool={
-              session.activeTool === "draw-road" ? "draw-road" : "select"
-            }
-            snapLabel={t("snap")}
-            compassLabel={tMap("compass")}
-            resetNorthLabel={tMap("resetNorth")}
-            onDrawPoint={handleDrawPoint}
-            editorAction={null}
-            onEditorStatusChange={() => undefined}
-            onRoadSaved={() => undefined}
-            onScaleChange={setScale}
-            onRoadGeometryChange={handleRoadGeometryChange}
+        <div className="relative flex h-full min-w-0 flex-1">
+          {!hydrated && !loadError ? (
+            <div
+              className="flex flex-1 items-center justify-center text-sm text-muted-foreground"
+              role="status"
+            >
+              {tMap("loadingCity")}
+            </div>
+          ) : (
+            <PixelLaneMap
+              city={city}
+              selected={selected}
+              onSelect={handleSelect}
+              selectedVertexIndex={selectedVertexIndex}
+              onVertexSelect={setSelectedVertexIndex}
+              onVertexDrag={handleEndpointDrag}
+              onVertexDragEnd={handleEndpointDragEnd}
+              onInsertPoint={handleInsertPoint}
+              basemapEnabled={false}
+              mapStyleUrl={mapStyleUrl}
+              overlayVisible
+              layerVisibility={layerVisibility}
+              // The empty editor workspace uses a fixed world. Persisted cities
+              // must fit to their loaded geometry once, otherwise the initial
+              // pre-hydration camera can leave the real network off-screen.
+              fitSignal={hydrated ? 1 : 0}
+              editorWorld={
+                city.coordinate_system === "LOCAL_CARTESIAN"
+                  ? EDITOR_WORLD_BOUNDS
+                  : undefined
+              }
+              mode={
+                session.mode === "edit" && session.activeTool === "select"
+                  ? "edit-geometry"
+                  : "view"
+              }
+              activeTool={
+                session.activeTool === "draw-road" ? "draw-road" : "select"
+              }
+              snapLabel={t("snap")}
+              compassLabel={tMap("compass")}
+              resetNorthLabel={tMap("resetNorth")}
+              onDrawPoint={handleDrawPoint}
+              editorAction={null}
+              onEditorStatusChange={() => undefined}
+              onRoadSaved={() => undefined}
+              onScaleChange={setScale}
+              onRoadGeometryChange={handleRoadGeometryChange}
+            />
+          )}
+          <WeatherOverlay
+            timeOfDay={timeOfDay}
+            weather={environment.weather}
+            intensity={environment.weatherIntensity}
           />
-        )}
+          <div className="pointer-events-none absolute right-3 top-14 z-20">
+            <EnvironmentControls
+              value={environment}
+              timeOfDay={timeOfDay}
+              simulationClock={simulationClock}
+              onTimeModeChange={(timeMode) => {
+                dispatchEnvironment({ type: "set-time-mode", timeMode });
+                if (timeMode !== "auto") {
+                  dispatchSimulationClock({
+                    type: "set-time",
+                    time: defaultTimeForMode(timeMode),
+                  });
+                }
+              }}
+              onWeatherChange={(weather) =>
+                dispatchEnvironment({ type: "set-weather", weather })
+              }
+              onWeatherIntensityChange={(intensity) =>
+                dispatchEnvironment({
+                  type: "set-weather-intensity",
+                  intensity,
+                })
+              }
+              onDateChange={(date) =>
+                dispatchSimulationClock({ type: "set-date", date })
+              }
+              onTimeChange={(time) => {
+                dispatchSimulationClock({ type: "set-time", time });
+                dispatchEnvironment({
+                  type: "set-time-mode",
+                  timeMode: "auto",
+                });
+              }}
+            />
+          </div>
+          <SimulationClockDisplay clock={simulationClock} />
+        </div>
         {loadError && (
           <div
             role="alert"
